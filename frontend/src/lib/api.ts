@@ -11,10 +11,15 @@ import {
   CsvVerificationResult,
 } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const getBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL || "/api";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+};
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${getBaseUrl()}${endpoint}`;
   try {
     const res = await fetch(url, {
       ...options,
@@ -102,7 +107,7 @@ export const api = {
     const formData = new FormData();
     formData.append("file", file);
 
-    const url = `${API_BASE_URL}/transactions/csv/verify`;
+    const url = `${getBaseUrl()}/transactions/csv/verify`;
     const res = await fetch(url, {
       method: "POST",
       body: formData,
@@ -127,7 +132,7 @@ export const api = {
       body: JSON.stringify({ transactions }),
     }),
 
-  getCsvTemplateUrl: () => `${API_BASE_URL}/transactions/csv/template`,
+  getCsvTemplateUrl: () => `${getBaseUrl()}/transactions/csv/template`,
 
   // Gmail OAuth & Sync
   getGmailStatus: () => request<GmailStatus>("/gmail/status"),
