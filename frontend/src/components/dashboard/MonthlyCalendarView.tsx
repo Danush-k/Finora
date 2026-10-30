@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { api } from "@/lib/api";
 import { CalendarDaySummary, DebtLentRecord, Transaction } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar, ArrowDownRight, ArrowUpRight, X, Link2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, ArrowDownRight, ArrowUpRight, X, Link2, ExternalLink } from "lucide-react";
+import InstallmentChecklistDrawer from "@/components/debt-lent/InstallmentChecklistDrawer";
 
 export default function MonthlyCalendarView() {
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 9, 1));
@@ -12,6 +13,7 @@ export default function MonthlyCalendarView() {
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState<CalendarDaySummary | null>(null);
   const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>([]);
+  const [selectedDebtLentRecord, setSelectedDebtLentRecord] = useState<DebtLentRecord | null>(null);
 
   useEffect(() => {
     api.getDashboardSummary().then((summary) => {
@@ -25,13 +27,38 @@ export default function MonthlyCalendarView() {
       setCurrentDate(new Date());
     });
 
-    // Load mapped Debt & Lent records
     api.getDebtLentRecords().then((records) => {
       setDebtLentRecords(records);
     }).catch((e) => {
       console.error("Failed to load debt & lent records for calendar", e);
     });
   }, []);
+
+  const fetchDebtLentRecords = async () => {
+    try {
+      const records = await api.getDebtLentRecords();
+      setDebtLentRecords(records);
+    } catch (e) {
+      console.error("Failed to refresh debt & lent records for calendar", e);
+    }
+  };
+
+  const handleOpenMappedRecord = async (recordId: string) => {
+    // 1. Immediate local match
+    const local = debtLentRecords.find((r) => r.id === recordId);
+    if (local) {
+      setSelectedDebtLentRecord(local);
+    }
+    // 2. Fetch full fresh record
+    try {
+      const fullRecord = await api.getDebtLentById(recordId);
+      if (fullRecord) {
+        setSelectedDebtLentRecord(fullRecord);
+      }
+    } catch (e) {
+      console.error("Failed to fetch full mapped debt/lent record", e);
+    }
+  };
 
   // Quick lookup map for mapped transactions (Lent, Debt, Repayments)
   const mappedTxnMap = useMemo(() => {
@@ -359,46 +386,60 @@ export default function MonthlyCalendarView() {
                   return (
                     <div
                       key={txn.id}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all text-xs ${
+                      onClick={() => {
+                        if (mappedInfo) {
+                          handleOpenMappedRecord(mappedInfo.recordId);
+                        }
+                      }}
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all text-xs ${
                         mappedInfo
                           ? mappedInfo.type === "LENT"
-                            ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300 shadow-2xs"
-                            : "bg-amber-50/50 border-amber-200 hover:border-amber-300 shadow-2xs"
-                          : "bg-slate-50 border-slate-200/80 hover:border-slate-300"
+                            ? "bg-emerald-50/60 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 shadow-2xs cursor-pointer group"
+                            : "bg-amber-50/60 border-amber-200 hover:border-amber-300 hover:bg-amber-50 shadow-2xs cursor-pointer group"
+                          : "bg-slate-50/80 border-slate-200/80 hover:border-slate-300"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-3">
                         <div
-                          className={`p-1.5 rounded-lg ${
+                          className={`p-2 rounded-xl shrink-0 ${
                             txn.transactionType === "EXPENSE"
-                              ? "bg-rose-100/80 text-rose-600"
-                              : "bg-emerald-100/80 text-emerald-600"
+                              ? "bg-rose-100/80 text-rose-600 border border-rose-200/60"
+                              : "bg-emerald-100/80 text-emerald-600 border border-emerald-200/60"
                           }`}
                         >
                           {txn.transactionType === "EXPENSE" ? (
-                            <ArrowDownRight className="w-3.5 h-3.5" />
+                            <ArrowDownRight className="w-4 h-4" />
                           ) : (
-                            <ArrowUpRight className="w-3.5 h-3.5" />
+                            <ArrowUpRight className="w-4 h-4" />
                           )}
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-bold text-slate-900">{txn.merchant}</p>
+                            <p className="font-bold text-slate-900 group-hover:text-indigo-900 transition-colors">
+                              {txn.merchant}
+                            </p>
                             {mappedInfo && (
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenMappedRecord(mappedInfo.recordId);
+                                }}
+                                title={`Open ${mappedInfo.counterpartyName}'s ${mappedInfo.type === "LENT" ? "Money Lent" : "Debt"} record`}
+                                className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-2xs ${
                                   mappedInfo.type === "LENT"
-                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                                    : "bg-amber-100 text-amber-800 border-amber-300"
+                                    ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300 ring-2 ring-emerald-500/20"
+                                    : "bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300 ring-2 ring-amber-500/20"
                                 }`}
                               >
-                                <Link2 className="w-2.5 h-2.5" />
+                                <Link2 className="w-3 h-3" />
                                 <span>
                                   {mappedInfo.isInstallment
                                     ? `Repayment · ${mappedInfo.counterpartyName}`
                                     : `${mappedInfo.type === "LENT" ? "Lent" : "Debt"} · ${mappedInfo.counterpartyName}`}
                                 </span>
-                              </span>
+                                <ExternalLink className="w-2.5 h-2.5 opacity-70 ml-0.5" />
+                              </button>
                             )}
                           </div>
                           <p className="text-[10px] text-slate-500 mt-0.5">
@@ -409,7 +450,7 @@ export default function MonthlyCalendarView() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <span
                           className={`font-extrabold ${
                             txn.transactionType === "EXPENSE" ? "text-rose-600" : "text-emerald-600"
@@ -419,13 +460,21 @@ export default function MonthlyCalendarView() {
                           {formatCurrency(txn.amount)}
                         </span>
                         {mappedInfo && (
-                          <p
-                            className={`text-[9px] font-bold mt-0.5 ${
-                              mappedInfo.type === "LENT" ? "text-emerald-700" : "text-amber-700"
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenMappedRecord(mappedInfo.recordId);
+                            }}
+                            className={`text-[10px] font-bold mt-1 flex items-center justify-end gap-1 hover:underline cursor-pointer ${
+                              mappedInfo.type === "LENT"
+                                ? "text-emerald-700 hover:text-emerald-800"
+                                : "text-amber-700 hover:text-amber-800"
                             }`}
                           >
-                            Mapped Record
-                          </p>
+                            <span>Mapped Record</span>
+                            <ArrowUpRight className="w-3 h-3" />
+                          </button>
                         )}
                       </div>
                     </div>
@@ -438,6 +487,22 @@ export default function MonthlyCalendarView() {
           </div>
         )}
       </div>
+
+      {/* Centered Expanded Debt & Lent Checklist Modal */}
+      <InstallmentChecklistDrawer
+        record={selectedDebtLentRecord}
+        onClose={() => setSelectedDebtLentRecord(null)}
+        onRecordUpdated={(updated) => {
+          setSelectedDebtLentRecord(updated);
+          fetchDebtLentRecords();
+          fetchCalendar();
+        }}
+        onDeleteRecord={(id) => {
+          setSelectedDebtLentRecord(null);
+          fetchDebtLentRecords();
+          fetchCalendar();
+        }}
+      />
     </div>
   );
 }

@@ -74,6 +74,27 @@ export default function DebtLentPage() {
     loadData();
   }, [activeTab, statusFilter]);
 
+  // Support direct deep link: /debt-lent?recordId=<id>
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const targetId = params.get("recordId");
+    if (!targetId) return;
+
+    api.getDebtLentById(targetId)
+      .then((rec) => {
+        if (rec) {
+          if (rec.type !== activeTab) {
+            setActiveTab(rec.type);
+          }
+          setSelectedRecord(rec);
+        }
+      })
+      .catch((e) => {
+        console.error("Could not fetch recordId from URL", e);
+      });
+  }, []);
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     loadData();

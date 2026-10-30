@@ -26,6 +26,7 @@ import {
   CreditCard,
   Building2,
   CheckCircle,
+  ExternalLink,
 } from "lucide-react";
 
 interface InstallmentChecklistDrawerProps {
@@ -282,9 +283,9 @@ export default function InstallmentChecklistDrawer({
       : "bg-slate-100 text-slate-700 border-slate-200";
 
   return (
-    <div className="fixed inset-0 z-[70] bg-slate-900/40 backdrop-blur-md flex items-center justify-end p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
       <div
-        className="bg-white shadow-2xl border-l sm:border border-slate-200/90 w-full sm:max-w-xl h-full sm:h-[95vh] sm:rounded-3xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-4xl lg:max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -301,7 +302,7 @@ export default function InstallmentChecklistDrawer({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
                   {record.counterpartyName}
                 </h3>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadgeClass}`}>
@@ -315,7 +316,14 @@ export default function InstallmentChecklistDrawer({
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <a
+              href={`/debt-lent?recordId=${record.id}`}
+              title="Open in Full Tracker"
+              className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
             <button
               onClick={() => {
                 if (
@@ -332,6 +340,7 @@ export default function InstallmentChecklistDrawer({
             </button>
             <button
               onClick={onClose}
+              title="Close"
               className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -339,312 +348,317 @@ export default function InstallmentChecklistDrawer({
           </div>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 pb-32 sm:pb-8">
-          {/* Financial Balance & Recovery Hero Card */}
-          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-4 shadow-2xs">
-            {/* Top Metric & Progress Row */}
-            <div className="flex items-end justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {isLent ? "Recovery Progress" : "Repayment Progress"}
-                </span>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <h2 className="text-2xl font-black text-slate-900 tabular-nums">
-                    {formatCurrency(repaid)}
-                  </h2>
-                  <span className="text-xs font-semibold text-slate-500">
-                    of {formatCurrency(totalExpected)} ({pct}%)
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Remaining Balance
-                </span>
-                <p
-                  className={`text-base font-extrabold tabular-nums ${
-                    remaining > 0 ? (isLent ? "text-emerald-700" : "text-rose-600") : "text-slate-400"
-                  }`}
-                >
-                  {formatCurrency(remaining)}
-                </p>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  pct === 100
-                    ? "bg-emerald-500"
-                    : isLent
-                    ? "bg-emerald-600"
-                    : "bg-amber-600"
-                }`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-
-            {/* Metrics Breakdown Grid */}
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/80 text-xs">
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                  Principal
-                </span>
-                <span className="font-extrabold text-slate-900 tabular-nums">
-                  {formatCurrency(record.principalAmount)}
-                </span>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block truncate">
-                  Interest {record.hasInterest && record.interestRate ? `(${record.interestRate}% ${record.interestPeriodType === "MONTHLY" ? "p.m." : "p.a."})` : ""}
-                </span>
-                <span className="font-extrabold text-indigo-700 tabular-nums">
-                  {record.hasInterest && record.accruedInterest
-                    ? `+${formatCurrency(record.accruedInterest)}`
-                    : "0% Free"}
-                </span>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                  Tenure
-                </span>
-                <span className="font-extrabold text-slate-900 tabular-nums">
-                  {record.tenureMonths || record.installments?.length || 1} Months
-                </span>
-              </div>
-            </div>
-
-            {/* Origin Linked Statement Card (Unified, Zero Emojis) */}
-            {(record.linkedTransactionDescription || record.amountDifferenceReason || record.description) && (
-              <div className="p-3 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1.5 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <Link2 className="w-3 h-3 text-indigo-500" />
-                    <span>Origin Bank Payment</span>
-                  </span>
-                  {record.linkedTransactionAmount && (
-                    <span className="text-xs font-bold text-slate-900 tabular-nums">
-                      {formatCurrency(record.linkedTransactionAmount)}
+        {/* 2-Column Desktop Grid / Stacked Mobile Body */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT COLUMN: Financial Summary & Origin Statement (5 cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Financial Balance & Recovery Hero Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-4 shadow-2xs">
+                {/* Top Metric & Progress Row */}
+                <div className="flex items-end justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {isLent ? "Recovery Progress" : "Repayment Progress"}
                     </span>
-                  )}
+                    <div className="flex items-baseline gap-2 mt-0.5">
+                      <h2 className="text-2xl font-black text-slate-900 tabular-nums">
+                        {formatCurrency(repaid)}
+                      </h2>
+                      <span className="text-xs font-semibold text-slate-500">
+                        of {formatCurrency(totalExpected)} ({pct}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Remaining
+                    </span>
+                    <p
+                      className={`text-base font-extrabold tabular-nums ${
+                        remaining > 0 ? (isLent ? "text-emerald-700" : "text-rose-600") : "text-slate-400"
+                      }`}
+                    >
+                      {formatCurrency(remaining)}
+                    </p>
+                  </div>
                 </div>
 
-                {record.linkedTransactionDescription && (
-                  <p className="font-semibold text-slate-800 text-[11px] truncate">
-                    {record.linkedTransactionDescription}
-                  </p>
-                )}
+                {/* Progress Bar */}
+                <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      pct === 100
+                        ? "bg-emerald-500"
+                        : isLent
+                        ? "bg-emerald-600"
+                        : "bg-amber-600"
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
 
-                {record.amountDifferenceReason && (
-                  <div className="flex items-center justify-between gap-1.5 text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200/80 px-2.5 py-1 rounded-lg">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <span className="font-semibold shrink-0">Adjustment:</span>
-                      <span className="truncate">{record.amountDifferenceReason}</span>
-                    </div>
-                    {record.linkedTransactionAmount && (
-                      <span className="text-slate-500 font-medium shrink-0 ml-1">
-                        ({record.principalAmount > record.linkedTransactionAmount ? "+" : ""}
-                        {formatCurrency(record.principalAmount - record.linkedTransactionAmount)})
+                {/* Metrics Breakdown Grid */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/80 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                      Principal
+                    </span>
+                    <span className="font-extrabold text-slate-900 tabular-nums text-xs">
+                      {formatCurrency(record.principalAmount)}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block truncate">
+                      Interest {record.hasInterest && record.interestRate ? `(${record.interestRate}%)` : ""}
+                    </span>
+                    <span className="font-extrabold text-indigo-700 tabular-nums text-xs">
+                      {record.hasInterest && record.accruedInterest
+                        ? `+${formatCurrency(record.accruedInterest)}`
+                        : "0% Free"}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                      Tenure
+                    </span>
+                    <span className="font-extrabold text-slate-900 tabular-nums text-xs">
+                      {record.tenureMonths || record.installments?.length || 1} Mo
+                    </span>
+                  </div>
+                </div>
+
+                {/* Origin Linked Statement Card (Unified, Zero Emojis) */}
+                {(record.linkedTransactionDescription || record.amountDifferenceReason || record.description) && (
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 text-xs space-y-2 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <Link2 className="w-3 h-3 text-indigo-500" />
+                        <span>Origin Bank Payment</span>
                       </span>
+                      {record.linkedTransactionAmount && (
+                        <span className="text-xs font-bold text-slate-900 tabular-nums">
+                          {formatCurrency(record.linkedTransactionAmount)}
+                        </span>
+                      )}
+                    </div>
+
+                    {record.linkedTransactionDescription && (
+                      <p className="font-semibold text-slate-800 text-[11px] truncate">
+                        {record.linkedTransactionDescription}
+                      </p>
+                    )}
+
+                    {record.amountDifferenceReason && (
+                      <div className="flex items-center justify-between gap-1.5 text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200/80 px-2.5 py-1 rounded-lg">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-semibold shrink-0">Adjustment:</span>
+                          <span className="truncate">{record.amountDifferenceReason}</span>
+                        </div>
+                        {record.linkedTransactionAmount && (
+                          <span className="text-slate-500 font-medium shrink-0 ml-1">
+                            ({record.principalAmount > record.linkedTransactionAmount ? "+" : ""}
+                            {formatCurrency(record.principalAmount - record.linkedTransactionAmount)})
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {record.description && record.description !== record.linkedTransactionDescription && (
+                      <p className="text-[10px] text-slate-400 italic">
+                        Note: {record.description}
+                      </p>
                     )}
                   </div>
                 )}
-
-                {record.description && record.description !== record.linkedTransactionDescription && (
-                  <p className="text-[10px] text-slate-400 italic">
-                    Note: {record.description}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* CHECKLIST & REPAYMENT TRACKING */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
-                    Repayment Checklist
-                  </h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                    {record.installments.filter((i) => i.settled).length} of {record.installments.length} Cleared
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {isLent ? "Check off milestones as money is received back" : "Check off milestones as money is repaid"}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setShowAddInstallment(!showAddInstallment)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Step</span>
-                </button>
-                <button
-                  onClick={handleOpenGeneralRepayMapping}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-indigo-600/20 active:scale-95"
-                >
-                  <Coins className="w-3.5 h-3.5" />
-                  <span>Record Repayment</span>
-                </button>
               </div>
             </div>
 
-            {/* Inline Add Checklist Form */}
-            {showAddInstallment && (
-              <form
-                onSubmit={handleCreateInstallment}
-                className="p-3.5 rounded-2xl bg-slate-100/80 border border-slate-200 space-y-2.5 animate-in fade-in duration-150"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800">Add Milestone Step</span>
+            {/* RIGHT COLUMN: Interactive Milestone Checklist (7 cols) */}
+            <div className="lg:col-span-7 space-y-3">
+              <div className="flex items-center justify-between pb-1">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                      Repayment Checklist
+                    </h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      {record.installments.filter((i) => i.settled).length} of {record.installments.length} Cleared
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {isLent ? "Check off milestones as money is received back" : "Check off milestones as money is repaid"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5">
                   <button
-                    type="button"
-                    onClick={() => setShowAddInstallment(false)}
-                    className="text-slate-400 hover:text-slate-600"
+                    onClick={() => setShowAddInstallment(!showAddInstallment)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Step</span>
+                  </button>
+                  <button
+                    onClick={handleOpenGeneralRepayMapping}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-indigo-600/20 active:scale-95"
+                  >
+                    <Coins className="w-3.5 h-3.5" />
+                    <span>Record Repayment</span>
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  <input
-                    type="text"
-                    placeholder="Title (e.g. Month 2 Return)"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="Amount (₹)"
-                    value={newAmount}
-                    onChange={(e) => setNewAmount(e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500 font-bold"
-                  />
-                  <input
-                    type="date"
-                    required
-                    value={newDueDate}
-                    onChange={(e) => setNewDueDate(e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              </div>
+
+              {/* Inline Add Checklist Form */}
+              {showAddInstallment && (
+                <form
+                  onSubmit={handleCreateInstallment}
+                  className="p-3.5 rounded-2xl bg-slate-100/80 border border-slate-200 space-y-2.5 animate-in fade-in duration-150"
                 >
-                  Add Milestone to Checklist
-                </button>
-              </form>
-            )}
-
-            {/* Checklist Items */}
-            <div className="space-y-2">
-              {record.installments.map((inst) => {
-                const isOverdue = !inst.settled && inst.dueDate && new Date(inst.dueDate) < new Date();
-
-                return (
-                  <div
-                    key={inst.id}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                      inst.settled
-                        ? "bg-slate-50/70 border-slate-200/80"
-                        : isOverdue
-                        ? "bg-rose-50/30 border-rose-200/90 hover:border-rose-300"
-                        : "bg-white border-slate-200 hover:border-indigo-300 shadow-2xs"
-                    }`}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Add Milestone Step</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddInstallment(false)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <input
+                      type="text"
+                      placeholder="Title (e.g. Month 2 Return)"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="Amount (₹)"
+                      value={newAmount}
+                      onChange={(e) => setNewAmount(e.target.value)}
+                      className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500 font-bold"
+                    />
+                    <input
+                      type="date"
+                      required
+                      value={newDueDate}
+                      onChange={(e) => setNewDueDate(e.target.value)}
+                      className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {/* Checkbox + Title + Date */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => handleToggle(inst)}
-                        disabled={busy}
-                        className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                          inst.settled
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "border border-slate-300 hover:border-indigo-500 bg-white"
-                        }`}
-                      >
-                        {inst.settled && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </button>
+                    Add Milestone to Checklist
+                  </button>
+                </form>
+              )}
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-bold truncate ${
-                              inst.settled ? "line-through text-slate-400" : "text-slate-900"
-                            }`}
-                          >
-                            {inst.title}
-                          </span>
-                          {isOverdue && (
-                            <span className="font-extrabold text-rose-700 bg-rose-100 text-[9px] px-1.5 py-0.2 rounded border border-rose-200">
-                              Overdue
-                            </span>
-                          )}
-                        </div>
+              {/* Checklist Items */}
+              <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                {record.installments.map((inst) => {
+                  const isOverdue = !inst.settled && inst.dueDate && new Date(inst.dueDate) < new Date();
 
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-slate-400" />
-                            <span>{inst.dueDate ? inst.dueDate.split("T")[0] : "No date"}</span>
-                          </span>
-                          {inst.settled && inst.settledDate && (
-                            <span className="text-emerald-700 font-medium">
-                              · Cleared {inst.settledDate.split("T")[0]}
-                            </span>
-                          )}
-                          {inst.linkedTransactionDescription && (
-                            <span
-                              className="text-indigo-600 font-medium flex items-center gap-0.5 truncate max-w-[140px]"
-                              title={inst.linkedTransactionDescription}
-                            >
-                              · <Link2 className="w-2.5 h-2.5 shrink-0" />
-                              <span className="truncate">{inst.linkedTransactionDescription}</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Amount & Actions */}
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <span
-                        className={`text-xs font-extrabold tabular-nums ${
-                          inst.settled ? "text-slate-400 line-through" : "text-slate-900"
-                        }`}
-                      >
-                        {formatCurrency(inst.settled && inst.settledAmount ? inst.settledAmount : inst.amount)}
-                      </span>
-
-                      {!inst.settled ? (
+                  return (
+                    <div
+                      key={inst.id}
+                      className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                        inst.settled
+                          ? "bg-slate-50/70 border-slate-200/80"
+                          : isOverdue
+                          ? "bg-rose-50/30 border-rose-200/90 hover:border-rose-300"
+                          : "bg-white border-slate-200 hover:border-indigo-300 shadow-2xs"
+                      }`}
+                    >
+                      {/* Checkbox + Title + Date */}
+                      <div className="flex items-center gap-3 min-w-0">
                         <button
                           type="button"
-                          onClick={() => handleOpenInstallmentMapping(inst)}
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                          onClick={() => handleToggle(inst)}
+                          disabled={busy}
+                          className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                            inst.settled
+                              ? "bg-emerald-600 text-white shadow-2xs"
+                              : "border border-slate-300 hover:border-indigo-500 bg-white"
+                          }`}
                         >
-                          <Link2 className="w-3 h-3" />
-                          <span>Map Txn</span>
+                          {inst.settled && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </button>
-                      ) : (
-                        <Check className="w-4 h-4 text-emerald-600" />
-                      )}
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-xs font-bold truncate ${
+                                inst.settled ? "line-through text-slate-400" : "text-slate-900"
+                              }`}
+                            >
+                              {inst.title}
+                            </span>
+                            {isOverdue && (
+                              <span className="font-extrabold text-rose-700 bg-rose-100 text-[9px] px-1.5 py-0.2 rounded border border-rose-200">
+                                Overdue
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>{inst.dueDate ? inst.dueDate.split("T")[0] : "No date"}</span>
+                            </span>
+                            {inst.settled && inst.settledDate && (
+                              <span className="text-emerald-700 font-medium">
+                                · Cleared {inst.settledDate.split("T")[0]}
+                              </span>
+                            )}
+                            {inst.linkedTransactionDescription && (
+                              <span
+                                className="text-indigo-600 font-medium flex items-center gap-0.5 truncate max-w-[140px]"
+                                title={inst.linkedTransactionDescription}
+                              >
+                                · <Link2 className="w-2.5 h-2.5 shrink-0" />
+                                <span className="truncate">{inst.linkedTransactionDescription}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Amount & Actions */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span
+                          className={`text-xs font-extrabold tabular-nums ${
+                            inst.settled ? "text-slate-400 line-through" : "text-slate-900"
+                          }`}
+                        >
+                          {formatCurrency(inst.settled && inst.settledAmount ? inst.settledAmount : inst.amount)}
+                        </span>
+
+                        {!inst.settled ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenInstallmentMapping(inst)}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Link2 className="w-3 h-3" />
+                            <span>Map Txn</span>
+                          </button>
+                        ) : (
+                          <Check className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
