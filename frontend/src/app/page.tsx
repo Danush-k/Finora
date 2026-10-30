@@ -92,15 +92,15 @@ export default function DashboardPage() {
               Financial Overview
             </h1>
             {selectedMonthName && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 animate-in fade-in zoom-in-95 duration-200">
-                <Sparkles className="w-3.5 h-3.5" />
-                {selectedMonthName}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/90 animate-in fade-in duration-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                <span>Showing: <strong>{selectedMonthName}</strong></span>
                 <button
                   onClick={handleResetMonth}
-                  className="ml-1 hover:text-rose-200 cursor-pointer p-0.5 rounded-full hover:bg-indigo-700 transition-colors"
-                  title="Clear month filter"
+                  className="ml-1 text-slate-400 hover:text-indigo-900 cursor-pointer p-0.5 rounded transition-colors"
+                  title="Reset filter"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </span>
             )}
