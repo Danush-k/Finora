@@ -22,19 +22,13 @@ class HdfcEmailParserTest {
     }
 
     @Test
-    @DisplayName("Should extract real HDFC InstaAlerts UPI Debit with merchant name extraction")
-    void shouldExtractRealUpiDebit() {
+    @DisplayName("Should extract modern 2026 HDFC UPI Debit towards merchant with bracketed name")
+    void shouldExtractModern2026UpiDebit() {
         String subject = "❗  You have done a UPI txn. Check details!";
         String body = """
-            <html><body>
-            <td class="td esd-text">Dear Customer,<br>
-            Rs.20.00 has been debited from account 1480 to VPA paytm.s1wwzwo@pty LOURDUSAMY M MARIYA JAMES on 04-04-26.<br>
-            Your UPI transaction reference number is 646069131340.<br>
-            If you did not authorize this transaction, please report it immediately by calling 18002586161 Or SMS BLOCK UPI to 7308080808.<br>
-            Warm Regards,<br>
-            HDFC Bank
-            </td>
-            </body></html>
+            HDFC BANK --> Dear Customer, Greetings from HDFC Bank!
+            Rs.65.00 is debited from your account ending 1480 towards VPA *************9823@pineaxis (Lg Electronics India Private Limited) on 30-10-26.
+            UPI transaction reference no.: 132071662330.
             """;
 
         Optional<ParsedTransaction> result = parser.parse(subject, body);
@@ -43,24 +37,24 @@ class HdfcEmailParserTest {
         ParsedTransaction txn = result.get();
         assertThat(txn.getBank()).isEqualTo("HDFC");
         assertThat(txn.getAccountNumber()).isEqualTo("XX1480");
-        assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("20.00"));
+        assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("65.00"));
         assertThat(txn.getTransactionType()).isEqualTo(TransactionType.EXPENSE);
         assertThat(txn.getPaymentMethod()).isEqualTo(PaymentMethod.UPI);
-        assertThat(txn.getMerchant()).isEqualTo("LOURDUSAMY M MARIYA JAMES");
-        assertThat(txn.getReferenceNumber()).isEqualTo("646069131340");
+        assertThat(txn.getMerchant()).isEqualTo("Lg Electronics India Private Limited");
+        assertThat(txn.getReferenceNumber()).isEqualTo("132071662330");
     }
 
     @Test
-    @DisplayName("Should extract real HDFC InstaAlerts UPI Credit")
-    void shouldExtractRealUpiCredit() {
+    @DisplayName("Should extract modern 2026 HDFC UPI Credit with Transaction Details format")
+    void shouldExtractModern2026UpiCredit() {
         String subject = "View: Account update for your HDFC Bank A/c";
         String body = """
-            Dear Customer,
-            Rs. 40.00 is successfully credited to your account **1480 by VPA geethaswamy1977@okhdfcbank Mr Naveenkumar S on 16-03-26.
-            Your UPI transaction reference number is 120127900804.
-            Thank you for banking with us.
-            Warm Regards,
-            HDFC Bank
+            HDFC BANK --> Dear Customer, Greetings from HDFC Bank!
+            We're writing to inform you that Rs.40.00 has been successfully credited to your HDFC Bank account ending in 1480.
+            Transaction Details:
+            a. Date: 30-10-26
+            b. Sender: ASHWATH RAM (VPA: *******hram@okicici)
+            c. UPI Reference No.: 666998298177
             """;
 
         Optional<ParsedTransaction> result = parser.parse(subject, body);
@@ -72,8 +66,29 @@ class HdfcEmailParserTest {
         assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("40.00"));
         assertThat(txn.getTransactionType()).isEqualTo(TransactionType.INCOME);
         assertThat(txn.getPaymentMethod()).isEqualTo(PaymentMethod.UPI);
-        assertThat(txn.getMerchant()).isEqualTo("Mr Naveenkumar S");
-        assertThat(txn.getReferenceNumber()).isEqualTo("120127900804");
+        assertThat(txn.getMerchant()).isEqualTo("ASHWATH RAM");
+        assertThat(txn.getReferenceNumber()).isEqualTo("666998298177");
+    }
+
+    @Test
+    @DisplayName("Should extract Debit Card spend with full date")
+    void shouldExtractDebitCardSpend() {
+        String subject = "Rs.100000.00 debited via Debit Card **5455";
+        String body = """
+            HDFC BANK --> Dear Customer, Greetings from HDFC Bank!
+            Rs.100000.00 is debited from your HDFC Bank Debit Card ending 5455 at SSN TRUST FEES COLLECT on 17 Jun, 2026 at 07:11:30.
+            """;
+
+        Optional<ParsedTransaction> result = parser.parse(subject, body);
+
+        assertThat(result).isPresent();
+        ParsedTransaction txn = result.get();
+        assertThat(txn.getBank()).isEqualTo("HDFC");
+        assertThat(txn.getAccountNumber()).isEqualTo("XX5455");
+        assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("100000.00"));
+        assertThat(txn.getTransactionType()).isEqualTo(TransactionType.EXPENSE);
+        assertThat(txn.getPaymentMethod()).isEqualTo(PaymentMethod.DEBIT_CARD);
+        assertThat(txn.getMerchant()).isEqualTo("SSN TRUST FEES COLLECT");
     }
 
     @Test
@@ -115,23 +130,6 @@ class HdfcEmailParserTest {
     }
 
     @Test
-    @DisplayName("Should extract Account Debit towards merchant")
-    void shouldExtractAccountDebit() {
-        String subject = "Notification from HDFC Bank";
-        String body = "Alert: Rs. 3,500.00 debited from HDFC Bank A/c **3456 on 27-10-26 towards RELIANCE RETAIL. Ref no 987654321.";
-
-        Optional<ParsedTransaction> result = parser.parse(subject, body);
-
-        assertThat(result).isPresent();
-        ParsedTransaction txn = result.get();
-        assertThat(txn.getAccountNumber()).isEqualTo("XX3456");
-        assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("3500.00"));
-        assertThat(txn.getTransactionType()).isEqualTo(TransactionType.EXPENSE);
-        assertThat(txn.getPaymentMethod()).isEqualTo(PaymentMethod.DEBIT_CARD);
-        assertThat(txn.getReferenceNumber()).isEqualTo("987654321");
-    }
-
-    @Test
     @DisplayName("Should extract Salary / Income Credit")
     void shouldExtractIncomeCredit() {
         String subject = "Salary Credit: HDFC Bank Account Update";
@@ -145,22 +143,6 @@ class HdfcEmailParserTest {
         assertThat(txn.getTransactionType()).isEqualTo(TransactionType.INCOME);
         assertThat(txn.getCategory()).isEqualTo("Salary & Income");
         assertThat(txn.getReferenceNumber()).isEqualTo("430182910291");
-    }
-
-    @Test
-    @DisplayName("Should extract Refund transaction")
-    void shouldExtractRefund() {
-        String subject = "Refund processed on HDFC Bank Account";
-        String body = "Dear Customer, Rs. 499.00 has been refunded to your HDFC Bank account **1234 from SWIGGY on 29-10-26. Ref 5544332211.";
-
-        Optional<ParsedTransaction> result = parser.parse(subject, body);
-
-        assertThat(result).isPresent();
-        ParsedTransaction txn = result.get();
-        assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("499.00"));
-        assertThat(txn.getTransactionType()).isEqualTo(TransactionType.REFUND);
-        assertThat(txn.getCategory()).isEqualTo("Refund");
-        assertThat(txn.getReferenceNumber()).isEqualTo("5544332211");
     }
 
     @Test

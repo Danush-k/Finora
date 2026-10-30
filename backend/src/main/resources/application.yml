@@ -19,7 +19,7 @@ paytrace:
       # Configurable sync interval in milliseconds (default: 2 minutes = 120,000ms)
       delay-ms: ${GMAIL_SYNC_DELAY_MS:120000}
       enabled: ${GMAIL_SYNC_ENABLED:true}
-      hdfc-senders: ${HDFC_SENDER_EMAILS:alerts@hdfcbank.net,instaalerts@hdfcbank.net}
+      hdfc-senders: ${HDFC_SENDER_EMAILS:alerts@hdfcbank.bank.in,instaalerts@hdfcbank.bank.in,alerts@hdfcbank.net,instaalerts@hdfcbank.net,information@hdfcbank.net}
 
 logging:
   level:

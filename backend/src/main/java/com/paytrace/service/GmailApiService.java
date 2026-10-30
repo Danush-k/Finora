@@ -30,6 +30,7 @@ import java.util.*;
 public class GmailApiService {
 
     private final GoogleCredentialRepository credentialRepository;
+    private final com.paytrace.repository.EmailProcessingRepository emailProcessingRepository;
 
     @Value("${paytrace.gmail.client-id:}")
     private String clientId;
@@ -156,13 +157,16 @@ public class GmailApiService {
                 .setApplicationName("Finora by PayTrace")
                 .build();
 
-            // Construct search query
-            String[] senders = hdfcSenders.split(",");
+            // Construct search query across all HDFC domains
             StringBuilder queryBuilder = new StringBuilder();
-            queryBuilder.append("(");
-            for (int i = 0; i < senders.length; i++) {
-                if (i > 0) queryBuilder.append(" OR ");
-                queryBuilder.append("from:").append(senders[i].trim());
+            queryBuilder.append("(from:hdfcbank.bank.in OR from:hdfcbank.net OR from:hdfcbank.com");
+            if (hdfcSenders != null && !hdfcSenders.isBlank()) {
+                for (String s : hdfcSenders.split(",")) {
+                    String trimmed = s.trim();
+                    if (!trimmed.isEmpty() && !queryBuilder.toString().contains(trimmed)) {
+                        queryBuilder.append(" OR from:").append(trimmed);
+                    }
+                }
             }
             queryBuilder.append(")");
 
@@ -178,31 +182,44 @@ public class GmailApiService {
 
             List<GmailMessageContent> result = new ArrayList<>();
             for (Message msgSummary : messages) {
-                Message fullMsg = gmail.users().messages().get("me", msgSummary.getId())
-                    .setFormat("full")
-                    .execute();
+                // If message has already been processed and saved, skip fetching its full body from Gmail
+                if (emailProcessingRepository != null && emailProcessingRepository.existsByMessageId(msgSummary.getId())) {
+                    continue;
+                }
 
-                String subject = "";
-                String sender = "";
-                if (fullMsg.getPayload() != null && fullMsg.getPayload().getHeaders() != null) {
-                    for (MessagePartHeader header : fullMsg.getPayload().getHeaders()) {
-                        if ("Subject".equalsIgnoreCase(header.getName())) {
-                            subject = header.getValue();
-                        } else if ("From".equalsIgnoreCase(header.getName())) {
-                            sender = header.getValue();
+                try {
+                    Message fullMsg = gmail.users().messages().get("me", msgSummary.getId())
+                        .setFormat("full")
+                        .execute();
+
+                    String subject = "";
+                    String sender = "";
+                    if (fullMsg.getPayload() != null && fullMsg.getPayload().getHeaders() != null) {
+                        for (MessagePartHeader header : fullMsg.getPayload().getHeaders()) {
+                            if ("Subject".equalsIgnoreCase(header.getName())) {
+                                subject = header.getValue();
+                            } else if ("From".equalsIgnoreCase(header.getName())) {
+                                sender = header.getValue();
+                            }
                         }
                     }
+
+                    String body = extractBody(fullMsg.getPayload());
+                    if (body == null || body.isEmpty()) {
+                        body = fullMsg.getSnippet();
+                    }
+
+                    Instant internalDate = fullMsg.getInternalDate() != null ?
+                        Instant.ofEpochMilli(fullMsg.getInternalDate()) : Instant.now();
+
+                    result.add(new GmailMessageContent(fullMsg.getId(), sender, subject, body, internalDate));
+
+                    // Polite throttle to respect Google's 6,000 quota units/min limit
+                    Thread.sleep(30);
+                } catch (Exception e) {
+                    log.warn("Rate limit or error fetching message {}: {}", msgSummary.getId(), e.getMessage());
+                    break;
                 }
-
-                String body = extractBody(fullMsg.getPayload());
-                if (body == null || body.isEmpty()) {
-                    body = fullMsg.getSnippet();
-                }
-
-                Instant internalDate = fullMsg.getInternalDate() != null ?
-                    Instant.ofEpochMilli(fullMsg.getInternalDate()) : Instant.now();
-
-                result.add(new GmailMessageContent(fullMsg.getId(), sender, subject, body, internalDate));
             }
 
             return result;
