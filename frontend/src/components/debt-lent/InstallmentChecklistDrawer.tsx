@@ -22,7 +22,6 @@ import {
   User,
   Phone,
   Trash2,
-  Sparkles,
   ArrowRight,
   CreditCard,
   Building2,
@@ -266,46 +265,52 @@ export default function InstallmentChecklistDrawer({
   const activeRemainingNum = Math.max(0, activeTargetNum - activeAppliedNum);
   const activeSurplusNum = activeAppliedNum > activeTargetNum ? activeAppliedNum - activeTargetNum : 0;
 
+  const initials = record.counterpartyName
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const statusBadgeClass =
+    record.status === "SETTLED"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : record.status === "PARTIALLY_SETTLED"
+      ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+      : record.status === "OVERDUE"
+      ? "bg-rose-50 text-rose-700 border-rose-200"
+      : "bg-slate-100 text-slate-700 border-slate-200";
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-end p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[70] bg-slate-900/40 backdrop-blur-md flex items-center justify-end p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
       <div
-        className="bg-white/98 backdrop-blur-2xl shadow-2xl border-l sm:border border-slate-200/90 w-full sm:max-w-xl h-full sm:h-[94vh] sm:rounded-3xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
+        className="bg-white shadow-2xl border-l sm:border border-slate-200/90 w-full sm:max-w-xl h-full sm:h-[95vh] sm:rounded-3xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/70">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
           <div className="flex items-center gap-3">
             <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm shadow-2xs border ${
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold text-xs shadow-2xs border ${
                 isLent
                   ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                   : "bg-amber-50 border-amber-200 text-amber-700"
               }`}
             >
-              {isLent ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
+              {initials || (isLent ? "L" : "D")}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
                   {record.counterpartyName}
                 </h3>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    record.status === "SETTLED"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : record.status === "PARTIALLY_SETTLED"
-                      ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                      : record.status === "OVERDUE"
-                      ? "bg-rose-50 text-rose-700 border-rose-200"
-                      : "bg-slate-100 text-slate-700 border-slate-200"
-                  }`}
-                >
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadgeClass}`}>
                   {record.status.replace("_", " ")}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 {isLent ? "Money Lent (Receivable)" : "Money Borrowed (Debt)"}
-                {record.counterpartyPhone && ` • ${record.counterpartyPhone}`}
+                {record.counterpartyPhone && ` · ${record.counterpartyPhone}`}
               </p>
             </div>
           </div>
@@ -335,85 +340,124 @@ export default function InstallmentChecklistDrawer({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Financial Progress & Summary Card */}
-          <div className="p-5 rounded-3xl bg-slate-50/80 border border-slate-200/90 space-y-4 shadow-2xs">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 pb-32 sm:pb-8">
+          {/* Financial Balance & Recovery Hero Card */}
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-4 shadow-2xs">
+            {/* Top Metric & Progress Row */}
+            <div className="flex items-end justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Principal
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {isLent ? "Recovery Progress" : "Repayment Progress"}
                 </span>
-                <p className="text-base font-extrabold text-slate-900 tabular-nums">
-                  {formatCurrency(record.principalAmount)}
-                </p>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <h2 className="text-2xl font-black text-slate-900 tabular-nums">
+                    {formatCurrency(repaid)}
+                  </h2>
+                  <span className="text-xs font-semibold text-slate-500">
+                    of {formatCurrency(totalExpected)} ({pct}%)
+                  </span>
+                </div>
               </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Interest
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Remaining Balance
                 </span>
-                <p className="text-base font-extrabold text-indigo-700 tabular-nums">
-                  {record.hasInterest && record.accruedInterest
-                    ? `+${formatCurrency(record.accruedInterest)}`
-                    : "0% Free"}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Total Expected
-                </span>
-                <p className="text-base font-extrabold text-slate-900 tabular-nums">
-                  {formatCurrency(totalExpected)}
+                <p
+                  className={`text-base font-extrabold tabular-nums ${
+                    remaining > 0 ? (isLent ? "text-emerald-700" : "text-rose-600") : "text-slate-400"
+                  }`}
+                >
+                  {formatCurrency(remaining)}
                 </p>
               </div>
             </div>
 
             {/* Progress Bar */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-200/70">
-              <div className="flex justify-between text-xs font-semibold">
-                <span className="text-slate-600">
-                  {isLent ? "Recovered" : "Repaid"}:{" "}
-                  <strong className="text-emerald-700">{formatCurrency(repaid)}</strong> ({pct}%)
+            <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  pct === 100
+                    ? "bg-emerald-500"
+                    : isLent
+                    ? "bg-emerald-600"
+                    : "bg-amber-600"
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+
+            {/* Metrics Breakdown Grid */}
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/80 text-xs">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  Principal
                 </span>
-                <span className="text-slate-500">
-                  Remaining:{" "}
-                  <strong className={remaining > 0 ? (isLent ? "text-emerald-700" : "text-rose-600") : "text-emerald-600"}>
-                    {formatCurrency(remaining)}
-                  </strong>
+                <span className="font-extrabold text-slate-900 tabular-nums">
+                  {formatCurrency(record.principalAmount)}
                 </span>
               </div>
-              <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    pct === 100
-                      ? "bg-emerald-500"
-                      : isLent
-                      ? "bg-gradient-to-r from-emerald-500 to-indigo-600"
-                      : "bg-gradient-to-r from-amber-500 to-indigo-600"
-                  }`}
-                  style={{ width: `${pct}%` }}
-                />
+
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block truncate">
+                  Interest {record.hasInterest && record.interestRate ? `(${record.interestRate}% ${record.interestPeriodType === "MONTHLY" ? "p.m." : "p.a."})` : ""}
+                </span>
+                <span className="font-extrabold text-indigo-700 tabular-nums">
+                  {record.hasInterest && record.accruedInterest
+                    ? `+${formatCurrency(record.accruedInterest)}`
+                    : "0% Free"}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  Tenure
+                </span>
+                <span className="font-extrabold text-slate-900 tabular-nums">
+                  {record.tenureMonths || record.installments?.length || 1} Months
+                </span>
               </div>
             </div>
 
-            {/* Note & Initial Transaction Link */}
-            {(record.description || record.linkedTransactionDescription || record.amountDifferenceReason) && (
-              <div className="pt-2 border-t border-slate-200/70 text-xs space-y-1.5">
-                {record.description && (
-                  <p className="text-slate-600 italic">"{record.description}"</p>
-                )}
+            {/* Origin Linked Statement Card (Unified, Zero Emojis) */}
+            {(record.linkedTransactionDescription || record.amountDifferenceReason || record.description) && (
+              <div className="p-3 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <Link2 className="w-3 h-3 text-indigo-500" />
+                    <span>Origin Bank Payment</span>
+                  </span>
+                  {record.linkedTransactionAmount && (
+                    <span className="text-xs font-bold text-slate-900 tabular-nums">
+                      {formatCurrency(record.linkedTransactionAmount)}
+                    </span>
+                  )}
+                </div>
+
                 {record.linkedTransactionDescription && (
-                  <div className="inline-flex items-center gap-1.5 text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-xl">
-                    <Link2 className="w-3.5 h-3.5" />
-                    <span>Mapped to: <strong>{record.linkedTransactionDescription}</strong></span>
+                  <p className="font-semibold text-slate-800 text-[11px] truncate">
+                    {record.linkedTransactionDescription}
+                  </p>
+                )}
+
+                {record.amountDifferenceReason && (
+                  <div className="flex items-center justify-between gap-1.5 text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200/80 px-2.5 py-1 rounded-lg">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-semibold shrink-0">Adjustment:</span>
+                      <span className="truncate">{record.amountDifferenceReason}</span>
+                    </div>
+                    {record.linkedTransactionAmount && (
+                      <span className="text-slate-500 font-medium shrink-0 ml-1">
+                        ({record.principalAmount > record.linkedTransactionAmount ? "+" : ""}
+                        {formatCurrency(record.principalAmount - record.linkedTransactionAmount)})
+                      </span>
+                    )}
                   </div>
                 )}
-                {record.amountDifferenceReason && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-xl font-medium">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>Difference reason: <strong>{record.amountDifferenceReason}</strong></span>
-                  </div>
+
+                {record.description && record.description !== record.linkedTransactionDescription && (
+                  <p className="text-[10px] text-slate-400 italic">
+                    Note: {record.description}
+                  </p>
                 )}
               </div>
             )}
@@ -423,18 +467,20 @@ export default function InstallmentChecklistDrawer({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                  <span>Repayment Checklist</span>
-                </h4>
-                <p className="text-xs text-slate-500">
-                  {isLent
-                    ? "Check off installments as money is received back"
-                    : "Check off installments as money is repaid"}
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                    Repayment Checklist
+                  </h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    {record.installments.filter((i) => i.settled).length} of {record.installments.length} Cleared
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isLent ? "Check off milestones as money is received back" : "Check off milestones as money is repaid"}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setShowAddInstallment(!showAddInstallment)}
                   className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
@@ -444,7 +490,7 @@ export default function InstallmentChecklistDrawer({
                 </button>
                 <button
                   onClick={handleOpenGeneralRepayMapping}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all cursor-pointer border border-indigo-200"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-indigo-600/20 active:scale-95"
                 >
                   <Coins className="w-3.5 h-3.5" />
                   <span>Record Repayment</span>
@@ -456,7 +502,7 @@ export default function InstallmentChecklistDrawer({
             {showAddInstallment && (
               <form
                 onSubmit={handleCreateInstallment}
-                className="p-4 rounded-2xl bg-slate-100/70 border border-slate-200 space-y-3 animate-in fade-in duration-150"
+                className="p-3.5 rounded-2xl bg-slate-100/80 border border-slate-200 space-y-2.5 animate-in fade-in duration-150"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800">Add Milestone Step</span>
@@ -504,91 +550,97 @@ export default function InstallmentChecklistDrawer({
             )}
 
             {/* Checklist Items */}
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {record.installments.map((inst) => {
                 const isOverdue = !inst.settled && inst.dueDate && new Date(inst.dueDate) < new Date();
 
                 return (
                   <div
                     key={inst.id}
-                    className={`p-4 rounded-2xl border transition-all duration-150 ${
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                       inst.settled
-                        ? "bg-emerald-50/40 border-emerald-200/70"
+                        ? "bg-slate-50/70 border-slate-200/80"
                         : isOverdue
-                        ? "bg-rose-50/40 border-rose-200/80"
-                        : "bg-white border-slate-200 hover:border-slate-300"
+                        ? "bg-rose-50/30 border-rose-200/90 hover:border-rose-300"
+                        : "bg-white border-slate-200 hover:border-indigo-300 shadow-2xs"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      {/* Checkbox & Details */}
-                      <div className="flex items-start gap-3 min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => handleToggle(inst)}
-                          disabled={busy}
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors mt-0.5 cursor-pointer ${
-                            inst.settled
-                              ? "bg-emerald-600 text-white shadow-xs"
-                              : "border-2 border-slate-300 hover:border-indigo-500 bg-white"
-                          }`}
-                        >
-                          {inst.settled && <Check className="w-4 h-4 stroke-[3]" />}
-                        </button>
+                    {/* Checkbox + Title + Date */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggle(inst)}
+                        disabled={busy}
+                        className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                          inst.settled
+                            ? "bg-emerald-600 text-white shadow-2xs"
+                            : "border border-slate-300 hover:border-indigo-500 bg-white"
+                        }`}
+                      >
+                        {inst.settled && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </button>
 
-                        <div className="min-w-0">
-                          <p
-                            className={`text-xs font-bold ${
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs font-bold truncate ${
                               inst.settled ? "line-through text-slate-400" : "text-slate-900"
                             }`}
                           >
                             {inst.title}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-400" />
-                              <span>{inst.dueDate ? inst.dueDate.split("T")[0] : "No date"}</span>
+                          </span>
+                          {isOverdue && (
+                            <span className="font-extrabold text-rose-700 bg-rose-100 text-[9px] px-1.5 py-0.2 rounded border border-rose-200">
+                              Overdue
                             </span>
-                            {isOverdue && (
-                              <span className="font-bold text-rose-600 text-[10px]">Overdue</span>
-                            )}
-                            {inst.settled && inst.settledDate && (
-                              <span className="text-emerald-700 font-semibold text-[10px]">
-                                Cleared on {inst.settledDate.split("T")[0]}
-                              </span>
-                            )}
-                          </div>
+                          )}
+                        </div>
 
-                          {/* Mapped Transaction Tag */}
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span>{inst.dueDate ? inst.dueDate.split("T")[0] : "No date"}</span>
+                          </span>
+                          {inst.settled && inst.settledDate && (
+                            <span className="text-emerald-700 font-medium">
+                              · Cleared {inst.settledDate.split("T")[0]}
+                            </span>
+                          )}
                           {inst.linkedTransactionDescription && (
-                            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-800 border border-indigo-200 text-[11px] font-semibold">
-                              <Link2 className="w-3 h-3" />
-                              <span>{inst.linkedTransactionDescription}</span>
-                            </div>
+                            <span
+                              className="text-indigo-600 font-medium flex items-center gap-0.5 truncate max-w-[140px]"
+                              title={inst.linkedTransactionDescription}
+                            >
+                              · <Link2 className="w-2.5 h-2.5 shrink-0" />
+                              <span className="truncate">{inst.linkedTransactionDescription}</span>
+                            </span>
                           )}
                         </div>
                       </div>
+                    </div>
 
-                      {/* Amount & Actions */}
-                      <div className="text-right shrink-0">
-                        <p
-                          className={`text-xs font-extrabold tabular-nums ${
-                            inst.settled ? "text-emerald-700" : "text-slate-900"
-                          }`}
+                    {/* Amount & Actions */}
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span
+                        className={`text-xs font-extrabold tabular-nums ${
+                          inst.settled ? "text-slate-400 line-through" : "text-slate-900"
+                        }`}
+                      >
+                        {formatCurrency(inst.settled && inst.settledAmount ? inst.settledAmount : inst.amount)}
+                      </span>
+
+                      {!inst.settled ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenInstallmentMapping(inst)}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 px-2 py-1 rounded-lg transition-colors cursor-pointer"
                         >
-                          {formatCurrency(inst.settled && inst.settledAmount ? inst.settledAmount : inst.amount)}
-                        </p>
-
-                        {!inst.settled && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenInstallmentMapping(inst)}
-                            className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Link2 className="w-3 h-3" />
-                            <span>Map Bank Txn</span>
-                          </button>
-                        )}
-                      </div>
+                          <Link2 className="w-3 h-3" />
+                          <span>Map Txn</span>
+                        </button>
+                      ) : (
+                        <Check className="w-4 h-4 text-emerald-600" />
+                      )}
                     </div>
                   </div>
                 );
@@ -605,7 +657,7 @@ export default function InstallmentChecklistDrawer({
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div>
                   <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                    <CreditCard className="w-4 h-4 text-indigo-600" />
                     <span>Map Bank Repayment Transaction</span>
                   </h4>
                   <p className="text-[11px] text-slate-500">
@@ -614,7 +666,7 @@ export default function InstallmentChecklistDrawer({
                 </div>
                 <button
                   onClick={() => setMappingSession(null)}
-                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
