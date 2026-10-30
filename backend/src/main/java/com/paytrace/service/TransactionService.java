@@ -161,6 +161,18 @@ public class TransactionService {
                     parsed.getReferenceNumber(), parsed.getAccountNumber());
                 return Optional.empty();
             }
+        } else {
+            // Duplicate check 3: Fallback check if reference number is absent
+            Query query = new Query();
+            query.addCriteria(Criteria.where("accountNumber").is(parsed.getAccountNumber())
+                .and("amount").is(parsed.getAmount())
+                .and("transactionType").is(parsed.getTransactionType())
+                .and("transactionDate").is(parsed.getTransactionDate())
+                .and("merchant").is(parsed.getMerchant()));
+            if (mongoTemplate.exists(query, Transaction.class)) {
+                log.info("Duplicate detected: Transaction with identical amount, type, date, and merchant already exists");
+                return Optional.empty();
+            }
         }
 
         Transaction transaction = Transaction.builder()

@@ -11,13 +11,14 @@ import java.util.regex.Pattern;
 public class CategoryClassifier {
 
     private static final Map<String, Pattern> CATEGORY_PATTERNS = Map.of(
-        "Food & Dining", Pattern.compile("(?i)\\b(swiggy|zomato|mcdonalds|starbucks|dominos|pizza|kfc|burger|restaurant|cafe|eatclub|subway|blinkit|zepto|dunzo)\\b"),
-        "Shopping", Pattern.compile("(?i)\\b(amazon|flipkart|myntra|zara|h&m|ajio|meesho|nykaa|reliancedigital|croma|tata cliq|ikea|decathlon)\\b"),
+        "Food & Dining", Pattern.compile("(?i)\\b(swiggy|zomato|mcdonalds|starbucks|dominos|pizza|kfc|burger|restaurant|cafe|eatclub|subway|blinkit|zepto|dunzo|food|court|mess|canteen|bites|bakery|tea|coffee|hotel|dhaba|snacks|jigarthanda|sweets)\\b"),
+        "Shopping", Pattern.compile("(?i)\\b(amazon|flipkart|myntra|zara|h&m|ajio|meesho|nykaa|reliancedigital|croma|tata cliq|ikea|decathlon|store|mart|retail)\\b"),
         "Groceries", Pattern.compile("(?i)\\b(grofers|bigbasket|dmart|spencer|supermarket|nature basket|reliance retail|kirana)\\b"),
-        "Travel & Fuel", Pattern.compile("(?i)\\b(uber|ola|rapido|makemytrip|goibibo|irctc|cleartrip|indigo|air india|fuel|petrol|hpcl|bpcl|ioc|shell)\\b"),
+        "Travel & Fuel", Pattern.compile("(?i)\\b(uber|ola|rapido|makemytrip|goibibo|irctc|cleartrip|indigo|air india|fuel|petrol|hpcl|bpcl|ioc|shell|travels|transport)\\b"),
         "Utilities & Bills", Pattern.compile("(?i)\\b(airtel|jio|vi|vodafone|bescom|electricity|billdesk|cred|recharge|dth|tata sky|gas|broadband|fastag)\\b"),
         "Entertainment", Pattern.compile("(?i)\\b(netflix|spotify|prime video|hotstar|pvr|inox|bookmyshow|youtube|playstation|steam|apple)\\b"),
         "Health & Medical", Pattern.compile("(?i)\\b(apollo|pharmeasy|netmeds|1mg|practo|hospital|pharmacy|clinic|medplus|diagnostic)\\b"),
+        "Education & Fees", Pattern.compile("(?i)\\b(ssn|college|university|school|academy|fees|tuition|rzp|institute|exam)\\b"),
         "Investment", Pattern.compile("(?i)\\b(zerodha|groww|upstox|kuvera|coin|indmoney|angel|mutual fund|sip|etmoney|cleartax)\\b")
     );
 

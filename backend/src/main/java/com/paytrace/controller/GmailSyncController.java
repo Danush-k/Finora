@@ -125,6 +125,47 @@ public class GmailSyncController {
         return ResponseEntity.ok(ApiResponse.ok(result, "Simulated email processed with status: " + result.getProcessingStatus()));
     }
 
+    @GetMapping("/inspect-sample")
+    public ResponseEntity<ApiResponse<java.util.List<GmailApiService.GmailMessageContent>>> inspectSample() {
+        Optional<GoogleCredential> credOpt = credentialRepository.findById("primary_account");
+        if (credOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("No account connected"));
+        }
+        var sample = gmailApiService.fetchHdfcEmails(credOpt.get(), 10);
+        return ResponseEntity.ok(ApiResponse.ok(sample));
+    }
+
+    @GetMapping("/inspect-message")
+    public ResponseEntity<ApiResponse<String>> inspectMessage(@RequestParam String id) {
+        Optional<GoogleCredential> credOpt = credentialRepository.findById("primary_account");
+        if (credOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("No account connected"));
+        }
+        var emails = gmailApiService.fetchHdfcEmails(credOpt.get(), 50);
+        for (var e : emails) {
+            if (id.equals(e.messageId())) {
+                return ResponseEntity.ok(ApiResponse.ok(e.body()));
+            }
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/reset-and-resync")
+    public ResponseEntity<ApiResponse<EmailSyncScheduler.SyncResult>> resetAndResync() {
+        // Clear all transactions and emailProcessing history
+        transactionRepository.deleteAll();
+        emailProcessingRepository.deleteAll();
+        Optional<GoogleCredential> credOpt = credentialRepository.findById("primary_account");
+        credOpt.ifPresent(c -> {
+            c.setTotalEmailsProcessed(0);
+            credentialRepository.save(c);
+        });
+
+        // Trigger fresh sync
+        EmailSyncScheduler.SyncResult result = emailSyncScheduler.syncNow();
+        return ResponseEntity.ok(ApiResponse.ok(result, "Reset complete and fresh sync triggered"));
+    }
+
     @Data
     public static class SimulateSyncRequest {
         private String messageId;

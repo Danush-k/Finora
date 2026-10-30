@@ -13,7 +13,16 @@ export default function MonthlyCalendarView() {
   const [selectedDay, setSelectedDay] = useState<CalendarDaySummary | null>(null);
 
   useEffect(() => {
-    setCurrentDate(new Date());
+    api.getDashboardSummary().then((summary) => {
+      if (summary.recentTransactions && summary.recentTransactions.length > 0) {
+        const latestDate = new Date(summary.recentTransactions[0].transactionDate);
+        setCurrentDate(new Date(latestDate.getFullYear(), latestDate.getMonth(), 1));
+      } else {
+        setCurrentDate(new Date());
+      }
+    }).catch(() => {
+      setCurrentDate(new Date());
+    });
   }, []);
 
   const year = currentDate.getFullYear();

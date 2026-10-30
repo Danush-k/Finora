@@ -68,7 +68,7 @@ public class EmailSyncScheduler {
             }
 
             GoogleCredential cred = credOpt.get();
-            List<GmailApiService.GmailMessageContent> emails = gmailApiService.fetchHdfcEmails(cred, 50);
+            List<GmailApiService.GmailMessageContent> emails = gmailApiService.fetchHdfcEmails(cred, 150);
 
             int processed = 0;
             int duplicates = 0;

@@ -22,8 +22,63 @@ class HdfcEmailParserTest {
     }
 
     @Test
-    @DisplayName("Should extract UPI Debit transaction successfully")
-    void shouldExtractUpiDebit() {
+    @DisplayName("Should extract real HDFC InstaAlerts UPI Debit with merchant name extraction")
+    void shouldExtractRealUpiDebit() {
+        String subject = "❗  You have done a UPI txn. Check details!";
+        String body = """
+            <html><body>
+            <td class="td esd-text">Dear Customer,<br>
+            Rs.20.00 has been debited from account 1480 to VPA paytm.s1wwzwo@pty LOURDUSAMY M MARIYA JAMES on 04-04-26.<br>
+            Your UPI transaction reference number is 646069131340.<br>
+            If you did not authorize this transaction, please report it immediately by calling 18002586161 Or SMS BLOCK UPI to 7308080808.<br>
+            Warm Regards,<br>
+            HDFC Bank
+            </td>
+            </body></html>
+            """;
+
+        Optional<ParsedTransaction> result = parser.parse(subject, body);
+
+        assertThat(result).isPresent();
+        ParsedTransaction txn = result.get();
+        assertThat(txn.getBank()).isEqualTo("HDFC");
+        assertThat(txn.getAccountNumber()).isEqualTo("XX1480");
+        assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("20.00"));
+        assertThat(txn.getTransactionType()).isEqualTo(TransactionType.EXPENSE);
+        assertThat(txn.getPaymentMethod()).isEqualTo(PaymentMethod.UPI);
+        assertThat(txn.getMerchant()).isEqualTo("LOURDUSAMY M MARIYA JAMES");
+        assertThat(txn.getReferenceNumber()).isEqualTo("646069131340");
+    }
+
+    @Test
+    @DisplayName("Should extract real HDFC InstaAlerts UPI Credit")
+    void shouldExtractRealUpiCredit() {
+        String subject = "View: Account update for your HDFC Bank A/c";
+        String body = """
+            Dear Customer,
+            Rs. 40.00 is successfully credited to your account **1480 by VPA geethaswamy1977@okhdfcbank Mr Naveenkumar S on 16-03-26.
+            Your UPI transaction reference number is 120127900804.
+            Thank you for banking with us.
+            Warm Regards,
+            HDFC Bank
+            """;
+
+        Optional<ParsedTransaction> result = parser.parse(subject, body);
+
+        assertThat(result).isPresent();
+        ParsedTransaction txn = result.get();
+        assertThat(txn.getBank()).isEqualTo("HDFC");
+        assertThat(txn.getAccountNumber()).isEqualTo("XX1480");
+        assertThat(txn.getAmount()).isEqualByComparingTo(new BigDecimal("40.00"));
+        assertThat(txn.getTransactionType()).isEqualTo(TransactionType.INCOME);
+        assertThat(txn.getPaymentMethod()).isEqualTo(PaymentMethod.UPI);
+        assertThat(txn.getMerchant()).isEqualTo("Mr Naveenkumar S");
+        assertThat(txn.getReferenceNumber()).isEqualTo("120127900804");
+    }
+
+    @Test
+    @DisplayName("Should extract standard UPI Debit transaction successfully")
+    void shouldExtractStandardUpiDebit() {
         String subject = "Alert: Update on your HDFC Bank Account";
         String body = "Dear Customer, Rs.499.00 has been debited from your account **1234 to VPA swiggy@icici on 30-10-26 via UPI txn 430129849201. Avbl bal: Rs 45,210.50.";
 
@@ -109,10 +164,10 @@ class HdfcEmailParserTest {
     }
 
     @Test
-    @DisplayName("Should return empty for unrecognized promotional email (flagged for review)")
+    @DisplayName("Should return empty for promotional/newsletter email")
     void shouldReturnEmptyForUnrecognizedEmail() {
         String subject = "Exciting Loan Offers for You from HDFC Bank";
-        String body = "Dear Customer, Apply now for pre-approved personal loans up to 10 Lakhs at special interest rates. Click here to check eligibility.";
+        String body = "Dear Customer, Apply now for pre-approved personal loans up to 10 Lakhs at special interest rates.";
 
         Optional<ParsedTransaction> result = parser.parse(subject, body);
 

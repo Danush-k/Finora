@@ -27,9 +27,20 @@ public class DashboardService {
 
     public DashboardSummaryDto getSummary() {
         LocalDate now = LocalDate.now(ZONE);
-        YearMonth currentYearMonth = YearMonth.from(now);
-        Instant startOfMonth = currentYearMonth.atDay(1).atStartOfDay(ZONE).toInstant();
-        Instant endOfMonth = currentYearMonth.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();
+        YearMonth activeMonth = YearMonth.from(now);
+
+        Optional<Transaction> latestOpt = transactionRepository.findTop10ByOrderByTransactionDateDesc().stream().findFirst();
+        if (latestOpt.isPresent()) {
+            YearMonth latestTxnMonth = YearMonth.from(latestOpt.get().getTransactionDate().atZone(ZONE));
+            Instant startNow = activeMonth.atDay(1).atStartOfDay(ZONE).toInstant();
+            Instant endNow = activeMonth.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();
+            if (transactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startNow, endNow).isEmpty()) {
+                activeMonth = latestTxnMonth;
+            }
+        }
+
+        Instant startOfMonth = activeMonth.atDay(1).atStartOfDay(ZONE).toInstant();
+        Instant endOfMonth = activeMonth.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();
 
         List<Transaction> monthlyTxns = transactionRepository
             .findByTransactionDateBetweenOrderByTransactionDateDesc(startOfMonth, endOfMonth);
@@ -74,13 +85,25 @@ public class DashboardService {
 
     public MonthlyChartDto getMonthlyChart() {
         LocalDate now = LocalDate.now(ZONE);
+        YearMonth anchorMonth = YearMonth.from(now);
+
+        Optional<Transaction> latestOpt = transactionRepository.findTop10ByOrderByTransactionDateDesc().stream().findFirst();
+        if (latestOpt.isPresent()) {
+            YearMonth latestTxnMonth = YearMonth.from(latestOpt.get().getTransactionDate().atZone(ZONE));
+            Instant startNow = anchorMonth.atDay(1).atStartOfDay(ZONE).toInstant();
+            Instant endNow = anchorMonth.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();
+            if (transactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startNow, endNow).isEmpty()) {
+                anchorMonth = latestTxnMonth;
+            }
+        }
+
         List<MonthlyChartDto.MonthlyPoint> points = new ArrayList<>();
         DateTimeFormatter shortMonthFmt = DateTimeFormatter.ofPattern("MMM");
         DateTimeFormatter fullMonthFmt = DateTimeFormatter.ofPattern("yyyy-MM");
 
-        // Last 6 months
+        // 6 months ending at anchorMonth
         for (int i = 5; i >= 0; i--) {
-            YearMonth ym = YearMonth.from(now.minusMonths(i));
+            YearMonth ym = anchorMonth.minusMonths(i);
             Instant start = ym.atDay(1).atStartOfDay(ZONE).toInstant();
             Instant end = ym.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();
 
