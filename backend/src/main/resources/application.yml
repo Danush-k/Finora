@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: finora-backend
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/finora_paytrace}
+      auto-index-creation: true
+
+paytrace:
+  gmail:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/gmail/callback}
+    frontend-redirect: ${FRONTEND_REDIRECT_URL:http://localhost:3000/settings}
+    sync:
+      # Configurable sync interval in milliseconds (default: 2 minutes = 120,000ms)
+      delay-ms: ${GMAIL_SYNC_DELAY_MS:120000}
+      enabled: ${GMAIL_SYNC_ENABLED:true}
+      hdfc-senders: ${HDFC_SENDER_EMAILS:alerts@hdfcbank.net,instaalerts@hdfcbank.net}
+
+logging:
+  level:
+    com.paytrace: DEBUG
+    org.springframework.data.mongodb: INFO

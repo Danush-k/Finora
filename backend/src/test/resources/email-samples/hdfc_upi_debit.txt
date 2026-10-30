@@ -1,0 +1,5 @@
+From: alerts@hdfcbank.net
+Subject: Alert: Update on your HDFC Bank Account
+Date: 30 Oct 2026 14:15:00 +0530
+
+Dear Customer, Rs.499.00 has been debited from your account **1234 to VPA swiggy@icici on 30-10-26 via UPI txn 430129849201. Avbl bal: Rs 45,210.50.

@@ -1,0 +1,5 @@
+From: alerts@hdfcbank.net
+Subject: Refund processed on HDFC Bank Account
+Date: 29 Oct 2026 18:20:00 +0530
+
+Dear Customer, Rs. 499.00 has been refunded to your HDFC Bank account **1234 from SWIGGY on 29-10-26. Ref 5544332211.

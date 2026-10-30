@@ -1,0 +1,5 @@
+From: instaalerts@hdfcbank.net
+Subject: Alert: Transaction on your HDFC Bank Credit Card
+Date: 29 Oct 2026 14:32:10 +0530
+
+An amount of INR 2,499.00 has been spent on your HDFC Bank Credit Card ending 9876 at AMAZON INDIA on 29-10-26 at 14:32:10. Auth code: 789123.
