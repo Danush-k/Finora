@@ -119,8 +119,8 @@ public class DashboardService {
         DateTimeFormatter shortMonthFmt = DateTimeFormatter.ofPattern("MMM");
         DateTimeFormatter fullMonthFmt = DateTimeFormatter.ofPattern("yyyy-MM");
 
-        // 6 months ending at anchorMonth
-        for (int i = 5; i >= 0; i--) {
+        // 12 months ending at anchorMonth for seamless sliding navigation
+        for (int i = 11; i >= 0; i--) {
             YearMonth ym = anchorMonth.minusMonths(i);
             Instant start = ym.atDay(1).atStartOfDay(ZONE).toInstant();
             Instant end = ym.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();

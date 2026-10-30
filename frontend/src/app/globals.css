@@ -89,3 +89,18 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.6);
 }
+
+/* Eliminate browser focus outlines on interactive charts and SVG canvases */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-responsive-container,
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible,
+svg:focus,
+svg:focus-visible,
+div:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
