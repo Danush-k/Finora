@@ -156,6 +156,8 @@ export interface DebtLentRecord {
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
   linkedTransactionAmount?: number;
+  amountDifferenceReason?: string;
+  linkedTransactionIds?: string[];
   hasInterest: boolean;
   interestRate?: number;
   interestPeriodType: InterestPeriodType;
@@ -194,6 +196,8 @@ export interface DebtLentRequest {
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
   linkedTransactionAmount?: number;
+  amountDifferenceReason?: string;
+  linkedTransactionIds?: string[];
   hasInterest: boolean;
   interestRate?: number;
   interestPeriodType?: InterestPeriodType;

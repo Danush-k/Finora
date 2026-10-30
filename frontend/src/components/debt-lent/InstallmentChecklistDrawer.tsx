@@ -398,7 +398,7 @@ export default function InstallmentChecklistDrawer({
             </div>
 
             {/* Note & Initial Transaction Link */}
-            {(record.description || record.linkedTransactionDescription) && (
+            {(record.description || record.linkedTransactionDescription || record.amountDifferenceReason) && (
               <div className="pt-2 border-t border-slate-200/70 text-xs space-y-1.5">
                 {record.description && (
                   <p className="text-slate-600 italic">"{record.description}"</p>
@@ -407,6 +407,12 @@ export default function InstallmentChecklistDrawer({
                   <div className="inline-flex items-center gap-1.5 text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-xl">
                     <Link2 className="w-3.5 h-3.5" />
                     <span>Mapped to: <strong>{record.linkedTransactionDescription}</strong></span>
+                  </div>
+                )}
+                {record.amountDifferenceReason && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-xl font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Difference reason: <strong>{record.amountDifferenceReason}</strong></span>
                   </div>
                 )}
               </div>

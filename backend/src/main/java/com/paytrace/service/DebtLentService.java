@@ -211,6 +211,8 @@ public class DebtLentService {
             .linkedTransactionId(dto.getLinkedTransactionId())
             .linkedTransactionDescription(dto.getLinkedTransactionDescription())
             .linkedTransactionAmount(dto.getLinkedTransactionAmount())
+            .amountDifferenceReason(dto.getAmountDifferenceReason())
+            .linkedTransactionIds(dto.getLinkedTransactionIds() != null ? dto.getLinkedTransactionIds() : new ArrayList<>())
             .hasInterest(dto.isHasInterest())
             .interestRate(dto.getInterestRate())
             .interestPeriodType(dto.getInterestPeriodType() != null ? dto.getInterestPeriodType() : InterestPeriodType.YEARLY)
@@ -242,6 +244,10 @@ public class DebtLentService {
         existing.setLinkedTransactionId(dto.getLinkedTransactionId());
         existing.setLinkedTransactionDescription(dto.getLinkedTransactionDescription());
         existing.setLinkedTransactionAmount(dto.getLinkedTransactionAmount());
+        existing.setAmountDifferenceReason(dto.getAmountDifferenceReason());
+        if (dto.getLinkedTransactionIds() != null) {
+            existing.setLinkedTransactionIds(dto.getLinkedTransactionIds());
+        }
         existing.setUpdatedAt(Instant.now());
 
         return debtLentRepository.save(existing);

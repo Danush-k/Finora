@@ -26,6 +26,9 @@ import {
   ArrowDownLeft,
   Coins,
   ShieldAlert,
+  AlertTriangle,
+  Plus,
+  Sparkles,
 } from "lucide-react";
 
 interface DebtLentModalProps {
@@ -58,12 +61,15 @@ export default function DebtLentModal({
     useState<InterestPeriodType>("YEARLY");
   const [tenureMonths, setTenureMonths] = useState("3");
 
-  // Linked Transaction Picker
+  // Linked Bank Transactions (Supports 1 or multiple statements mapped)
   const [showTxnPicker, setShowTxnPicker] = useState(false);
   const [txnSearch, setTxnSearch] = useState("");
   const [candidateTxns, setCandidateTxns] = useState<Transaction[]>([]);
   const [loadingTxns, setLoadingTxns] = useState(false);
-  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [selectedTxns, setSelectedTxns] = useState<Transaction[]>([]);
+
+  // Discrepancy reason when principal differs from bank statement
+  const [amountDifferenceReason, setAmountDifferenceReason] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,14 +87,19 @@ export default function DebtLentModal({
       setInterestRate(initialData.interestRate ? initialData.interestRate.toString() : "12");
       setInterestPeriodType(initialData.interestPeriodType || "YEARLY");
       setTenureMonths(initialData.tenureMonths ? initialData.tenureMonths.toString() : "3");
+      setAmountDifferenceReason(initialData.amountDifferenceReason || "");
+
       if (initialData.linkedTransactionId) {
-        setSelectedTxn({
-          id: initialData.linkedTransactionId,
-          description: initialData.linkedTransactionDescription || "",
-          amount: initialData.linkedTransactionAmount || 0,
-        } as Transaction);
+        setSelectedTxns([
+          {
+            id: initialData.linkedTransactionId,
+            description: initialData.linkedTransactionDescription || "",
+            amount: initialData.linkedTransactionAmount || 0,
+            transactionDate: initialData.startDate,
+          } as Transaction,
+        ]);
       } else {
-        setSelectedTxn(null);
+        setSelectedTxns([]);
       }
     } else {
       setType(defaultType);
@@ -102,7 +113,8 @@ export default function DebtLentModal({
       setInterestRate("12");
       setInterestPeriodType("YEARLY");
       setTenureMonths("3");
-      setSelectedTxn(null);
+      setSelectedTxns([]);
+      setAmountDifferenceReason("");
       setError(null);
     }
   }, [initialData, defaultType, isOpen]);
@@ -113,7 +125,7 @@ export default function DebtLentModal({
       const fetchCandidates = async () => {
         try {
           setLoadingTxns(true);
-          const res = await api.getDebtLentCandidates(txnSearch.trim() || undefined, 15);
+          const res = await api.getDebtLentCandidates(txnSearch.trim() || undefined, 20);
           setCandidateTxns(res);
         } catch (e) {
           console.error("Failed to load candidate transactions", e);
@@ -121,7 +133,7 @@ export default function DebtLentModal({
           setLoadingTxns(false);
         }
       };
-      const debounce = setTimeout(fetchCandidates, 300);
+      const debounce = setTimeout(fetchCandidates, 250);
       return () => clearTimeout(debounce);
     }
   }, [showTxnPicker, txnSearch]);
@@ -145,6 +157,51 @@ export default function DebtLentModal({
   const totalExpected = principal + accruedInterest;
   const monthlyInstallment = months > 0 ? totalExpected / months : totalExpected;
 
+  // Total linked bank statements amount
+  const totalLinkedAmount = selectedTxns.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const amountDiff = selectedTxns.length > 0 && principal > 0 ? principal - totalLinkedAmount : 0;
+  const hasAmountDiscrepancy = selectedTxns.length > 0 && principal > 0 && Math.abs(amountDiff) >= 0.01;
+
+  // Handling statement selection
+  const handleSelectCandidateTxn = (txn: Transaction) => {
+    const isAlreadySelected = selectedTxns.some((t) => t.id === txn.id);
+    let updatedTxns: Transaction[];
+
+    if (isAlreadySelected) {
+      updatedTxns = selectedTxns.filter((t) => t.id !== txn.id);
+    } else {
+      updatedTxns = [...selectedTxns, txn];
+    }
+    setSelectedTxns(updatedTxns);
+
+    // 1. AUTO-FETCH DATE LENT FROM MAPPED STATEMENT!
+    if (txn.transactionDate) {
+      setStartDate(txn.transactionDate.split("T")[0]);
+    }
+
+    // 2. Auto-fill description if empty
+    if (!description) {
+      setDescription(txn.description || txn.merchant || "");
+    }
+
+    // 3. Auto-fill principal if empty or if matching previous total
+    const newTotal = updatedTxns.reduce((sum, t) => sum + t.amount, 0);
+    const prevTotal = selectedTxns.reduce((sum, t) => sum + t.amount, 0);
+    if (!principalAmount || parseFloat(principalAmount) === prevTotal) {
+      setPrincipalAmount(newTotal > 0 ? newTotal.toString() : "");
+    }
+
+    setShowTxnPicker(false);
+  };
+
+  const handleRemoveTxn = (id: string) => {
+    const updated = selectedTxns.filter((t) => t.id !== id);
+    setSelectedTxns(updated);
+    if (updated.length > 0 && updated[0].transactionDate) {
+      setStartDate(updated[0].transactionDate.split("T")[0]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!counterpartyName.trim()) {
@@ -156,9 +213,25 @@ export default function DebtLentModal({
       return;
     }
 
+    // If there is an amount difference, prompt for reason
+    if (hasAmountDiscrepancy && !amountDifferenceReason.trim()) {
+      setError(
+        `Principal (${formatCurrency(principal)}) differs from mapped bank statement (${formatCurrency(
+          totalLinkedAmount
+        )}) by ${formatCurrency(
+          Math.abs(amountDiff)
+        )}. Please provide the reason below (e.g. extra in cash).`
+      );
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError(null);
+
+      const descList = selectedTxns.map(
+        (t) => `${t.bank || "Bank"} - ${t.merchant || t.description} (${formatCurrency(t.amount)})`
+      );
 
       const payload: DebtLentRequest = {
         type,
@@ -168,11 +241,11 @@ export default function DebtLentModal({
         description: description.trim() || undefined,
         startDate: new Date(startDate).toISOString(),
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-        linkedTransactionId: selectedTxn?.id,
-        linkedTransactionDescription: selectedTxn
-          ? `${selectedTxn.merchant || selectedTxn.description} (${formatCurrency(selectedTxn.amount)})`
-          : undefined,
-        linkedTransactionAmount: selectedTxn?.amount,
+        linkedTransactionId: selectedTxns[0]?.id,
+        linkedTransactionDescription: descList.length > 0 ? descList.join(", ") : undefined,
+        linkedTransactionAmount: totalLinkedAmount > 0 ? totalLinkedAmount : undefined,
+        linkedTransactionIds: selectedTxns.map((t) => t.id),
+        amountDifferenceReason: hasAmountDiscrepancy ? amountDifferenceReason.trim() : undefined,
         hasInterest,
         interestRate: hasInterest ? rate : 0,
         interestPeriodType: hasInterest ? interestPeriodType : "YEARLY",
@@ -208,10 +281,10 @@ export default function DebtLentModal({
             </div>
             <div>
               <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                {initialData ? "Edit Record" : "New Debt or Lent Entry"}
+                {initialData ? "Edit Record" : type === "LENT" ? "New Lent Entry" : "New Debt Entry"}
               </h3>
               <p className="text-xs text-slate-500">
-                Track money lent to others or debts owed with interest and installments
+                Track money {type === "LENT" ? "lent to others" : "borrowed from others"} with auto-fetched dates & bank statements
               </p>
             </div>
           </div>
@@ -260,17 +333,17 @@ export default function DebtLentModal({
             </button>
           </div>
 
-          {/* Counterparty & Phone */}
+          {/* Counterparty Name & Phone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-slate-400" />
-                <span>{type === "LENT" ? "Lent To (Person / Entity)" : "Borrowed From"} *</span>
+                <span>{type === "LENT" ? "Lent To (Person / Entity) *" : "Borrowed From *"}</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Rahul Sharma, Landlord, Priya"
+                placeholder="e.g. Dharani, Alex, Shop"
                 value={counterpartyName}
                 onChange={(e) => setCounterpartyName(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs"
@@ -283,7 +356,7 @@ export default function DebtLentModal({
                 <span>Phone / Contact (Optional)</span>
               </label>
               <input
-                type="text"
+                type="tel"
                 placeholder="+91 98765 43210"
                 value={counterpartyPhone}
                 onChange={(e) => setCounterpartyPhone(e.target.value)}
@@ -292,7 +365,7 @@ export default function DebtLentModal({
             </div>
           </div>
 
-          {/* Amount & Description */}
+          {/* Principal Amount & Note */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -302,10 +375,10 @@ export default function DebtLentModal({
                 type="number"
                 step="0.01"
                 required
-                placeholder="10000.00"
+                placeholder="e.g. 51490"
                 value={principalAmount}
                 onChange={(e) => setPrincipalAmount(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs tabular-nums"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-500 shadow-2xs"
               />
             </div>
 
@@ -316,7 +389,7 @@ export default function DebtLentModal({
               </label>
               <input
                 type="text"
-                placeholder="e.g. Laptop repair, College fee"
+                placeholder="e.g. ASUS Laptop, College fee"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs"
@@ -324,13 +397,124 @@ export default function DebtLentModal({
             </div>
           </div>
 
+          {/* DISCREPANCY REASON PROMPT (Triggered if principal differs from mapped statements) */}
+          {hasAmountDiscrepancy && (
+            <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Amount Differs from Mapped Statement</span>
+                </div>
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                    amountDiff > 0
+                      ? "bg-amber-100 text-amber-900 border-amber-300"
+                      : "bg-rose-100 text-rose-900 border-rose-300"
+                  }`}
+                >
+                  {amountDiff > 0
+                    ? `+${formatCurrency(amountDiff)} Extra`
+                    : `-${formatCurrency(Math.abs(amountDiff))} Lower`}
+                </span>
+              </div>
+
+              <div className="text-[11px] text-amber-800 flex items-center justify-between">
+                <span>
+                  Statement Total: <strong>{formatCurrency(totalLinkedAmount)}</strong>
+                </span>
+                <span>
+                  Principal: <strong>{formatCurrency(principal)}</strong>
+                </span>
+              </div>
+
+              <p className="text-[11px] font-semibold text-amber-900">
+                Why has the principal amount been changed?
+              </p>
+
+              {/* Quick suggestion reason chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {amountDiff > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAmountDifferenceReason(`Paid ${formatCurrency(amountDiff)} extra in cash`)
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                    >
+                      💵 Paid {formatCurrency(amountDiff)} extra in cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAmountDifferenceReason("Bank transfer was partial, remaining handed in cash")
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                    >
+                      🤝 Bank transfer partial, rest in cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAmountDifferenceReason("Additional transfer from another unlinked account")
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                    >
+                      💳 Transferred from another account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAmountDifferenceReason("Rounded off")}
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                    >
+                      🏷️ Rounded off
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAmountDifferenceReason("Statement included other personal expenses")
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                    >
+                      🏷️ Statement included personal expenses
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAmountDifferenceReason("Adjusted after partial discount or concession")
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                    >
+                      📉 Partial discount / concession
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Editable reason input */}
+              <input
+                type="text"
+                required={hasAmountDiscrepancy}
+                placeholder="Specify reason (e.g. Paid extra ₹3,510 in cash for laptop accessories)"
+                value={amountDifferenceReason}
+                onChange={(e) => setAmountDifferenceReason(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 shadow-2xs"
+              />
+            </div>
+          )}
+
           {/* Start Date & Target Due Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Date {type === "LENT" ? "Lent" : "Borrowed"} *</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Date {type === "LENT" ? "Lent" : "Borrowed"} *</span>
+                </label>
+              </div>
               <input
                 type="date"
                 required
@@ -338,6 +522,64 @@ export default function DebtLentModal({
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs"
               />
+
+              {/* DATE AUTO-FETCH / MULTI-STATEMENT DATE SELECTOR */}
+              {selectedTxns.length === 1 && selectedTxns[0].transactionDate && (
+                <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-xl mt-1.5">
+                  <span className="flex items-center gap-1 font-semibold truncate">
+                    <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span className="truncate">
+                      Auto-fetched: <strong>{selectedTxns[0].transactionDate.split("T")[0]}</strong>
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStartDate(new Date().toISOString().split("T")[0])}
+                    className="text-[10px] font-bold text-slate-500 hover:text-slate-800 underline cursor-pointer shrink-0 ml-1"
+                  >
+                    Use Today
+                  </button>
+                </div>
+              )}
+
+              {selectedTxns.length > 1 && (
+                <div className="p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 mt-1.5 space-y-1.5 text-xs">
+                  <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
+                    Choose Date Lent from mapped statements:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedTxns.map((t, idx) => {
+                      const dt = t.transactionDate?.split("T")[0];
+                      const isCurrent = startDate === dt;
+                      return (
+                        <button
+                          key={t.id || idx}
+                          type="button"
+                          onClick={() => dt && setStartDate(dt)}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                            isCurrent
+                              ? "bg-indigo-600 text-white shadow-2xs"
+                              : "bg-white text-indigo-800 border border-indigo-200 hover:bg-indigo-100"
+                          }`}
+                        >
+                          📅 {dt} ({t.bank || t.merchant})
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setStartDate(new Date().toISOString().split("T")[0])}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                        startDate === new Date().toISOString().split("T")[0]
+                          ? "bg-indigo-600 text-white"
+                          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      Today
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -354,48 +596,81 @@ export default function DebtLentModal({
             </div>
           </div>
 
-          {/* Link with an existing transaction */}
+          {/* LINK BANK PAYMENT TRANSACTION (Supports 1 or multiple statements) */}
           <div className="rounded-2xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Link2 className="w-4 h-4 text-indigo-600" />
                 <span className="text-xs font-bold text-slate-800">
-                  Link Bank Payment Transaction
+                  Link Bank Payment Transaction(s)
                 </span>
+                {selectedTxns.length > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-indigo-100 text-indigo-800">
+                    {selectedTxns.length} Mapped
+                  </span>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => setShowTxnPicker(!showTxnPicker)}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-1"
               >
-                {selectedTxn ? "Change Link" : showTxnPicker ? "Cancel Picker" : "+ Select Transaction"}
+                {showTxnPicker ? (
+                  "Cancel Picker"
+                ) : selectedTxns.length > 0 ? (
+                  <>
+                    <Plus className="w-3 h-3" />
+                    <span>Link Another Statement</span>
+                  </>
+                ) : (
+                  "+ Select Transaction"
+                )}
               </button>
             </div>
 
-            {selectedTxn ? (
-              <div className="p-3.5 rounded-xl bg-white border border-indigo-200 flex items-center justify-between text-xs shadow-2xs">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-slate-900">{selectedTxn.merchant || selectedTxn.description}</p>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
-                      {selectedTxn.bank} {selectedTxn.accountNumber ? `•••• ${selectedTxn.accountNumber.slice(-4)}` : ""}
-                    </span>
+            {/* List of mapped statements */}
+            {selectedTxns.length > 0 && (
+              <div className="space-y-2">
+                {selectedTxns.map((txn) => (
+                  <div
+                    key={txn.id}
+                    className="p-3 rounded-xl bg-white border border-indigo-200 flex items-center justify-between text-xs shadow-2xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-slate-900">{txn.merchant || txn.description}</p>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                          {txn.bank} {txn.accountNumber ? `•••• ${txn.accountNumber.slice(-4)}` : ""}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Linked Bank Payment •{" "}
+                        <strong className="text-slate-700">{formatCurrency(txn.amount)}</strong>
+                        {txn.transactionDate && ` • ${txn.transactionDate.split("T")[0]}`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTxn(txn.id)}
+                      className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                      title="Remove statement"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Linked Bank Payment • <strong className="text-slate-700">{formatCurrency(selectedTxn.amount)}</strong>
-                    {selectedTxn.transactionDate && ` • ${selectedTxn.transactionDate.split("T")[0]}`}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTxn(null)}
-                  className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
-                  title="Remove linked transaction"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                ))}
+
+                {selectedTxns.length > 1 && (
+                  <div className="p-2 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between text-xs font-bold text-indigo-900">
+                    <span>Total Mapped from Bank Statements:</span>
+                    <span>{formatCurrency(totalLinkedAmount)}</span>
+                  </div>
+                )}
               </div>
-            ) : showTxnPicker ? (
+            )}
+
+            {/* Transaction Picker Dropdown */}
+            {showTxnPicker && (
               <div className="space-y-2.5 pt-2 border-t border-slate-200/80">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -431,21 +706,18 @@ export default function DebtLentModal({
                     </div>
                   ) : (
                     candidateTxns.map((txn) => {
-                      // Proximity calculation if search contains number
                       const queryNum = parseFloat(txnSearch.replace(/[^0-9.]/g, "")) || principal || 0;
                       const diff = queryNum > 0 ? Math.abs(txn.amount - queryNum) : null;
                       const isExact = diff !== null && diff < 0.01;
+                      const isAlreadyLinked = selectedTxns.some((t) => t.id === txn.id);
 
                       return (
                         <div
                           key={txn.id}
-                          onClick={() => {
-                            setSelectedTxn(txn);
-                            if (!principalAmount) setPrincipalAmount(txn.amount.toString());
-                            if (!description) setDescription(txn.description || txn.merchant);
-                            setShowTxnPicker(false);
-                          }}
-                          className="p-3 flex items-center justify-between hover:bg-indigo-50/60 cursor-pointer text-xs transition-colors"
+                          onClick={() => handleSelectCandidateTxn(txn)}
+                          className={`p-3 flex items-center justify-between cursor-pointer text-xs transition-colors ${
+                            isAlreadyLinked ? "bg-indigo-50/80 border-l-4 border-indigo-600" : "hover:bg-slate-50"
+                          }`}
                         >
                           <div className="truncate mr-2">
                             <div className="flex items-center gap-1.5">
@@ -453,6 +725,11 @@ export default function DebtLentModal({
                               {txn.bank && (
                                 <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
                                   {txn.bank} {txn.accountNumber ? `••${txn.accountNumber.slice(-4)}` : ""}
+                                </span>
+                              )}
+                              {isAlreadyLinked && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">
+                                  Linked
                                 </span>
                               )}
                             </div>
@@ -489,14 +766,16 @@ export default function DebtLentModal({
                   )}
                 </div>
               </div>
-            ) : (
+            )}
+
+            {selectedTxns.length === 0 && !showTxnPicker && (
               <p className="text-[11px] text-slate-500">
-                Map the exact bank payment sent when you lent the money, or received when you borrowed.
+                Map the bank payment sent when you lent the money, or received when you borrowed. The Date Lent will be automatically fetched!
               </p>
             )}
           </div>
 
-          {/* Interest & Period Settings */}
+          {/* Interest & Return Period Settings */}
           <div className="rounded-2xl border border-slate-200 p-4 space-y-4 bg-slate-50/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -507,7 +786,7 @@ export default function DebtLentModal({
                 <button
                   type="button"
                   onClick={() => setHasInterest(false)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     !hasInterest
                       ? "bg-indigo-600 text-white shadow-2xs"
                       : "bg-white text-slate-600 border border-slate-200"
@@ -518,7 +797,7 @@ export default function DebtLentModal({
                 <button
                   type="button"
                   onClick={() => setHasInterest(true)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     hasInterest
                       ? "bg-indigo-600 text-white shadow-2xs"
                       : "bg-white text-slate-600 border border-slate-200"
@@ -530,83 +809,90 @@ export default function DebtLentModal({
             </div>
 
             {hasInterest && (
-              <div className="space-y-3 pt-3 border-t border-slate-200/80 animate-in fade-in duration-150">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Interest Rate (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={interestRate}
-                      onChange={(e) => setInterestRate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Period Type
-                    </label>
-                    <select
-                      value={interestPeriodType}
-                      onChange={(e) => setInterestPeriodType(e.target.value as InterestPeriodType)}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="YEARLY">Per Annum (% p.a.)</option>
-                      <option value="MONTHLY">Per Month (% p.m.)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Tenure (Months)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={tenureMonths}
-                      onChange={(e) => setTenureMonths(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/80 animate-in fade-in duration-150">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Interest Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={interestRate}
+                    onChange={(e) => setInterestRate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
                 </div>
 
-                {/* Calculation Callout */}
-                <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-[11px] text-slate-500">Accrued Interest: </span>
-                    <strong className="text-indigo-900">{formatCurrency(accruedInterest)}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-slate-500">Total Expected: </span>
-                    <strong className="text-indigo-900">{formatCurrency(totalExpected)}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-slate-500">{months} Installments of: </span>
-                    <strong className="text-emerald-700">{formatCurrency(monthlyInstallment)}</strong>
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Period Type
+                  </label>
+                  <select
+                    value={interestPeriodType}
+                    onChange={(e) => setInterestPeriodType(e.target.value as InterestPeriodType)}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="MONTHLY">Per Month (% p.m.)</option>
+                    <option value="YEARLY">Per Year (% p.a.)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Tenure (Months)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={tenureMonths}
+                    onChange={(e) => setTenureMonths(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
                 </div>
               </div>
             )}
+
+            {/* Live Calculation Preview Banner */}
+            <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold">Accrued Interest:</span>
+                <span className="font-extrabold text-indigo-700 tabular-nums">
+                  {formatCurrency(accruedInterest)}
+                </span>
+              </div>
+              <div className="text-center">
+                <span className="text-[10px] text-slate-400 block font-semibold">Total Expected:</span>
+                <span className="font-extrabold text-slate-900 tabular-nums">
+                  {formatCurrency(totalExpected)}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-semibold">
+                  {months} Installments of:
+                </span>
+                <span className="font-extrabold text-emerald-700 tabular-nums">
+                  {formatCurrency(monthlyInstallment)}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Footer Submit */}
-          <div className="pt-2 flex items-center justify-end gap-3">
+          {/* Modal Actions */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 text-xs font-semibold transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-2xl text-slate-600 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/30 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              className="px-6 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer disabled:opacity-50"
             >
-              {submitting ? "Saving..." : initialData ? "Update Record" : type === "LENT" ? "Save Lent Record" : "Save Debt Record"}
+              {submitting ? "Saving..." : initialData ? "Save Changes" : `Save ${type === "LENT" ? "Lent" : "Debt"} Record`}
             </button>
           </div>
         </form>

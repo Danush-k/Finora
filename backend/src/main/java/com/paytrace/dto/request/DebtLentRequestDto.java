@@ -40,10 +40,12 @@ public class DebtLentRequestDto {
 
     private Instant dueDate;
 
-    // Initial linked transaction
+    // Initial linked transaction(s)
     private String linkedTransactionId;
     private String linkedTransactionDescription;
     private BigDecimal linkedTransactionAmount;
+    private String amountDifferenceReason;
+    private List<String> linkedTransactionIds;
 
     // Interest settings
     private boolean hasInterest;

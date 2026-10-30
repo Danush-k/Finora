@@ -141,9 +141,18 @@ export default function DebtLentCard({ record, onClick }: DebtLentCardProps) {
           )}
 
           {record.linkedTransactionDescription && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 border border-slate-200/80 px-1.5 py-0.5 rounded truncate max-w-[140px]">
+            <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 bg-slate-50 border border-slate-200/80 px-1.5 py-0.5 rounded truncate max-w-[140px]" title={record.linkedTransactionDescription}>
               <Link2 className="w-2.5 h-2.5 shrink-0" />
               <span className="truncate">Mapped Txn</span>
+            </span>
+          )}
+
+          {record.amountDifferenceReason && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded truncate max-w-[170px]"
+              title={record.amountDifferenceReason}
+            >
+              <span>💵 {record.amountDifferenceReason}</span>
             </span>
           )}
         </div>

@@ -49,10 +49,14 @@ public class DebtLentRecord {
     @Indexed
     private Instant dueDate;
 
-    // Linked initial transaction
+    // Linked initial transaction(s)
     private String linkedTransactionId;
     private String linkedTransactionDescription;
     private BigDecimal linkedTransactionAmount;
+    private String amountDifferenceReason; // Reason if principal differs from linked transactions (e.g. extra in cash)
+
+    @Builder.Default
+    private List<String> linkedTransactionIds = new ArrayList<>();
 
     // Interest settings
     private boolean hasInterest;
