@@ -70,6 +70,7 @@ export default function DebtLentModal({
 
   // Discrepancy reason when principal differs from bank statement
   const [amountDifferenceReason, setAmountDifferenceReason] = useState("");
+  const [isNameAutoFetched, setIsNameAutoFetched] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,20 +175,39 @@ export default function DebtLentModal({
     }
     setSelectedTxns(updatedTxns);
 
-    // 1. AUTO-FETCH DATE LENT FROM MAPPED STATEMENT!
+    // 1. AUTO-FETCH NAME FROM MAPPED STATEMENT!
+    const cleanMerchant = txn.merchant
+      ? txn.merchant.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/i, "").trim() || txn.merchant
+      : "";
+    if (cleanMerchant && (!counterpartyName.trim() || isNameAutoFetched)) {
+      setCounterpartyName(cleanMerchant);
+      setIsNameAutoFetched(true);
+    }
+
+    // 2. AUTO-FETCH PHONE IF PRESENT IN TRANSACTION INFO
+    if (!counterpartyPhone.trim()) {
+      const phoneMatch = `${txn.description || ""} ${txn.merchant || ""} ${txn.referenceNumber || ""}`.match(
+        /\b([6-9]\d{9})\b/
+      );
+      if (phoneMatch) {
+        setCounterpartyPhone(phoneMatch[1]);
+      }
+    }
+
+    // 3. AUTO-FETCH DATE LENT FROM MAPPED STATEMENT!
     if (txn.transactionDate) {
       setStartDate(txn.transactionDate.split("T")[0]);
     }
 
-    // 2. Auto-fill description if empty
-    if (!description) {
-      setDescription(txn.description || txn.merchant || "");
+    // 4. AUTO-FETCH PURPOSE / NOTE
+    if (!description || description.startsWith("EXPENSE via") || description.startsWith("INCOME via")) {
+      setDescription(txn.description || `Payment to ${cleanMerchant}`);
     }
 
-    // 3. Auto-fill principal if empty or if matching previous total
+    // 5. AUTO-FETCH PRINCIPAL AMOUNT
     const newTotal = updatedTxns.reduce((sum, t) => sum + t.amount, 0);
     const prevTotal = selectedTxns.reduce((sum, t) => sum + t.amount, 0);
-    if (!principalAmount || parseFloat(principalAmount) === prevTotal) {
+    if (!principalAmount || parseFloat(principalAmount) === prevTotal || parseFloat(principalAmount) === 0) {
       setPrincipalAmount(newTotal > 0 ? newTotal.toString() : "");
     }
 
@@ -343,11 +363,73 @@ export default function DebtLentModal({
               <input
                 type="text"
                 required
-                placeholder="e.g. Dharani, Alex, Shop"
+                placeholder="e.g. AYR Technologies, Dharani, Priya"
                 value={counterpartyName}
-                onChange={(e) => setCounterpartyName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs"
+                onChange={(e) => {
+                  setCounterpartyName(e.target.value);
+                  setIsNameAutoFetched(false);
+                }}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs font-semibold"
               />
+
+              {/* Indicator / Suggestion for Name from Mapped Statement */}
+              {selectedTxns.length === 1 && selectedTxns[0].merchant && (
+                <div className="flex items-center justify-between text-[11px] text-indigo-700 bg-indigo-50/70 border border-indigo-200/80 px-2.5 py-1 rounded-xl mt-1.5">
+                  <span className="flex items-center gap-1 font-semibold truncate">
+                    <Sparkles className="w-3 h-3 text-indigo-600 shrink-0" />
+                    <span className="truncate">
+                      Statement name: <strong>{selectedTxns[0].merchant}</strong>
+                    </span>
+                  </span>
+                  {counterpartyName !== selectedTxns[0].merchant && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const clean =
+                          selectedTxns[0].merchant.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/i, "").trim() ||
+                          selectedTxns[0].merchant;
+                        setCounterpartyName(clean);
+                        setIsNameAutoFetched(true);
+                      }}
+                      className="text-[10px] font-bold text-indigo-800 underline hover:text-indigo-950 cursor-pointer shrink-0 ml-1"
+                    >
+                      Use statement name
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {selectedTxns.length > 1 && (
+                <div className="p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80 mt-1.5 space-y-1 text-xs">
+                  <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
+                    Use name from statements:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedTxns.map((t) => {
+                      const clean =
+                        t.merchant.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/i, "").trim() || t.merchant;
+                      const isCurrent = counterpartyName === clean;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setCounterpartyName(clean);
+                            setIsNameAutoFetched(true);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                            isCurrent
+                              ? "bg-indigo-600 text-white shadow-2xs"
+                              : "bg-white text-indigo-800 border border-indigo-200 hover:bg-indigo-100"
+                          }`}
+                        >
+                          👤 {clean}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
