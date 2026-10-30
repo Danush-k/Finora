@@ -9,6 +9,7 @@ import com.paytrace.model.RepaymentInstallment;
 import com.paytrace.model.Transaction;
 import com.paytrace.model.enums.DebtLentStatus;
 import com.paytrace.model.enums.DebtLentType;
+import com.paytrace.model.enums.TransactionType;
 import com.paytrace.service.DebtLentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,9 +46,10 @@ public class DebtLentController {
     @GetMapping("/candidates")
     public ResponseEntity<ApiResponse<List<Transaction>>> getCandidateTransactions(
         @RequestParam(required = false) String search,
-        @RequestParam(defaultValue = "20") int limit
+        @RequestParam(defaultValue = "25") int limit,
+        @RequestParam(required = false) TransactionType transactionType
     ) {
-        List<Transaction> txns = debtLentService.getCandidateTransactions(search, limit);
+        List<Transaction> txns = debtLentService.getCandidateTransactions(search, limit, transactionType);
         return ResponseEntity.ok(ApiResponse.ok(txns));
     }
 

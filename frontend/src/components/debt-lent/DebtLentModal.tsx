@@ -373,60 +373,119 @@ export default function DebtLentModal({
             </div>
 
             {selectedTxn ? (
-              <div className="p-3 rounded-xl bg-white border border-indigo-200 flex items-center justify-between text-xs">
+              <div className="p-3.5 rounded-xl bg-white border border-indigo-200 flex items-center justify-between text-xs shadow-2xs">
                 <div>
-                  <p className="font-bold text-slate-900">{selectedTxn.merchant || selectedTxn.description}</p>
-                  <p className="text-[11px] text-slate-400">
-                    Linked transaction • {formatCurrency(selectedTxn.amount)}
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-900">{selectedTxn.merchant || selectedTxn.description}</p>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                      {selectedTxn.bank} {selectedTxn.accountNumber ? `•••• ${selectedTxn.accountNumber.slice(-4)}` : ""}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Linked Bank Payment • <strong className="text-slate-700">{formatCurrency(selectedTxn.amount)}</strong>
+                    {selectedTxn.transactionDate && ` • ${selectedTxn.transactionDate.split("T")[0]}`}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedTxn(null)}
                   className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                  title="Remove linked transaction"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ) : showTxnPicker ? (
-              <div className="space-y-2 pt-2 border-t border-slate-200/80">
+              <div className="space-y-2.5 pt-2 border-t border-slate-200/80">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search recent transactions by merchant or amount..."
+                    placeholder="Search amount (e.g. 51000), merchant, or account..."
                     value={txnSearch}
                     onChange={(e) => setTxnSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-8 pr-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs"
                   />
                 </div>
 
-                <div className="max-h-36 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white">
+                {/* Quick chip for current principal amount */}
+                {principal > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-slate-400">Quick search:</span>
+                    <button
+                      type="button"
+                      onClick={() => setTxnSearch(principal.toString())}
+                      className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold border border-indigo-200 transition-colors cursor-pointer"
+                    >
+                      Find transactions near {formatCurrency(principal)}
+                    </button>
+                  </div>
+                )}
+
+                <div className="max-h-52 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white shadow-2xs">
                   {loadingTxns ? (
-                    <div className="p-3 text-center text-xs text-slate-400">Loading transactions...</div>
+                    <div className="p-4 text-center text-xs text-slate-400">Loading candidate transactions...</div>
                   ) : candidateTxns.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-slate-400">No matching transactions found</div>
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      No matching transactions found near "{txnSearch}". Try another amount or merchant.
+                    </div>
                   ) : (
-                    candidateTxns.map((txn) => (
-                      <div
-                        key={txn.id}
-                        onClick={() => {
-                          setSelectedTxn(txn);
-                          if (!principalAmount) setPrincipalAmount(txn.amount.toString());
-                          if (!description) setDescription(txn.description || txn.merchant);
-                          setShowTxnPicker(false);
-                        }}
-                        className="p-2.5 flex items-center justify-between hover:bg-indigo-50/50 cursor-pointer text-xs"
-                      >
-                        <div className="truncate mr-2">
-                          <p className="font-bold text-slate-800 truncate">{txn.merchant}</p>
-                          <p className="text-[10px] text-slate-400">{txn.transactionDate?.split("T")[0]}</p>
+                    candidateTxns.map((txn) => {
+                      // Proximity calculation if search contains number
+                      const queryNum = parseFloat(txnSearch.replace(/[^0-9.]/g, "")) || principal || 0;
+                      const diff = queryNum > 0 ? Math.abs(txn.amount - queryNum) : null;
+                      const isExact = diff !== null && diff < 0.01;
+
+                      return (
+                        <div
+                          key={txn.id}
+                          onClick={() => {
+                            setSelectedTxn(txn);
+                            if (!principalAmount) setPrincipalAmount(txn.amount.toString());
+                            if (!description) setDescription(txn.description || txn.merchant);
+                            setShowTxnPicker(false);
+                          }}
+                          className="p-3 flex items-center justify-between hover:bg-indigo-50/60 cursor-pointer text-xs transition-colors"
+                        >
+                          <div className="truncate mr-2">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-slate-800 truncate">{txn.merchant || txn.description}</p>
+                              {txn.bank && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                                  {txn.bank} {txn.accountNumber ? `••${txn.accountNumber.slice(-4)}` : ""}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
+                              <span>{txn.transactionDate?.split("T")[0]}</span>
+                              <span>•</span>
+                              <span className={txn.transactionType === "EXPENSE" ? "text-rose-600" : "text-emerald-600"}>
+                                {txn.transactionType === "EXPENSE" ? "Debit" : "Credit"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <p className="font-extrabold text-slate-900 tabular-nums">
+                              {formatCurrency(txn.amount)}
+                            </p>
+                            {diff !== null && queryNum > 0 && (
+                              <div className="mt-0.5">
+                                {isExact ? (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                    ✓ Exact Match
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                                    {txn.amount > queryNum ? `+${formatCurrency(diff)}` : `-${formatCurrency(diff)}`} nearby
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <span className="font-bold text-slate-900 shrink-0 tabular-nums">
-                          {formatCurrency(txn.amount)}
-                        </span>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>

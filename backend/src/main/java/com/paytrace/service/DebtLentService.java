@@ -10,6 +10,7 @@ import com.paytrace.model.Transaction;
 import com.paytrace.model.enums.DebtLentStatus;
 import com.paytrace.model.enums.DebtLentType;
 import com.paytrace.model.enums.InterestPeriodType;
+import com.paytrace.model.enums.TransactionType;
 import com.paytrace.repository.DebtLentRepository;
 import com.paytrace.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -360,17 +361,87 @@ public class DebtLentService {
     }
 
     public List<Transaction> getCandidateTransactions(String search, Integer limit) {
-        int max = limit != null && limit > 0 ? limit : 20;
+        return getCandidateTransactions(search, limit, null);
+    }
+
+    public List<Transaction> getCandidateTransactions(String search, Integer limit, TransactionType transactionType) {
+        int max = limit != null && limit > 0 ? limit : 25;
         Query query = new Query();
-        if (search != null && !search.trim().isEmpty()) {
-            Pattern regex = Pattern.compile(Pattern.quote(search.trim()), Pattern.CASE_INSENSITIVE);
-            query.addCriteria(new Criteria().orOperator(
-                Criteria.where("merchant").regex(regex),
-                Criteria.where("description").regex(regex),
-                Criteria.where("referenceNumber").regex(regex)
-            ));
+        List<Criteria> filters = new ArrayList<>();
+
+        if (transactionType != null) {
+            filters.add(Criteria.where("transactionType").is(transactionType));
         }
-        query.with(Sort.by(Sort.Direction.DESC, "transactionDate")).limit(max);
-        return mongoTemplate.find(query, Transaction.class);
+
+        BigDecimal targetAmount = null;
+        if (search != null && !search.trim().isEmpty()) {
+            String raw = search.trim();
+            // Try extracting numeric amount from search: e.g. "51000", "51,000", "₹51000", "₹ 51,000", "50k", "50K"
+            try {
+                String numericCandidate = raw.replaceAll("[₹$,\\s]", "");
+                if (numericCandidate.toLowerCase().endsWith("k")) {
+                    String base = numericCandidate.substring(0, numericCandidate.length() - 1);
+                    targetAmount = new BigDecimal(base).multiply(new BigDecimal("1000"));
+                } else if (numericCandidate.matches("^\\d+(\\.\\d+)?$")) {
+                    targetAmount = new BigDecimal(numericCandidate);
+                }
+            } catch (Exception ignored) {
+                targetAmount = null;
+            }
+
+            Pattern regex = Pattern.compile(Pattern.quote(raw), Pattern.CASE_INSENSITIVE);
+            List<Criteria> searchOptions = new ArrayList<>();
+            searchOptions.add(Criteria.where("merchant").regex(regex));
+            searchOptions.add(Criteria.where("description").regex(regex));
+            searchOptions.add(Criteria.where("referenceNumber").regex(regex));
+            searchOptions.add(Criteria.where("bank").regex(regex));
+            searchOptions.add(Criteria.where("accountNumber").regex(regex));
+
+            if (targetAmount != null && targetAmount.compareTo(BigDecimal.ZERO) > 0) {
+                // Determine a relative search window for amounts
+                // +/- 40% relative tolerance or min +/- 2000 tolerance
+                BigDecimal delta = targetAmount.multiply(new BigDecimal("0.40"));
+                if (delta.compareTo(new BigDecimal("2000")) < 0) {
+                    delta = new BigDecimal("2000");
+                }
+                BigDecimal minAmount = targetAmount.subtract(delta).max(BigDecimal.ZERO);
+                BigDecimal maxAmount = targetAmount.add(delta);
+
+                searchOptions.add(Criteria.where("amount").gte(minAmount).lte(maxAmount));
+            }
+
+            filters.add(new Criteria().orOperator(searchOptions.toArray(new Criteria[0])));
+        }
+
+        if (!filters.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(filters.toArray(new Criteria[0])));
+        }
+
+        // Fetch candidate transactions
+        query.with(Sort.by(Sort.Direction.DESC, "transactionDate")).limit(100);
+        List<Transaction> list = mongoTemplate.find(query, Transaction.class);
+
+        // Sort results: if targetAmount was searched, sort by proximity to target amount!
+        if (targetAmount != null) {
+            final BigDecimal finalTarget = targetAmount;
+            list.sort((t1, t2) -> {
+                BigDecimal a1 = t1.getAmount() != null ? t1.getAmount() : BigDecimal.ZERO;
+                BigDecimal a2 = t2.getAmount() != null ? t2.getAmount() : BigDecimal.ZERO;
+                BigDecimal diff1 = a1.subtract(finalTarget).abs();
+                BigDecimal diff2 = a2.subtract(finalTarget).abs();
+                int cmp = diff1.compareTo(diff2);
+                if (cmp != 0) return cmp; // closest amount first
+                // Secondary sort: most recent first
+                if (t1.getTransactionDate() != null && t2.getTransactionDate() != null) {
+                    return t2.getTransactionDate().compareTo(t1.getTransactionDate());
+                }
+                return 0;
+            });
+        }
+
+        if (list.size() > max) {
+            return new ArrayList<>(list.subList(0, max));
+        }
+        return list;
     }
 }

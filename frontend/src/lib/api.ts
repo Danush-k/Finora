@@ -203,13 +203,20 @@ export const api = {
     });
   },
 
-  getDebtLentCandidates: (search?: string, limit?: number) => {
+  getDebtLentCandidates: (search?: string, limit?: number, transactionType?: string) => {
     const params = new URLSearchParams();
     if (search) params.append("search", search);
     if (limit) params.append("limit", limit.toString());
+    if (transactionType) params.append("transactionType", transactionType);
     const q = params.toString() ? `?${params.toString()}` : "";
     return request<Transaction[]>(`/debt-lent/candidates${q}`);
   },
+
+  addInstallment: (recordId: string, installment: any) =>
+    request<DebtLentRecord>(`/debt-lent/${recordId}/installments`, {
+      method: "POST",
+      body: JSON.stringify(installment),
+    }),
 
   // Gmail OAuth & Sync
   getGmailStatus: () => request<GmailStatus>("/gmail/status"),

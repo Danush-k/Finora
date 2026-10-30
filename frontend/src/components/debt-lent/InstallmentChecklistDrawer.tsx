@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { DebtLentRecord, RepaymentInstallment, Transaction } from "@/types";
 import { formatCurrency } from "@/lib/utils";
@@ -22,6 +22,11 @@ import {
   User,
   Phone,
   Trash2,
+  Sparkles,
+  ArrowRight,
+  CreditCard,
+  Building2,
+  CheckCircle,
 } from "lucide-react";
 
 interface InstallmentChecklistDrawerProps {
@@ -31,30 +36,57 @@ interface InstallmentChecklistDrawerProps {
   onDeleteRecord: (id: string) => void;
 }
 
+interface MappingSession {
+  installment?: RepaymentInstallment;
+  targetAmount: number;
+  title: string;
+}
+
 export default function InstallmentChecklistDrawer({
   record,
   onClose,
   onRecordUpdated,
   onDeleteRecord,
 }: InstallmentChecklistDrawerProps) {
-  // New installment inline form
+  // New installment manual inline form
   const [showAddInstallment, setShowAddInstallment] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
 
-  // Map transaction dialog for a specific installment
-  const [mappingInstallmentId, setMappingInstallmentId] = useState<string | null>(null);
+  // Smart Repayment & Transaction Mapping Dialog Session
+  const [mappingSession, setMappingSession] = useState<MappingSession | null>(null);
   const [txnSearch, setTxnSearch] = useState("");
   const [candidates, setCandidates] = useState<Transaction[]>([]);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
 
-  // Quick repayment
-  const [showQuickRepay, setShowQuickRepay] = useState(false);
-  const [quickAmount, setQuickAmount] = useState("");
-  const [quickNotes, setQuickNotes] = useState("");
+  // Repayment parameters
+  const [appliedAmount, setAppliedAmount] = useState("");
+  const [repaymentNotes, setRepaymentNotes] = useState("");
+  const [autoCreateRemainingStep, setAutoCreateRemainingStep] = useState(true);
+  const [remainingDueDate, setRemainingDueDate] = useState("");
 
   const [busy, setBusy] = useState(false);
+
+  // Fetch candidates whenever txnSearch changes in the mapping modal
+  useEffect(() => {
+    if (mappingSession) {
+      const fetchCandidates = async () => {
+        try {
+          setLoadingCandidates(true);
+          const res = await api.getDebtLentCandidates(txnSearch.trim() || undefined, 20);
+          setCandidates(res);
+        } catch (e) {
+          console.error("Failed to load candidate transactions", e);
+        } finally {
+          setLoadingCandidates(false);
+        }
+      };
+      const debounce = setTimeout(fetchCandidates, 250);
+      return () => clearTimeout(debounce);
+    }
+  }, [mappingSession, txnSearch]);
 
   if (!record) return null;
 
@@ -82,56 +114,123 @@ export default function InstallmentChecklistDrawer({
     }
   };
 
-  // Open transaction picker to link received/paid transaction to this installment
-  const handleOpenTxnPicker = async (installmentId: string) => {
-    setMappingInstallmentId(installmentId);
-    setTxnSearch("");
-    try {
-      setLoadingCandidates(true);
-      const res = await api.getDebtLentCandidates(undefined, 15);
-      setCandidates(res);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingCandidates(false);
-    }
+  // Open Smart Repayment Mapping for a specific installment
+  const handleOpenInstallmentMapping = (inst: RepaymentInstallment) => {
+    setMappingSession({
+      installment: inst,
+      targetAmount: inst.amount,
+      title: inst.title,
+    });
+    setSelectedTxn(null);
+    setAppliedAmount(inst.amount.toString());
+    setTxnSearch(inst.amount.toString());
+    setRepaymentNotes("");
+    setAutoCreateRemainingStep(true);
+
+    const nextMo = new Date();
+    nextMo.setMonth(nextMo.getMonth() + 1);
+    setRemainingDueDate(nextMo.toISOString().split("T")[0]);
   };
 
-  const handleSearchCandidates = async (query: string) => {
-    setTxnSearch(query);
-    try {
-      setLoadingCandidates(true);
-      const res = await api.getDebtLentCandidates(query.trim() || undefined, 15);
-      setCandidates(res);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingCandidates(false);
-    }
+  // Open Smart Repayment Mapping for general balance
+  const handleOpenGeneralRepayMapping = () => {
+    const targetAmt = remaining > 0 ? remaining : record.principalAmount;
+    setMappingSession({
+      targetAmount: targetAmt,
+      title: "Repayment Settlement",
+    });
+    setSelectedTxn(null);
+    setAppliedAmount(targetAmt.toString());
+    setTxnSearch(targetAmt > 0 ? targetAmt.toString() : "");
+    setRepaymentNotes("");
+    setAutoCreateRemainingStep(true);
+
+    const nextMo = new Date();
+    nextMo.setMonth(nextMo.getMonth() + 1);
+    setRemainingDueDate(nextMo.toISOString().split("T")[0]);
   };
 
-  // Map transaction and settle installment
-  const handleSelectTxnForInstallment = async (txn: Transaction) => {
-    if (!mappingInstallmentId) return;
+  // When a candidate transaction is picked
+  const handleSelectCandidateTxn = (txn: Transaction) => {
+    setSelectedTxn(txn);
+    // Auto-detect amount from bank transaction!
+    setAppliedAmount(txn.amount.toString());
+  };
+
+  // Confirm and Apply Smart Repayment
+  const handleConfirmMapping = async () => {
+    if (!mappingSession) return;
+    const appliedNum = parseFloat(appliedAmount) || (selectedTxn ? selectedTxn.amount : 0);
+    if (appliedNum <= 0) return;
+
     try {
       setBusy(true);
-      const updated = await api.toggleInstallment(record.id, mappingInstallmentId, {
-        settled: true,
-        settledAmount: txn.amount,
-        settledDate: txn.transactionDate || new Date().toISOString(),
-        linkedTransactionId: txn.id,
-        linkedTransactionDescription: `${txn.merchant || txn.description} (${formatCurrency(txn.amount)})`,
-      });
-      onRecordUpdated(updated);
-      setMappingInstallmentId(null);
+      const targetNum = mappingSession.targetAmount;
+      const remainingAmountAfter = Math.max(0, targetNum - appliedNum);
+      const txnDesc = selectedTxn
+        ? `${selectedTxn.bank || "Bank"} - ${selectedTxn.merchant || selectedTxn.description} (${formatCurrency(appliedNum)})`
+        : undefined;
+
+      let updatedRecord: DebtLentRecord;
+
+      if (mappingSession.installment) {
+        // Mapping a specific installment
+        updatedRecord = await api.toggleInstallment(record.id, mappingSession.installment.id, {
+          settled: true,
+          settledAmount: appliedNum,
+          settledDate: selectedTxn?.transactionDate || new Date().toISOString(),
+          linkedTransactionId: selectedTxn?.id,
+          linkedTransactionDescription: txnDesc,
+          notes: repaymentNotes.trim() || undefined,
+        });
+
+        // If partial payment and user wants auto-created remaining milestone
+        if (appliedNum < targetNum && autoCreateRemainingStep && remainingAmountAfter > 0) {
+          const newInst: RepaymentInstallment = {
+            id: "",
+            title: `Remaining: ${mappingSession.installment.title}`,
+            amount: remainingAmountAfter,
+            dueDate: remainingDueDate ? new Date(remainingDueDate).toISOString() : new Date().toISOString(),
+            settled: false,
+            settledAmount: 0,
+          };
+          updatedRecord = await api.addInstallment(record.id, newInst);
+        }
+      } else {
+        // General Quick Repayment
+        updatedRecord = await api.recordQuickRepayment(
+          record.id,
+          appliedNum,
+          selectedTxn?.id,
+          txnDesc,
+          repaymentNotes.trim() || undefined
+        );
+
+        // If partial and auto-create enabled
+        if (appliedNum < targetNum && autoCreateRemainingStep && remainingAmountAfter > 0) {
+          const newInst: RepaymentInstallment = {
+            id: "",
+            title: `Remaining Balance Milestone`,
+            amount: remainingAmountAfter,
+            dueDate: remainingDueDate ? new Date(remainingDueDate).toISOString() : new Date().toISOString(),
+            settled: false,
+            settledAmount: 0,
+          };
+          updatedRecord = await api.addInstallment(record.id, newInst);
+        }
+      }
+
+      onRecordUpdated(updatedRecord);
+      setMappingSession(null);
+      setSelectedTxn(null);
     } catch (e) {
-      console.error(e);
+      console.error("Failed to map repayment transaction", e);
     } finally {
       setBusy(false);
     }
   };
 
-  // Add new checklist checkpoint
+  // Add new checklist checkpoint manually
   const handleCreateInstallment = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(newAmount) || 0;
@@ -141,23 +240,15 @@ export default function InstallmentChecklistDrawer({
       setBusy(true);
       const newInst: RepaymentInstallment = {
         id: "",
-        title: newTitle.trim() || `Installment #${record.installments.length + 1}`,
+        title: newTitle.trim() || `Milestone #${record.installments.length + 1}`,
         amount: amt,
         dueDate: newDueDate ? new Date(newDueDate).toISOString() : new Date().toISOString(),
         settled: false,
         settledAmount: 0,
       };
 
-      // Add installment via API (using toggle or add endpoint)
-      const res = await fetch(`/api/debt-lent/${record.id}/installments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newInst),
-      });
-      const json = await res.json();
-      if (json.data) {
-        onRecordUpdated(json.data);
-      }
+      const updated = await api.addInstallment(record.id, newInst);
+      onRecordUpdated(updated);
       setShowAddInstallment(false);
       setNewTitle("");
       setNewAmount("");
@@ -169,25 +260,11 @@ export default function InstallmentChecklistDrawer({
     }
   };
 
-  // Quick lump-sum repayment
-  const handleQuickRepaySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(quickAmount) || 0;
-    if (amt <= 0) return;
-
-    try {
-      setBusy(true);
-      const updated = await api.recordQuickRepayment(record.id, amt, undefined, undefined, quickNotes.trim() || undefined);
-      onRecordUpdated(updated);
-      setShowQuickRepay(false);
-      setQuickAmount("");
-      setQuickNotes("");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Calculations for active modal preview
+  const activeTargetNum = mappingSession ? mappingSession.targetAmount : 0;
+  const activeAppliedNum = parseFloat(appliedAmount) || (selectedTxn ? selectedTxn.amount : 0) || 0;
+  const activeRemainingNum = Math.max(0, activeTargetNum - activeAppliedNum);
+  const activeSurplusNum = activeAppliedNum > activeTargetNum ? activeAppliedNum - activeTargetNum : 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-end p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
@@ -236,7 +313,9 @@ export default function InstallmentChecklistDrawer({
           <div className="flex items-center gap-1">
             <button
               onClick={() => {
-                if (confirm(`Are you sure you want to delete this record for ${record.counterpartyName}?`)) {
+                if (
+                  confirm(`Are you sure you want to delete this record for ${record.counterpartyName}?`)
+                ) {
                   onDeleteRecord(record.id);
                   onClose();
                 }
@@ -299,7 +378,7 @@ export default function InstallmentChecklistDrawer({
                 </span>
                 <span className="text-slate-500">
                   Remaining:{" "}
-                  <strong className={remaining > 0 ? "text-rose-600" : "text-emerald-600"}>
+                  <strong className={remaining > 0 ? (isLent ? "text-emerald-700" : "text-rose-600") : "text-emerald-600"}>
                     {formatCurrency(remaining)}
                   </strong>
                 </span>
@@ -344,72 +423,28 @@ export default function InstallmentChecklistDrawer({
                 </h4>
                 <p className="text-xs text-slate-500">
                   {isLent
-                    ? "Check off each installment as you receive money back"
-                    : "Check off payments as you repay to them"}
+                    ? "Check off installments as money is received back"
+                    : "Check off installments as money is repaid"}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowAddInstallment(!showAddInstallment)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Step</span>
                 </button>
                 <button
-                  onClick={() => setShowQuickRepay(!showQuickRepay)}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all cursor-pointer border border-indigo-200"
+                  onClick={handleOpenGeneralRepayMapping}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all cursor-pointer border border-indigo-200"
                 >
                   <Coins className="w-3.5 h-3.5" />
-                  <span>Quick Repay</span>
+                  <span>Record Repayment</span>
                 </button>
               </div>
             </div>
-
-            {/* Inline Quick Repay Form */}
-            {showQuickRepay && (
-              <form
-                onSubmit={handleQuickRepaySubmit}
-                className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200/90 space-y-3 animate-in fade-in duration-150"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-900">Record a Quick Payment</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickRepay(false)}
-                    className="text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="Repayment amount (₹)"
-                    value={quickAmount}
-                    onChange={(e) => setQuickAmount(e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500 font-bold"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Notes (e.g. UPI transfer)"
-                    value={quickNotes}
-                    onChange={(e) => setQuickNotes(e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
-                >
-                  Confirm Repayment
-                </button>
-              </form>
-            )}
 
             {/* Inline Add Checklist Form */}
             {showAddInstallment && (
@@ -418,7 +453,7 @@ export default function InstallmentChecklistDrawer({
                 className="p-4 rounded-2xl bg-slate-100/70 border border-slate-200 space-y-3 animate-in fade-in duration-150"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800">Add Checklist Milestone</span>
+                  <span className="text-xs font-bold text-slate-800">Add Milestone Step</span>
                   <button
                     type="button"
                     onClick={() => setShowAddInstallment(false)}
@@ -430,7 +465,7 @@ export default function InstallmentChecklistDrawer({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                   <input
                     type="text"
-                    placeholder="Title (e.g. Month 4 Return)"
+                    placeholder="Title (e.g. Month 2 Return)"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
@@ -464,7 +499,7 @@ export default function InstallmentChecklistDrawer({
 
             {/* Checklist Items */}
             <div className="space-y-2.5">
-              {record.installments.map((inst, index) => {
+              {record.installments.map((inst) => {
                 const isOverdue = !inst.settled && inst.dueDate && new Date(inst.dueDate) < new Date();
 
                 return (
@@ -519,7 +554,7 @@ export default function InstallmentChecklistDrawer({
 
                           {/* Mapped Transaction Tag */}
                           {inst.linkedTransactionDescription && (
-                            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-semibold">
+                            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-800 border border-indigo-200 text-[11px] font-semibold">
                               <Link2 className="w-3 h-3" />
                               <span>{inst.linkedTransactionDescription}</span>
                             </div>
@@ -540,10 +575,10 @@ export default function InstallmentChecklistDrawer({
                         {!inst.settled && (
                           <button
                             type="button"
-                            onClick={() => handleOpenTxnPicker(inst.id)}
-                            className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100/80 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                            onClick={() => handleOpenInstallmentMapping(inst)}
+                            className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                           >
-                            <Link2 className="w-2.5 h-2.5" />
+                            <Link2 className="w-3 h-3" />
                             <span>Map Bank Txn</span>
                           </button>
                         )}
@@ -556,58 +591,278 @@ export default function InstallmentChecklistDrawer({
           </div>
         </div>
 
-        {/* Transaction Picker Modal Overlay */}
-        {mappingInstallmentId && (
-          <div className="absolute inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-5 space-y-3 animate-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between">
+        {/* SMART REPAYMENT & TRANSACTION MAPPING MODAL OVERLAY */}
+        {mappingSession && (
+          <div className="absolute inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg p-5 space-y-4 animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">Map Bank Transaction</h4>
+                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                    <span>Map Bank Repayment Transaction</span>
+                  </h4>
                   <p className="text-[11px] text-slate-500">
-                    Select the transaction corresponding to this repayment
+                    Repay from any account • Auto-detect amount & calculate remaining balance
                   </p>
                 </div>
                 <button
-                  onClick={() => setMappingInstallmentId(null)}
-                  className="text-slate-400 hover:text-slate-700 p-1"
+                  onClick={() => setMappingSession(null)}
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by merchant or amount..."
-                  value={txnSearch}
-                  onChange={(e) => handleSearchCandidates(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                />
+              {/* Target Banner */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
+                    Target Milestone
+                  </span>
+                  <p className="font-extrabold text-slate-900">{mappingSession.title}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Target Due
+                  </span>
+                  <p className="text-sm font-extrabold text-indigo-900 tabular-nums">
+                    {formatCurrency(activeTargetNum)}
+                  </p>
+                </div>
               </div>
 
-              <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white">
+              {/* Amount Proximity Search */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search amount (e.g. 51000), merchant, or bank..."
+                    value={txnSearch}
+                    onChange={(e) => setTxnSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Quick chip to search exact installment amount */}
+                <div className="flex items-center gap-1.5 overflow-x-auto text-[11px]">
+                  <span className="text-slate-400 shrink-0">Suggestions:</span>
+                  <button
+                    type="button"
+                    onClick={() => setTxnSearch(activeTargetNum.toString())}
+                    className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200 transition-colors cursor-pointer shrink-0"
+                  >
+                    Near {formatCurrency(activeTargetNum)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTxnSearch("")}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-colors cursor-pointer shrink-0"
+                  >
+                    View All Accounts
+                  </button>
+                </div>
+              </div>
+
+              {/* Candidate Transactions List from ANY bank account */}
+              <div className="flex-1 overflow-y-auto max-h-48 divide-y divide-slate-100 border border-slate-200 rounded-2xl bg-white shadow-2xs">
                 {loadingCandidates ? (
-                  <div className="p-3 text-center text-xs text-slate-400">Loading...</div>
+                  <div className="p-4 text-center text-xs text-slate-400">Loading bank transactions...</div>
                 ) : candidates.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-slate-400">No matching transactions</div>
+                  <div className="p-4 text-center text-xs text-slate-400">
+                    No matching transactions found near "{txnSearch}". Try another amount or merchant.
+                  </div>
                 ) : (
-                  candidates.map((t) => (
-                    <div
-                      key={t.id}
-                      onClick={() => handleSelectTxnForInstallment(t)}
-                      className="p-2.5 flex items-center justify-between hover:bg-indigo-50/60 cursor-pointer text-xs"
-                    >
-                      <div className="truncate mr-2">
-                        <p className="font-bold text-slate-800 truncate">{t.merchant || t.description}</p>
-                        <p className="text-[10px] text-slate-400">{t.transactionDate?.split("T")[0]}</p>
+                  candidates.map((t) => {
+                    const queryNum = parseFloat(txnSearch.replace(/[^0-9.]/g, "")) || activeTargetNum || 0;
+                    const diff = queryNum > 0 ? Math.abs(t.amount - queryNum) : null;
+                    const isExact = diff !== null && diff < 0.01;
+                    const isPicked = selectedTxn?.id === t.id;
+
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => handleSelectCandidateTxn(t)}
+                        className={`p-3 flex items-center justify-between cursor-pointer text-xs transition-colors ${
+                          isPicked
+                            ? "bg-indigo-50 border-l-4 border-indigo-600"
+                            : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="truncate mr-2">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-slate-900 truncate">
+                              {t.merchant || t.description}
+                            </p>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                              {t.bank || "Bank"} {t.accountNumber ? `••${t.accountNumber.slice(-4)}` : ""}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
+                            <span>{t.transactionDate?.split("T")[0]}</span>
+                            <span>•</span>
+                            <span className={t.transactionType === "EXPENSE" ? "text-rose-600" : "text-emerald-600"}>
+                              {t.transactionType === "EXPENSE" ? "Debit (Outflow)" : "Credit (Inflow)"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <p className="font-extrabold text-slate-900 tabular-nums">
+                            {formatCurrency(t.amount)}
+                          </p>
+                          {diff !== null && queryNum > 0 && (
+                            <div className="mt-0.5">
+                              {isExact ? (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                  ✓ Exact Match
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                                  {t.amount > queryNum ? `+${formatCurrency(diff)}` : `-${formatCurrency(diff)}`} nearby
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <span className="font-bold text-slate-900 shrink-0 tabular-nums">
-                        {formatCurrency(t.amount)}
+                    );
+                  })
+                )}
+              </div>
+
+              {/* AUTO-DETECTION & REMAINING CALCULATION BANNER */}
+              {selectedTxn ? (
+                <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-3 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-emerald-400" />
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+                          Detected Transaction
+                        </span>
+                        <strong className="text-slate-100">
+                          {selectedTxn.bank || "Bank"} •••• {selectedTxn.accountNumber?.slice(-4) || ""}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+                        Detected Amount
+                      </span>
+                      <strong className="text-emerald-400 text-sm tabular-nums">
+                        {formatCurrency(selectedTxn.amount)}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Remaining Breakdown Calculation */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs py-1">
+                    <div className="p-2 rounded-xl bg-slate-800/80">
+                      <span className="text-[10px] text-slate-400 block">Milestone Target</span>
+                      <span className="font-extrabold text-slate-200 tabular-nums">
+                        {formatCurrency(activeTargetNum)}
                       </span>
                     </div>
-                  ))
-                )}
+
+                    <div className="p-2 rounded-xl bg-slate-800/80">
+                      <span className="text-[10px] text-slate-400 block">Applied Payment</span>
+                      <span className="font-extrabold text-emerald-400 tabular-nums">
+                        -{formatCurrency(activeAppliedNum)}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`p-2 rounded-xl ${
+                        activeRemainingNum === 0
+                          ? "bg-emerald-950/60 border border-emerald-500/40"
+                          : "bg-amber-950/60 border border-amber-500/40"
+                      }`}
+                    >
+                      <span className="text-[10px] text-slate-300 block">Remaining to Repay</span>
+                      <span
+                        className={`font-extrabold tabular-nums ${
+                          activeRemainingNum === 0 ? "text-emerald-300" : "text-amber-300"
+                        }`}
+                      >
+                        {formatCurrency(activeRemainingNum)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Feedback / Status guidance */}
+                  {activeAppliedNum >= activeTargetNum ? (
+                    <div className="p-2 rounded-xl bg-emerald-950/50 border border-emerald-800/60 text-[11px] text-emerald-300 flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        ✓ This payment fully clears this milestone! Remaining balance: <strong>₹0.00</strong>
+                        {activeSurplusNum > 0 && ` (Surplus of +${formatCurrency(activeSurplusNum)} reduces total balance)`}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="p-2 rounded-xl bg-amber-950/50 border border-amber-800/60 text-[11px] text-amber-300 flex items-center gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          Partial Payment detected! <strong>{formatCurrency(activeRemainingNum)}</strong> remains to be repaid.
+                        </span>
+                      </div>
+
+                      {/* Auto-create remaining installment option */}
+                      <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700/80 space-y-2 text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={autoCreateRemainingStep}
+                            onChange={(e) => setAutoCreateRemainingStep(e.target.checked)}
+                            className="rounded text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="font-semibold text-slate-200">
+                            Auto-create next checklist step for remaining {formatCurrency(activeRemainingNum)}
+                          </span>
+                        </label>
+
+                        {autoCreateRemainingStep && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[11px] text-slate-400">Target due date:</span>
+                            <input
+                              type="date"
+                              value={remainingDueDate}
+                              onChange={(e) => setRemainingDueDate(e.target.value)}
+                              className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
+                  Select a bank transaction above. The app will auto-detect the payment amount and calculate how much remains to be repaid.
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setMappingSession(null)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !selectedTxn || activeAppliedNum <= 0}
+                  onClick={handleConfirmMapping}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {busy
+                    ? "Applying Payment..."
+                    : `Confirm Payment of ${formatCurrency(activeAppliedNum)} (Remaining: ${formatCurrency(activeRemainingNum)})`}
+                </button>
               </div>
             </div>
           </div>
