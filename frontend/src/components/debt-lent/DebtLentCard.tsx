@@ -149,10 +149,10 @@ export default function DebtLentCard({ record, onClick }: DebtLentCardProps) {
 
           {record.amountDifferenceReason && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded truncate max-w-[170px]"
+              className="inline-flex items-center gap-1 text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded truncate max-w-[170px]"
               title={record.amountDifferenceReason}
             >
-              <span>💵 {record.amountDifferenceReason}</span>
+              <span>Note: {record.amountDifferenceReason}</span>
             </span>
           )}
         </div>

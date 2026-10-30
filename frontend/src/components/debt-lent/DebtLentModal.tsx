@@ -28,7 +28,6 @@ import {
   ShieldAlert,
   AlertTriangle,
   Plus,
-  Sparkles,
 } from "lucide-react";
 
 interface DebtLentModalProps {
@@ -356,10 +355,27 @@ export default function DebtLentModal({
           {/* Counterparty Name & Phone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                <span>{type === "LENT" ? "Lent To (Person / Entity) *" : "Borrowed From *"}</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{type === "LENT" ? "Lent To (Person / Entity) *" : "Borrowed From *"}</span>
+                </label>
+                {selectedTxns.length === 1 && selectedTxns[0].merchant && counterpartyName !== selectedTxns[0].merchant && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const clean =
+                        selectedTxns[0].merchant.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/i, "").trim() ||
+                        selectedTxns[0].merchant;
+                      setCounterpartyName(clean);
+                      setIsNameAutoFetched(true);
+                    }}
+                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                  >
+                    Use "{selectedTxns[0].merchant}"
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 required
@@ -372,62 +388,33 @@ export default function DebtLentModal({
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs font-semibold"
               />
 
-              {/* Indicator / Suggestion for Name from Mapped Statement */}
-              {selectedTxns.length === 1 && selectedTxns[0].merchant && (
-                <div className="flex items-center justify-between text-[11px] text-indigo-700 bg-indigo-50/70 border border-indigo-200/80 px-2.5 py-1 rounded-xl mt-1.5">
-                  <span className="flex items-center gap-1 font-semibold truncate">
-                    <Sparkles className="w-3 h-3 text-indigo-600 shrink-0" />
-                    <span className="truncate">
-                      Statement name: <strong>{selectedTxns[0].merchant}</strong>
-                    </span>
-                  </span>
-                  {counterpartyName !== selectedTxns[0].merchant && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const clean =
-                          selectedTxns[0].merchant.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/i, "").trim() ||
-                          selectedTxns[0].merchant;
-                        setCounterpartyName(clean);
-                        setIsNameAutoFetched(true);
-                      }}
-                      className="text-[10px] font-bold text-indigo-800 underline hover:text-indigo-950 cursor-pointer shrink-0 ml-1"
-                    >
-                      Use statement name
-                    </button>
-                  )}
-                </div>
-              )}
-
               {selectedTxns.length > 1 && (
-                <div className="p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80 mt-1.5 space-y-1 text-xs">
-                  <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
-                    Use name from statements:
+                <div className="flex items-center gap-1.5 mt-1.5 overflow-x-auto text-xs pb-0.5">
+                  <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                    Statements:
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedTxns.map((t) => {
-                      const clean =
-                        t.merchant.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/i, "").trim() || t.merchant;
-                      const isCurrent = counterpartyName === clean;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => {
-                            setCounterpartyName(clean);
-                            setIsNameAutoFetched(true);
-                          }}
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                            isCurrent
-                              ? "bg-indigo-600 text-white shadow-2xs"
-                              : "bg-white text-indigo-800 border border-indigo-200 hover:bg-indigo-100"
-                          }`}
-                        >
-                          👤 {clean}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {selectedTxns.map((t) => {
+                    const clean =
+                      t.merchant.replace(/^(Mr|Ms|Mrs|Dr)\.?\s+/i, "").trim() || t.merchant;
+                    const isCurrent = counterpartyName === clean;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setCounterpartyName(clean);
+                          setIsNameAutoFetched(true);
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+                          isCurrent
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {clean}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -479,41 +466,22 @@ export default function DebtLentModal({
             </div>
           </div>
 
-          {/* DISCREPANCY REASON PROMPT (Triggered if principal differs from mapped statements) */}
+          {/* DISCREPANCY REASON PROMPT (Clean neutral styling, zero emojis) */}
           {hasAmountDiscrepancy && (
-            <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 space-y-2.5 animate-in fade-in duration-150">
+            <div className="p-3.5 rounded-xl border border-slate-200/90 bg-slate-50/80 space-y-2.5 animate-in fade-in duration-150">
               <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Amount Differs from Mapped Statement</span>
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>Amount Difference Note</span>
                 </div>
-                <span
-                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                    amountDiff > 0
-                      ? "bg-amber-100 text-amber-900 border-amber-300"
-                      : "bg-rose-100 text-rose-900 border-rose-300"
-                  }`}
-                >
-                  {amountDiff > 0
-                    ? `+${formatCurrency(amountDiff)} Extra`
-                    : `-${formatCurrency(Math.abs(amountDiff))} Lower`}
+                <span className="text-[11px] font-bold tabular-nums text-slate-600">
+                  Statement: {formatCurrency(totalLinkedAmount)} · Principal: {formatCurrency(principal)}{" "}
+                  <span className={amountDiff > 0 ? "text-amber-700" : "text-rose-700"}>
+                    ({amountDiff > 0 ? `+${formatCurrency(amountDiff)}` : `-${formatCurrency(Math.abs(amountDiff))}`})
+                  </span>
                 </span>
               </div>
 
-              <div className="text-[11px] text-amber-800 flex items-center justify-between">
-                <span>
-                  Statement Total: <strong>{formatCurrency(totalLinkedAmount)}</strong>
-                </span>
-                <span>
-                  Principal: <strong>{formatCurrency(principal)}</strong>
-                </span>
-              </div>
-
-              <p className="text-[11px] font-semibold text-amber-900">
-                Why has the principal amount been changed?
-              </p>
-
-              {/* Quick suggestion reason chips */}
               <div className="flex flex-wrap gap-1.5">
                 {amountDiff > 0 ? (
                   <>
@@ -522,34 +490,50 @@ export default function DebtLentModal({
                       onClick={() =>
                         setAmountDifferenceReason(`Paid ${formatCurrency(amountDiff)} extra in cash`)
                       }
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                        amountDifferenceReason === `Paid ${formatCurrency(amountDiff)} extra in cash`
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                      }`}
                     >
-                      💵 Paid {formatCurrency(amountDiff)} extra in cash
+                      Paid extra in cash ({formatCurrency(amountDiff)})
                     </button>
                     <button
                       type="button"
                       onClick={() =>
-                        setAmountDifferenceReason("Bank transfer was partial, remaining handed in cash")
+                        setAmountDifferenceReason("Bank transfer partial, remaining in cash")
                       }
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                        amountDifferenceReason === "Bank transfer partial, remaining in cash"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                      }`}
                     >
-                      🤝 Bank transfer partial, rest in cash
+                      Partial transfer, rest in cash
                     </button>
                     <button
                       type="button"
                       onClick={() =>
-                        setAmountDifferenceReason("Additional transfer from another unlinked account")
+                        setAmountDifferenceReason("Additional transfer from another account")
                       }
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                        amountDifferenceReason === "Additional transfer from another account"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                      }`}
                     >
-                      💳 Transferred from another account
+                      From another account
                     </button>
                     <button
                       type="button"
                       onClick={() => setAmountDifferenceReason("Rounded off")}
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                        amountDifferenceReason === "Rounded off"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                      }`}
                     >
-                      🏷️ Rounded off
+                      Rounded off
                     </button>
                   </>
                 ) : (
@@ -559,18 +543,26 @@ export default function DebtLentModal({
                       onClick={() =>
                         setAmountDifferenceReason("Statement included other personal expenses")
                       }
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                        amountDifferenceReason === "Statement included other personal expenses"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                      }`}
                     >
-                      🏷️ Statement included personal expenses
+                      Statement included personal expenses
                     </button>
                     <button
                       type="button"
                       onClick={() =>
                         setAmountDifferenceReason("Adjusted after partial discount or concession")
                       }
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-semibold border border-amber-200 transition-colors cursor-pointer"
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                        amountDifferenceReason === "Adjusted after partial discount or concession"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                      }`}
                     >
-                      📉 Partial discount / concession
+                      Partial discount / concession
                     </button>
                   </>
                 )}
@@ -580,10 +572,10 @@ export default function DebtLentModal({
               <input
                 type="text"
                 required={hasAmountDiscrepancy}
-                placeholder="Specify reason (e.g. Paid extra ₹3,510 in cash for laptop accessories)"
+                placeholder="Reason for difference (e.g. Paid ₹1,510 extra in cash)"
                 value={amountDifferenceReason}
                 onChange={(e) => setAmountDifferenceReason(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 shadow-2xs"
+                className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 shadow-2xs"
               />
             </div>
           )}
@@ -596,6 +588,11 @@ export default function DebtLentModal({
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   <span>Date {type === "LENT" ? "Lent" : "Borrowed"} *</span>
                 </label>
+                {selectedTxns.length === 1 && selectedTxns[0].transactionDate && (
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Statement date: {selectedTxns[0].transactionDate.split("T")[0]}
+                  </span>
+                )}
               </div>
               <input
                 type="date"
@@ -605,61 +602,54 @@ export default function DebtLentModal({
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs"
               />
 
-              {/* DATE AUTO-FETCH / MULTI-STATEMENT DATE SELECTOR */}
+              {/* DATE TOGGLE HELPER */}
               {selectedTxns.length === 1 && selectedTxns[0].transactionDate && (
-                <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-xl mt-1.5">
-                  <span className="flex items-center gap-1 font-semibold truncate">
-                    <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span className="truncate">
-                      Auto-fetched: <strong>{selectedTxns[0].transactionDate.split("T")[0]}</strong>
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setStartDate(new Date().toISOString().split("T")[0])}
-                    className="text-[10px] font-bold text-slate-500 hover:text-slate-800 underline cursor-pointer shrink-0 ml-1"
-                  >
-                    Use Today
-                  </button>
+                <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400">
+                  <span>From statement: {selectedTxns[0].transactionDate.split("T")[0]}</span>
+                  {startDate !== selectedTxns[0].transactionDate.split("T")[0] ? (
+                    <button
+                      type="button"
+                      onClick={() => setStartDate(selectedTxns[0].transactionDate.split("T")[0])}
+                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                    >
+                      Reset to Statement Date
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setStartDate(new Date().toISOString().split("T")[0])}
+                      className="text-[11px] font-medium text-slate-500 hover:text-slate-800 cursor-pointer"
+                    >
+                      Set to Today
+                    </button>
+                  )}
                 </div>
               )}
 
               {selectedTxns.length > 1 && (
-                <div className="p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 mt-1.5 space-y-1.5 text-xs">
-                  <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
-                    Choose Date Lent from mapped statements:
+                <div className="flex items-center gap-1.5 mt-1.5 overflow-x-auto text-xs pb-0.5">
+                  <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                    Dates:
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedTxns.map((t, idx) => {
-                      const dt = t.transactionDate?.split("T")[0];
-                      const isCurrent = startDate === dt;
-                      return (
-                        <button
-                          key={t.id || idx}
-                          type="button"
-                          onClick={() => dt && setStartDate(dt)}
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                            isCurrent
-                              ? "bg-indigo-600 text-white shadow-2xs"
-                              : "bg-white text-indigo-800 border border-indigo-200 hover:bg-indigo-100"
-                          }`}
-                        >
-                          📅 {dt} ({t.bank || t.merchant})
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => setStartDate(new Date().toISOString().split("T")[0])}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
-                        startDate === new Date().toISOString().split("T")[0]
-                          ? "bg-indigo-600 text-white"
-                          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-                      }`}
-                    >
-                      Today
-                    </button>
-                  </div>
+                  {selectedTxns.map((t, idx) => {
+                    const dt = t.transactionDate?.split("T")[0];
+                    if (!dt) return null;
+                    const isCurrent = startDate === dt;
+                    return (
+                      <button
+                        key={t.id || idx}
+                        type="button"
+                        onClick={() => setStartDate(dt)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+                          isCurrent
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {dt} ({t.bank || t.merchant})
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

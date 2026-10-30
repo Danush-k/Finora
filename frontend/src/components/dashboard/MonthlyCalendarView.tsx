@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { api } from "@/lib/api";
-import { CalendarDaySummary, Transaction } from "@/types";
+import { CalendarDaySummary, DebtLentRecord, Transaction } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar, ArrowDownRight, ArrowUpRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, ArrowDownRight, ArrowUpRight, X, Link2 } from "lucide-react";
 
 export default function MonthlyCalendarView() {
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 9, 1));
   const [calendarDays, setCalendarDays] = useState<CalendarDaySummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState<CalendarDaySummary | null>(null);
+  const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>([]);
 
   useEffect(() => {
     api.getDashboardSummary().then((summary) => {
@@ -23,7 +24,74 @@ export default function MonthlyCalendarView() {
     }).catch(() => {
       setCurrentDate(new Date());
     });
+
+    // Load mapped Debt & Lent records
+    api.getDebtLentRecords().then((records) => {
+      setDebtLentRecords(records);
+    }).catch((e) => {
+      console.error("Failed to load debt & lent records for calendar", e);
+    });
   }, []);
+
+  // Quick lookup map for mapped transactions (Lent, Debt, Repayments)
+  const mappedTxnMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        recordId: string;
+        type: "LENT" | "DEBT";
+        counterpartyName: string;
+        isInstallment?: boolean;
+        installmentTitle?: string;
+        amountDifferenceReason?: string;
+        description?: string;
+      }
+    >();
+
+    debtLentRecords.forEach((rec) => {
+      if (rec.linkedTransactionId) {
+        map.set(rec.linkedTransactionId, {
+          recordId: rec.id,
+          type: rec.type,
+          counterpartyName: rec.counterpartyName,
+          amountDifferenceReason: rec.amountDifferenceReason,
+          description: rec.description,
+        });
+      }
+
+      if (rec.linkedTransactionIds && Array.isArray(rec.linkedTransactionIds)) {
+        rec.linkedTransactionIds.forEach((id) => {
+          if (id) {
+            map.set(id, {
+              recordId: rec.id,
+              type: rec.type,
+              counterpartyName: rec.counterpartyName,
+              amountDifferenceReason: rec.amountDifferenceReason,
+              description: rec.description,
+            });
+          }
+        });
+      }
+
+      if (rec.installments && Array.isArray(rec.installments)) {
+        rec.installments.forEach((inst) => {
+          if (inst.linkedTransactionId) {
+            map.set(inst.linkedTransactionId, {
+              recordId: rec.id,
+              type: rec.type,
+              counterpartyName: rec.counterpartyName,
+              isInstallment: true,
+              installmentTitle: inst.title,
+              amountDifferenceReason: inst.notes,
+              description: inst.notes || rec.description,
+            });
+          }
+        });
+      }
+    });
+
+    return map;
+  }, [debtLentRecords]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1; // 1-12
@@ -122,10 +190,22 @@ export default function MonthlyCalendarView() {
               <Calendar className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900 tracking-tight">
-                Daily Cashflow Calendar
-              </h4>
-              <p className="text-xs text-slate-500">Select any date to inspect transactions</p>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                  Daily Cashflow Calendar
+                </h4>
+                <div className="flex items-center gap-1.5 ml-2">
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Lent
+                  </span>
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                    Debt
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                Select any date to inspect transactions and mapped debt/lent items
+              </p>
             </div>
           </div>
 
@@ -173,26 +253,59 @@ export default function MonthlyCalendarView() {
             const hasIncome = day.totalIncome > 0;
             const isSelected = selectedDay?.dayOfMonth === day.dayOfMonth;
 
+            const mappedDayItems = day.transactions
+              ? day.transactions
+                  .map((t) => mappedTxnMap.get(t.id))
+                  .filter((m): m is NonNullable<typeof m> => Boolean(m))
+              : [];
+
+            const hasLent = mappedDayItems.some((m) => m.type === "LENT");
+            const hasDebt = mappedDayItems.some((m) => m.type === "DEBT");
+
             return (
               <div
                 key={day.dayOfMonth}
                 onClick={() => setSelectedDay(day)}
-                className={`min-h-[58px] sm:min-h-[76px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                className={`min-h-[62px] sm:min-h-[80px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                   isSelected
                     ? "bg-indigo-50 border-indigo-500 shadow-md ring-2 ring-indigo-200"
                     : day.transactionCount > 0
-                    ? "bg-white border-slate-200 hover:border-indigo-300 hover:shadow-xs"
+                    ? hasLent
+                      ? "bg-white border-emerald-300 hover:border-emerald-500 hover:shadow-xs"
+                      : hasDebt
+                      ? "bg-white border-amber-300 hover:border-amber-500 hover:shadow-xs"
+                      : "bg-white border-slate-200 hover:border-indigo-300 hover:shadow-xs"
                     : "bg-white/60 border-slate-100 hover:border-slate-200"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span
-                    className={`text-xs font-bold ${
-                      isSelected ? "text-indigo-700" : "text-slate-800"
-                    }`}
-                  >
-                    {day.dayOfMonth}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-xs font-bold ${
+                        isSelected ? "text-indigo-700" : "text-slate-800"
+                      }`}
+                    >
+                      {day.dayOfMonth}
+                    </span>
+                    {(hasLent || hasDebt) && (
+                      <span
+                        className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded leading-tight border ${
+                          hasLent
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                        title={
+                          hasLent && hasDebt
+                            ? "Contains mapped Lent & Debt entries"
+                            : hasLent
+                            ? "Contains mapped Lent transaction"
+                            : "Contains mapped Debt transaction"
+                        }
+                      >
+                        {hasLent && hasDebt ? "Lent · Debt" : hasLent ? "Lent" : "Debt"}
+                      </span>
+                    )}
+                  </div>
                   {day.transactionCount > 0 && (
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
                       {day.transactionCount}
@@ -240,42 +353,84 @@ export default function MonthlyCalendarView() {
 
             {selectedDay.transactions && selectedDay.transactions.length > 0 ? (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {selectedDay.transactions.map((txn: Transaction) => (
-                  <div
-                    key={txn.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all text-xs"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`p-1.5 rounded-lg ${
-                          txn.transactionType === "EXPENSE"
-                            ? "bg-rose-100/80 text-rose-600"
-                            : "bg-emerald-100/80 text-emerald-600"
-                        }`}
-                      >
-                        {txn.transactionType === "EXPENSE" ? (
-                          <ArrowDownRight className="w-3.5 h-3.5" />
-                        ) : (
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900">{txn.merchant}</p>
-                        <p className="text-[10px] text-slate-500">
-                          {txn.category} · {txn.paymentMethod} {txn.referenceNumber ? `· Ref: ${txn.referenceNumber}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`font-extrabold ${
-                        txn.transactionType === "EXPENSE" ? "text-rose-600" : "text-emerald-600"
+                {selectedDay.transactions.map((txn: Transaction) => {
+                  const mappedInfo = mappedTxnMap.get(txn.id);
+
+                  return (
+                    <div
+                      key={txn.id}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all text-xs ${
+                        mappedInfo
+                          ? mappedInfo.type === "LENT"
+                            ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300 shadow-2xs"
+                            : "bg-amber-50/50 border-amber-200 hover:border-amber-300 shadow-2xs"
+                          : "bg-slate-50 border-slate-200/80 hover:border-slate-300"
                       }`}
                     >
-                      {txn.transactionType === "EXPENSE" ? "-" : "+"}
-                      {formatCurrency(txn.amount)}
-                    </span>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`p-1.5 rounded-lg ${
+                            txn.transactionType === "EXPENSE"
+                              ? "bg-rose-100/80 text-rose-600"
+                              : "bg-emerald-100/80 text-emerald-600"
+                          }`}
+                        >
+                          {txn.transactionType === "EXPENSE" ? (
+                            <ArrowDownRight className="w-3.5 h-3.5" />
+                          ) : (
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-slate-900">{txn.merchant}</p>
+                            {mappedInfo && (
+                              <span
+                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  mappedInfo.type === "LENT"
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                    : "bg-amber-100 text-amber-800 border-amber-300"
+                                }`}
+                              >
+                                <Link2 className="w-2.5 h-2.5" />
+                                <span>
+                                  {mappedInfo.isInstallment
+                                    ? `Repayment · ${mappedInfo.counterpartyName}`
+                                    : `${mappedInfo.type === "LENT" ? "Lent" : "Debt"} · ${mappedInfo.counterpartyName}`}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            {txn.category} · {txn.paymentMethod} {txn.referenceNumber ? `· Ref: ${txn.referenceNumber}` : ""}
+                            {mappedInfo?.amountDifferenceReason
+                              ? ` · Note: ${mappedInfo.amountDifferenceReason}`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span
+                          className={`font-extrabold ${
+                            txn.transactionType === "EXPENSE" ? "text-rose-600" : "text-emerald-600"
+                          }`}
+                        >
+                          {txn.transactionType === "EXPENSE" ? "-" : "+"}
+                          {formatCurrency(txn.amount)}
+                        </span>
+                        {mappedInfo && (
+                          <p
+                            className={`text-[9px] font-bold mt-0.5 ${
+                              mappedInfo.type === "LENT" ? "text-emerald-700" : "text-amber-700"
+                            }`}
+                          >
+                            Mapped Record
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-xs text-slate-500 py-2">No transactions recorded on this day.</p>
