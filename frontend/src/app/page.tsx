@@ -18,7 +18,9 @@ import {
   Filter,
   X,
   Sparkles,
+  UploadCloud,
 } from "lucide-react";
+import CsvImportModal from "@/components/transactions/CsvImportModal";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 
@@ -29,6 +31,7 @@ export default function DashboardPage() {
   const [selectedMonthName, setSelectedMonthName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
 
   const loadData = async (year?: number, month?: number, monthKey?: string) => {
     try {
@@ -113,6 +116,13 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setCsvModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-700 text-xs font-semibold border border-slate-200/90 shadow-2xs transition-all cursor-pointer"
+          >
+            <UploadCloud className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Import CSV</span>
+          </button>
           <Link
             href="/calendar"
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 active:scale-95 text-slate-700 text-xs font-semibold border border-slate-200 transition-all cursor-pointer"
@@ -269,6 +279,15 @@ export default function DashboardPage() {
       <RecentTransactions
         transactions={summary?.recentTransactions || []}
         monthName={summary?.activeMonthName}
+      />
+
+      {/* CSV Import & Verification Modal */}
+      <CsvImportModal
+        isOpen={csvModalOpen}
+        onClose={() => setCsvModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+        }}
       />
     </div>
   );

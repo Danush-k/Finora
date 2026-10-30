@@ -13,6 +13,8 @@ public interface TransactionRepository extends MongoRepository<Transaction, Stri
 
     Optional<Transaction> findByBankAndAccountNumberAndReferenceNumber(String bank, String accountNumber, String referenceNumber);
 
+    Optional<Transaction> findByReferenceNumber(String referenceNumber);
+
     Optional<Transaction> findByGmailMessageId(String gmailMessageId);
 
     List<Transaction> findByTransactionDateBetweenOrderByTransactionDateDesc(Instant start, Instant end);

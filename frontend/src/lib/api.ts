@@ -7,6 +7,8 @@ import {
   PageResponse,
   Transaction,
   TransactionRequest,
+  CsvTransaction,
+  CsvVerificationResult,
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
@@ -94,6 +96,38 @@ export const api = {
     request<void>(`/transactions/${id}`, {
       method: "DELETE",
     }),
+
+  // CSV Import
+  verifyCsv: async (file: File): Promise<CsvVerificationResult> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${API_BASE_URL}/transactions/csv/verify`;
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      let errMsg = `CSV verification failed: ${res.statusText}`;
+      try {
+        const errorData = await res.json();
+        errMsg = errorData.message || errMsg;
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    const json: ApiResponse<CsvVerificationResult> = await res.json();
+    return json.data;
+  },
+
+  confirmCsvImport: (transactions: CsvTransaction[]) =>
+    request<number>("/transactions/csv/confirm", {
+      method: "POST",
+      body: JSON.stringify({ transactions }),
+    }),
+
+  getCsvTemplateUrl: () => `${API_BASE_URL}/transactions/csv/template`,
 
   // Gmail OAuth & Sync
   getGmailStatus: () => request<GmailStatus>("/gmail/status"),

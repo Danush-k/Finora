@@ -2,7 +2,7 @@ export type TransactionType = "EXPENSE" | "INCOME" | "REFUND" | "TRANSFER";
 
 export type PaymentMethod = "UPI" | "DEBIT_CARD" | "CREDIT_CARD" | "NET_BANKING" | "MANUAL";
 
-export type TransactionSource = "GMAIL_AUTOMATED" | "MANUAL";
+export type TransactionSource = "GMAIL_AUTOMATED" | "MANUAL" | "CSV_IMPORT";
 
 export interface Transaction {
   id: string;
@@ -100,4 +100,29 @@ export interface PageResponse<T> {
   first: boolean;
   last: boolean;
   empty: boolean;
+}
+
+export interface CsvTransaction {
+  id: string;
+  bank: string;
+  accountNumber: string;
+  amount: number;
+  transactionType: TransactionType;
+  merchant: string;
+  description: string;
+  transactionDate: string;
+  formattedDate: string;
+  referenceNumber?: string;
+  category: string;
+  paymentMethod: PaymentMethod;
+}
+
+export interface CsvVerificationResult {
+  totalRows: number;
+  existingCount: number;
+  newCount: number;
+  newTransactions: CsvTransaction[];
+  existingTransactions: CsvTransaction[];
+  message: string;
+  allPresent: boolean;
 }

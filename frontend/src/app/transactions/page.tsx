@@ -6,10 +6,12 @@ import { api } from "@/lib/api";
 import { Transaction, TransactionRequest } from "@/types";
 import TransactionTable from "@/components/transactions/TransactionTable";
 import TransactionModal from "@/components/transactions/TransactionModal";
+import CsvImportModal from "@/components/transactions/CsvImportModal";
 import {
   Search,
   Filter,
   PlusCircle,
+  UploadCloud,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
@@ -47,6 +49,7 @@ function TransactionsContent() {
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
 
   useEffect(() => {
@@ -119,16 +122,26 @@ function TransactionsContent() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingTxn(null);
-            setModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>Manual Entry</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setCsvModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+          >
+            <UploadCloud className="w-4 h-4 text-indigo-600" />
+            <span>Upload CSV</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingTxn(null);
+              setModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Manual Entry</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -241,6 +254,15 @@ function TransactionsContent() {
         }}
         onSubmit={handleCreateOrUpdate}
         initialData={editingTxn}
+      />
+
+      {/* CSV Import & Verification Modal */}
+      <CsvImportModal
+        isOpen={csvModalOpen}
+        onClose={() => setCsvModalOpen(false)}
+        onSuccess={() => {
+          loadTransactions();
+        }}
       />
     </div>
   );
