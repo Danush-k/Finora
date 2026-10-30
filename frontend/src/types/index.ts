@@ -126,3 +126,77 @@ export interface CsvVerificationResult {
   message: string;
   allPresent: boolean;
 }
+
+export type DebtLentType = "LENT" | "DEBT";
+export type DebtLentStatus = "ACTIVE" | "PARTIALLY_SETTLED" | "SETTLED" | "OVERDUE";
+export type InterestPeriodType = "MONTHLY" | "YEARLY" | "CUSTOM";
+
+export interface RepaymentInstallment {
+  id: string;
+  title: string;
+  dueDate: string;
+  amount: number;
+  settled: boolean;
+  settledDate?: string;
+  settledAmount?: number;
+  linkedTransactionId?: string;
+  linkedTransactionDescription?: string;
+  notes?: string;
+}
+
+export interface DebtLentRecord {
+  id: string;
+  type: DebtLentType;
+  counterpartyName: string;
+  counterpartyPhone?: string;
+  principalAmount: number;
+  description?: string;
+  startDate: string;
+  dueDate?: string;
+  linkedTransactionId?: string;
+  linkedTransactionDescription?: string;
+  linkedTransactionAmount?: number;
+  hasInterest: boolean;
+  interestRate?: number;
+  interestPeriodType: InterestPeriodType;
+  tenureMonths?: number;
+  accruedInterest?: number;
+  totalExpectedAmount: number;
+  installments: RepaymentInstallment[];
+  totalRepaidAmount: number;
+  remainingAmount: number;
+  status: DebtLentStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface DebtLentSummary {
+  totalLentPrincipal: number;
+  totalLentRemaining: number;
+  totalLentRecovered: number;
+  lentActiveCount: number;
+  totalDebtPrincipal: number;
+  totalDebtRemaining: number;
+  totalDebtRepaid: number;
+  debtActiveCount: number;
+  netStanding: number;
+  overdueCount: number;
+}
+
+export interface DebtLentRequest {
+  type: DebtLentType;
+  counterpartyName: string;
+  counterpartyPhone?: string;
+  principalAmount: number;
+  description?: string;
+  startDate: string;
+  dueDate?: string;
+  linkedTransactionId?: string;
+  linkedTransactionDescription?: string;
+  linkedTransactionAmount?: number;
+  hasInterest: boolean;
+  interestRate?: number;
+  interestPeriodType?: InterestPeriodType;
+  tenureMonths?: number;
+  installments?: RepaymentInstallment[];
+}

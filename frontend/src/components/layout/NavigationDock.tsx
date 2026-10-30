@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Calendar, Receipt, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, Receipt, HandCoins, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -21,6 +21,11 @@ const NAV_ITEMS = [
     name: "Transactions",
     href: "/transactions",
     icon: Receipt,
+  },
+  {
+    name: "Debt & Lent",
+    href: "/debt-lent",
+    icon: HandCoins,
   },
   {
     name: "Settings",

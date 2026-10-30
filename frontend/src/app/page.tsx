@@ -19,6 +19,7 @@ import {
   X,
   Sparkles,
   UploadCloud,
+  HandCoins,
 } from "lucide-react";
 import CsvImportModal from "@/components/transactions/CsvImportModal";
 import Link from "next/link";
@@ -250,29 +251,57 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Segregated Quick Link to Calendar View */}
-      <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
-            <Calendar className="w-6 h-6" />
+      {/* Quick Access Feature Cards (Calendar & Debt/Lent) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Calendar Card */}
+        <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 flex flex-col justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">
+                Monthly Cashflow Calendar
+              </h4>
+              <p className="text-xs text-slate-500">
+                Daily transaction distribution, spikes, and income schedules.
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-900">
-              Explore Monthly Cashflow Calendar
-            </h4>
-            <p className="text-xs text-slate-500">
-              Inspect your daily transaction distribution, income dates, and expense spikes in the dedicated calendar view.
-            </p>
-          </div>
+
+          <Link
+            href="/calendar"
+            className="self-start flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 text-xs font-bold transition-colors cursor-pointer"
+          >
+            <span>Open Calendar</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
-        <Link
-          href="/calendar"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 text-xs font-bold transition-colors cursor-pointer"
-        >
-          <span>Open Calendar</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        {/* Debt & Lent Card */}
+        <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 flex flex-col justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <HandCoins className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">
+                Debt & Lent Tracker
+              </h4>
+              <p className="text-xs text-slate-500">
+                Money lent to friends, debts owed, interest rates, and installment checklists.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/debt-lent"
+            className="self-start flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 text-emerald-700 text-xs font-bold transition-colors cursor-pointer border border-emerald-200/60"
+          >
+            <span>Open Debt & Lent</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* Recent Activity List filtered for active month */}

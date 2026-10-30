@@ -9,6 +9,11 @@ import {
   TransactionRequest,
   CsvTransaction,
   CsvVerificationResult,
+  DebtLentRecord,
+  DebtLentRequest,
+  DebtLentStatus,
+  DebtLentSummary,
+  DebtLentType,
 } from "@/types";
 
 const getBaseUrl = () => {
@@ -133,6 +138,78 @@ export const api = {
     }),
 
   getCsvTemplateUrl: () => `${getBaseUrl()}/transactions/csv/template`,
+
+  // Debt & Lent (Receivables & Payables)
+  getDebtLentRecords: (type?: DebtLentType, status?: DebtLentStatus, search?: string) => {
+    const params = new URLSearchParams();
+    if (type) params.append("type", type);
+    if (status) params.append("status", status);
+    if (search) params.append("search", search);
+    const q = params.toString() ? `?${params.toString()}` : "";
+    return request<DebtLentRecord[]>(`/debt-lent${q}`);
+  },
+
+  getDebtLentSummary: () => request<DebtLentSummary>("/debt-lent/summary"),
+
+  getDebtLentById: (id: string) => request<DebtLentRecord>(`/debt-lent/${id}`),
+
+  createDebtLentRecord: (data: DebtLentRequest) =>
+    request<DebtLentRecord>("/debt-lent", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateDebtLentRecord: (id: string, data: DebtLentRequest) =>
+    request<DebtLentRecord>(`/debt-lent/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteDebtLentRecord: (id: string) =>
+    request<void>(`/debt-lent/${id}`, {
+      method: "DELETE",
+    }),
+
+  toggleInstallment: (
+    recordId: string,
+    installmentId: string,
+    data: {
+      settled: boolean;
+      settledAmount?: number;
+      settledDate?: string;
+      linkedTransactionId?: string;
+      linkedTransactionDescription?: string;
+      notes?: string;
+    }
+  ) =>
+    request<DebtLentRecord>(`/debt-lent/${recordId}/installments/${installmentId}/toggle`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  recordQuickRepayment: (
+    recordId: string,
+    amount: number,
+    linkedTxnId?: string,
+    linkedTxnDesc?: string,
+    notes?: string
+  ) => {
+    const params = new URLSearchParams({ amount: amount.toString() });
+    if (linkedTxnId) params.append("linkedTxnId", linkedTxnId);
+    if (linkedTxnDesc) params.append("linkedTxnDesc", linkedTxnDesc);
+    if (notes) params.append("notes", notes);
+    return request<DebtLentRecord>(`/debt-lent/${recordId}/repay?${params.toString()}`, {
+      method: "POST",
+    });
+  },
+
+  getDebtLentCandidates: (search?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (limit) params.append("limit", limit.toString());
+    const q = params.toString() ? `?${params.toString()}` : "";
+    return request<Transaction[]>(`/debt-lent/candidates${q}`);
+  },
 
   // Gmail OAuth & Sync
   getGmailStatus: () => request<GmailStatus>("/gmail/status"),
