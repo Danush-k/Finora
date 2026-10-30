@@ -170,21 +170,39 @@ public class GmailApiService {
             }
             queryBuilder.append(")");
 
-            ListMessagesResponse listResponse = gmail.users().messages().list("me")
-                .setQ(queryBuilder.toString())
-                .setMaxResults((long) maxResults)
-                .execute();
+            // Paginate through messages.list to gather candidate message IDs across all pages
+            List<Message> allMessages = new ArrayList<>();
+            String pageToken = null;
+            do {
+                var listReq = gmail.users().messages().list("me")
+                    .setQ(queryBuilder.toString())
+                    .setMaxResults(500L);
+                if (pageToken != null && !pageToken.isEmpty()) {
+                    listReq.setPageToken(pageToken);
+                }
+                ListMessagesResponse listResp = listReq.execute();
+                if (listResp.getMessages() != null) {
+                    allMessages.addAll(listResp.getMessages());
+                }
+                pageToken = listResp.getNextPageToken();
+            } while (pageToken != null && allMessages.size() < 2500);
 
-            List<Message> messages = listResponse.getMessages();
-            if (messages == null || messages.isEmpty()) {
+            if (allMessages.isEmpty()) {
                 return Collections.emptyList();
             }
 
             List<GmailMessageContent> result = new ArrayList<>();
-            for (Message msgSummary : messages) {
-                // If message has already been processed and saved, skip fetching its full body from Gmail
+            int newFetchedCount = 0;
+
+            for (Message msgSummary : allMessages) {
+                // If message has already been processed and saved, skip fetching its full body from Gmail (0 API cost)
                 if (emailProcessingRepository != null && emailProcessingRepository.existsByMessageId(msgSummary.getId())) {
                     continue;
+                }
+
+                if (newFetchedCount >= maxResults) {
+                    log.info("Reached batch fetch limit of {} new emails for this cycle. Remaining will sync next.", maxResults);
+                    break;
                 }
 
                 try {
@@ -213,12 +231,16 @@ public class GmailApiService {
                         Instant.ofEpochMilli(fullMsg.getInternalDate()) : Instant.now();
 
                     result.add(new GmailMessageContent(fullMsg.getId(), sender, subject, body, internalDate));
+                    newFetchedCount++;
 
-                    // Polite throttle to respect Google's 6,000 quota units/min limit
-                    Thread.sleep(30);
+                    // Polite throttle to respect Google's 6,000 quota units/min limit (50ms = 20 req/s = max 100 units/s)
+                    Thread.sleep(50);
                 } catch (Exception e) {
                     log.warn("Rate limit or error fetching message {}: {}", msgSummary.getId(), e.getMessage());
-                    break;
+                    if (e.getMessage() != null && e.getMessage().toLowerCase().contains("quota")) {
+                        log.warn("Quota limit reached. Halting batch for this cycle.");
+                        break;
+                    }
                 }
             }
 
