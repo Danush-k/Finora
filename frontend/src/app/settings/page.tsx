@@ -122,43 +122,43 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 pb-28 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
           Settings & Integration
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
           Manage your Gmail connection, automated sync parameters, and test pipelines
         </p>
       </div>
 
       {/* Gmail Connection Status Card */}
-      <div className="rounded-2xl liquid-glass p-6 border border-white/10 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+      <div className="rounded-2xl liquid-glass p-6 border border-slate-200/80 space-y-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div
               className={`p-3 rounded-2xl ${
                 status?.connected
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                  : "bg-slate-800 text-slate-400 border border-white/10"
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                  : "bg-slate-100 text-slate-600 border border-slate-200"
               }`}
             >
               <Mail className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-slate-100">
+                <h3 className="text-base font-bold text-slate-900">
                   Gmail Account
                 </h3>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
                     status?.connected
-                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                      : "bg-slate-800 text-slate-400 border border-white/10"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-slate-100 text-slate-600 border border-slate-200"
                   }`}
                 >
                   {status?.connected ? "CONNECTED" : "NOT CONNECTED"}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {status?.connected
                   ? `Active inbox linked: ${status.email}`
                   : "Connect your personal Gmail to monitor incoming HDFC transactions"}
@@ -170,7 +170,7 @@ export default function SettingsPage() {
             {status?.connected ? (
               <button
                 onClick={handleDisconnect}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 text-xs font-medium transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Disconnect</span>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
             ) : (
               <button
                 onClick={handleConnectGmail}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Connect Gmail</span>
@@ -189,27 +189,27 @@ export default function SettingsPage() {
 
         {/* Sync Status Metrics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-slate-400 text-[11px]">Last Sync</span>
-            <p className="font-semibold text-slate-200 mt-1">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60">
+            <span className="text-slate-500 text-[11px] font-medium">Last Sync</span>
+            <p className="font-bold text-slate-900 mt-1">
               {status?.lastSyncAt ? formatDateTime(status.lastSyncAt) : "Never"}
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-slate-400 text-[11px]">Emails Scanned</span>
-            <p className="font-semibold text-slate-200 mt-1">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60">
+            <span className="text-slate-500 text-[11px] font-medium">Emails Scanned</span>
+            <p className="font-bold text-slate-900 mt-1">
               {status?.totalEmailsProcessed || 0}
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-slate-400 text-[11px]">Auto Sync Cycle</span>
-            <p className="font-semibold text-slate-200 mt-1">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60">
+            <span className="text-slate-500 text-[11px] font-medium">Auto Sync Cycle</span>
+            <p className="font-bold text-slate-900 mt-1">
               Every {status?.syncIntervalSeconds ? status.syncIntervalSeconds / 60 : 2} mins
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-slate-400 text-[11px]">HDFC Senders</span>
-            <p className="font-semibold text-slate-200 mt-1 truncate" title={status?.senderFilter}>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60">
+            <span className="text-slate-500 text-[11px] font-medium">HDFC Senders</span>
+            <p className="font-bold text-slate-900 mt-1 truncate" title={status?.senderFilter}>
               alerts@hdfcbank.net
             </p>
           </div>
@@ -220,30 +220,30 @@ export default function SettingsPage() {
           <button
             onClick={handleSyncNow}
             disabled={syncing || !status?.connected}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 text-slate-200 text-xs font-semibold border border-white/10 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-800 text-xs font-semibold border border-slate-200 transition-all cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${syncing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${syncing ? "animate-spin" : ""}`} />
             <span>{syncing ? "Synchronising Inbox..." : "Sync Now"}</span>
           </button>
 
           {syncFeedback && (
-            <p className="text-xs text-indigo-300 font-medium">{syncFeedback}</p>
+            <p className="text-xs text-indigo-700 font-semibold">{syncFeedback}</p>
           )}
         </div>
       </div>
 
       {/* Instant Test Simulator (Zero Credentials Required!) */}
-      <div className="rounded-2xl liquid-glass p-6 border border-white/10 space-y-4">
+      <div className="rounded-2xl liquid-glass p-6 border border-slate-200/80 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
               <Send className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">
                 Instant HDFC Email Ingestion Simulator
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Test the end-to-end extraction, regex parsing, categorization, and duplicate check immediately
               </p>
             </div>
@@ -253,38 +253,38 @@ export default function SettingsPage() {
         <form onSubmit={handleSimulateSync} className="space-y-3 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-400 font-medium mb-1">Sender</label>
+              <label className="block text-slate-600 font-semibold mb-1">Sender</label>
               <input
                 type="text"
                 value={simSender}
                 onChange={(e) => setSimSender(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-100 font-mono text-[11px]"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-mono text-[11px] focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-slate-400 font-medium mb-1">Subject</label>
+              <label className="block text-slate-600 font-semibold mb-1">Subject</label>
               <input
                 type="text"
                 value={simSubject}
                 onChange={(e) => setSimSubject(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-100"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-400 font-medium mb-1">Email Body Content</label>
+            <label className="block text-slate-600 font-semibold mb-1">Email Body Content</label>
             <textarea
               rows={3}
               value={simBody}
               onChange={(e) => setSimBody(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-100 font-mono text-[11px] focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-mono text-[11px] focus:outline-none focus:border-indigo-500"
             />
           </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-              <span>Quick templates:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+              <span className="font-semibold">Quick templates:</span>
               <button
                 type="button"
                 onClick={() =>
@@ -292,7 +292,7 @@ export default function SettingsPage() {
                     "Dear Customer, Rs.499.00 has been debited from your account **1234 to VPA swiggy@icici on 30-10-26 via UPI txn 430129849201. Avbl bal: Rs 45,210.50."
                   )
                 }
-                className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300"
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer"
               >
                 Swiggy UPI
               </button>
@@ -303,7 +303,7 @@ export default function SettingsPage() {
                     "An amount of INR 2,499.00 has been spent on your HDFC Bank Credit Card ending 9876 at AMAZON INDIA on 29-10-26 at 14:32:10. Auth code: 789123."
                   )
                 }
-                className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300"
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer"
               >
                 Amazon Card
               </button>
@@ -314,7 +314,7 @@ export default function SettingsPage() {
                     "Dear Customer, Rs. 85,000.00 has been credited to your account **1234 on 30-10-26 by INFOSYS TECH SALARY. UPI Ref no 430182910291."
                   )
                 }
-                className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300"
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer"
               >
                 Salary Credit
               </button>
@@ -323,7 +323,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={simulating}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-all shadow-sm shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
             >
               {simulating ? "Processing..." : "Simulate Ingestion"}
             </button>
@@ -331,23 +331,23 @@ export default function SettingsPage() {
         </form>
 
         {simResult && (
-          <div className="mt-3 p-3 rounded-xl bg-slate-900/90 border border-white/10 text-xs">
-            <span className="font-semibold text-slate-300">Result: </span>
+          <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+            <span className="font-bold text-slate-700">Result: </span>
             <span
               className={
                 simResult.processingStatus === "PROCESSED"
-                  ? "text-emerald-400 font-bold"
+                  ? "text-emerald-600 font-extrabold"
                   : simResult.processingStatus === "DUPLICATE"
-                  ? "text-amber-400 font-bold"
-                  : "text-rose-400 font-bold"
+                  ? "text-amber-600 font-extrabold"
+                  : "text-rose-600 font-extrabold"
               }
             >
               {simResult.processingStatus || JSON.stringify(simResult)}
             </span>
             {simResult.extractedTransactionId && (
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-slate-500 mt-1 font-medium">
                 Extracted transaction saved to MongoDB with ID: {simResult.extractedTransactionId}.
-                Check your Dashboard or Transactions tab!
+                Check your Overview or Calendar view!
               </p>
             )}
           </div>
@@ -355,31 +355,31 @@ export default function SettingsPage() {
       </div>
 
       {/* Google Cloud OAuth 2.0 Credentials Guide */}
-      <div className="rounded-2xl liquid-glass p-6 border border-white/10 space-y-4">
+      <div className="rounded-2xl liquid-glass p-6 border border-slate-200/80 space-y-4 shadow-xs">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20">
-            <KeyRound className="w-4 h-4" />
+          <div className="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+            <KeyRound className="w-4 h-4 text-amber-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-100">
+            <h3 className="text-sm font-bold text-slate-900">
               How to Obtain Google Cloud OAuth Credentials
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Required for automated real-time reading from your personal Gmail inbox
             </p>
           </div>
         </div>
 
-        <div className="space-y-3 text-xs text-slate-300">
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-            <p className="font-semibold text-slate-200">1. Create a Google Cloud Project</p>
-            <p className="text-slate-400">
+        <div className="space-y-3 text-xs text-slate-700">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1.5">
+            <p className="font-bold text-slate-900">1. Create a Google Cloud Project</p>
+            <p className="text-slate-600">
               Visit{" "}
               <a
                 href="https://console.cloud.google.com"
                 target="_blank"
                 rel="noreferrer"
-                className="text-indigo-400 underline inline-flex items-center gap-1"
+                className="text-indigo-600 font-semibold underline inline-flex items-center gap-1"
               >
                 console.cloud.google.com <ExternalLink className="w-3 h-3" />
               </a>{" "}
@@ -387,44 +387,44 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-            <p className="font-semibold text-slate-200">2. Enable Gmail API</p>
-            <p className="text-slate-400">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1.5">
+            <p className="font-bold text-slate-900">2. Enable Gmail API</p>
+            <p className="text-slate-600">
               In &quot;APIs & Services&quot; &gt; &quot;Library&quot;, search for{" "}
-              <span className="text-slate-200 font-mono">Gmail API</span> and click{" "}
-              <span className="text-emerald-400 font-semibold">Enable</span>.
+              <span className="text-slate-900 font-mono font-semibold">Gmail API</span> and click{" "}
+              <span className="text-emerald-700 font-bold">Enable</span>.
             </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-            <p className="font-semibold text-slate-200">3. Configure OAuth Consent Screen & Credentials</p>
-            <ul className="list-disc pl-4 space-y-1 text-slate-400">
-              <li>Choose &quot;External&quot; user type and add your own Gmail as a test user.</li>
-              <li>Add scope: <code className="text-indigo-300">https://www.googleapis.com/auth/gmail.readonly</code></li>
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1.5">
+            <p className="font-bold text-slate-900">3. Configure OAuth Consent Screen & Credentials</p>
+            <ul className="list-disc pl-4 space-y-1 text-slate-600">
+              <li>Choose &quot;External&quot; user type and add your personal Gmail as a test user.</li>
+              <li>Add scope: <code className="text-indigo-700 font-semibold">https://www.googleapis.com/auth/gmail.readonly</code></li>
               <li>Go to &quot;Credentials&quot; &gt; &quot;Create Credentials&quot; &gt; &quot;OAuth client ID&quot;.</li>
-              <li>Application type: <span className="text-slate-200">Web application</span>.</li>
+              <li>Application type: <span className="text-slate-900 font-semibold">Web application</span>.</li>
               <li>
                 Authorized redirect URI:
                 <div className="flex items-center gap-2 mt-1">
-                  <code className="px-2 py-1 bg-black/40 rounded border border-white/10 text-indigo-300 font-mono text-[11px]">
+                  <code className="px-2 py-1 bg-white rounded border border-slate-200 text-indigo-700 font-mono text-[11px]">
                     {redirectUri}
                   </code>
                   <button
                     onClick={handleCopyRedirect}
-                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 transition-colors cursor-pointer"
+                    className="p-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer"
                     title="Copy URI"
                   >
-                    {copiedRedirect ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedRedirect ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </li>
             </ul>
           </div>
 
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-            <p className="font-semibold text-slate-200">4. Configure Environment Variables</p>
-            <p className="text-slate-400">
-              Provide the Client ID and Client Secret in <code className="text-slate-200 font-mono">.env</code> or directly provide them in the chat.
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1.5">
+            <p className="font-bold text-slate-900">4. Configure Environment Variables</p>
+            <p className="text-slate-600">
+              Provide the Client ID and Client Secret in <code className="text-slate-800 font-mono font-semibold">.env</code> or directly provide them in the chat.
             </p>
           </div>
         </div>

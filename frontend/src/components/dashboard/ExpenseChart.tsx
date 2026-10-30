@@ -28,29 +28,29 @@ export default function ExpenseChart({ data }: ExpenseChartProps) {
   }
 
   return (
-    <div className="w-full rounded-2xl liquid-glass p-5 border border-white/10">
+    <div className="w-full rounded-2xl liquid-glass p-5 border border-slate-200/80">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h4 className="text-sm font-semibold text-slate-200 tracking-tight">
+          <h4 className="text-sm font-bold text-slate-900 tracking-tight">
             Monthly Inflow vs Outflow
           </h4>
-          <p className="text-xs text-slate-400">Past 6 months financial summary</p>
+          <p className="text-xs text-slate-500">Past 6 months cashflow trend</p>
         </div>
       </div>
 
       <div className="w-full h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(226, 232, 240, 0.8)" vertical={false} />
             <XAxis
               dataKey="month"
-              stroke="#94a3b8"
+              stroke="#64748b"
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: "rgba(255, 255, 255, 0.1)" }}
+              axisLine={{ stroke: "rgba(226, 232, 240, 0.9)" }}
             />
             <YAxis
-              stroke="#94a3b8"
+              stroke="#64748b"
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -60,18 +60,18 @@ export default function ExpenseChart({ data }: ExpenseChartProps) {
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="rounded-xl liquid-glass-elevated p-3 border border-white/15 text-xs shadow-xl">
-                      <p className="font-semibold text-slate-200 mb-2">{label}</p>
+                    <div className="rounded-xl liquid-glass-elevated p-3 border border-slate-200 text-xs shadow-xl">
+                      <p className="font-bold text-slate-900 mb-2">{label}</p>
                       {payload.map((entry, index) => (
                         <div key={`item-${index}`} className="flex items-center justify-between gap-4 py-0.5">
-                          <span className="flex items-center gap-1.5 text-slate-400">
+                          <span className="flex items-center gap-1.5 text-slate-500 font-medium">
                             <span
                               className="w-2 h-2 rounded-full"
                               style={{ backgroundColor: entry.color }}
                             />
                             {entry.name}:
                           </span>
-                          <span className="font-medium text-slate-200">
+                          <span className="font-bold text-slate-900">
                             {formatCurrency(Number(entry.value))}
                           </span>
                         </div>
@@ -86,19 +86,19 @@ export default function ExpenseChart({ data }: ExpenseChartProps) {
               verticalAlign="top"
               align="right"
               iconType="circle"
-              wrapperStyle={{ paddingBottom: "12px", fontSize: "11px" }}
+              wrapperStyle={{ paddingBottom: "12px", fontSize: "11px", fontWeight: "500" }}
             />
             <Bar
               name="Income"
               dataKey="income"
-              fill="#10b981"
+              fill="#059669"
               radius={[6, 6, 0, 0]}
               maxBarSize={32}
             />
             <Bar
               name="Expenses"
               dataKey="expenses"
-              fill="#f43f5e"
+              fill="#e11d48"
               radius={[6, 6, 0, 0]}
               maxBarSize={32}
             />

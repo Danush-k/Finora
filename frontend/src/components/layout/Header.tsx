@@ -38,42 +38,42 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full px-4 sm:px-8 py-3.5 liquid-glass-dock border-b border-white/10">
+    <header className="sticky top-0 z-40 w-full px-4 sm:px-8 py-3.5 liquid-glass-dock border-b border-slate-200/80">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-emerald-400 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <div className="w-full h-full bg-slate-950 rounded-[11px] flex items-center justify-center">
-              <span className="text-white font-bold text-sm tracking-tight">FP</span>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-emerald-500 p-[1px] shadow-sm shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
+            <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center">
+              <span className="text-indigo-600 font-bold text-sm tracking-tight">FP</span>
             </div>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-base sm:text-lg tracking-tight text-white">
+              <span className="font-bold text-base sm:text-lg tracking-tight text-slate-900">
                 Finora
               </span>
-              <span className="text-[11px] font-medium text-indigo-400/90 px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+              <span className="text-[11px] font-semibold text-indigo-600 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200">
                 by PayTrace
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">Automated HDFC Expense Tracking</p>
+            <p className="text-[11px] text-slate-500 hidden sm:block font-medium">Automated HDFC Expense Tracking</p>
           </div>
         </Link>
 
         {/* Sync Status Pill & Actions */}
         <div className="flex items-center gap-3">
           {status?.connected ? (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>Gmail Linked</span>
-              <span className="text-slate-400 text-[11px]">({status.email})</span>
+              <span className="text-slate-500 font-normal text-[11px]">({status.email})</span>
             </div>
           ) : (
             <Link
               href="/settings"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100/70 transition-colors"
             >
-              <AlertCircle className="w-3.5 h-3.5" />
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
               <span>Connect Gmail</span>
               <ArrowUpRight className="w-3 h-3 opacity-70" />
             </Link>
@@ -83,9 +83,9 @@ export default function Header() {
             onClick={handleQuickSync}
             disabled={syncing}
             title="Trigger Instant Gmail Synchronisation"
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-slate-200 text-xs font-medium transition-all shadow-sm cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 active:scale-95 border border-slate-200 text-slate-700 text-xs font-semibold transition-all shadow-xs cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${syncing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${syncing ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Sync Now</span>
           </button>
         </div>
