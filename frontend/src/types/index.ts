@@ -44,11 +44,15 @@ export interface DashboardSummary {
   incomeCountThisMonth: number;
   recentTransactions: Transaction[];
   categoryBreakdown: Record<string, number>;
+  activeMonthName?: string;
+  activeMonthKey?: string;
 }
 
 export interface MonthlyChartPoint {
   month: string;
   fullMonth: string;
+  year?: number;
+  monthNumber?: number;
   expenses: number;
   income: number;
   savings: number;

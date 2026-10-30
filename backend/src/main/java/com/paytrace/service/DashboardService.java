@@ -26,16 +26,25 @@ public class DashboardService {
     private static final ZoneId ZONE = ZoneId.of("Asia/Kolkata");
 
     public DashboardSummaryDto getSummary() {
-        LocalDate now = LocalDate.now(ZONE);
-        YearMonth activeMonth = YearMonth.from(now);
+        return getSummary(null, null);
+    }
 
-        Optional<Transaction> latestOpt = transactionRepository.findTop10ByOrderByTransactionDateDesc().stream().findFirst();
-        if (latestOpt.isPresent()) {
-            YearMonth latestTxnMonth = YearMonth.from(latestOpt.get().getTransactionDate().atZone(ZONE));
-            Instant startNow = activeMonth.atDay(1).atStartOfDay(ZONE).toInstant();
-            Instant endNow = activeMonth.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();
-            if (transactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startNow, endNow).isEmpty()) {
-                activeMonth = latestTxnMonth;
+    public DashboardSummaryDto getSummary(Integer year, Integer month) {
+        YearMonth activeMonth;
+        if (year != null && month != null) {
+            activeMonth = YearMonth.of(year, month);
+        } else {
+            LocalDate now = LocalDate.now(ZONE);
+            activeMonth = YearMonth.from(now);
+
+            Optional<Transaction> latestOpt = transactionRepository.findTop10ByOrderByTransactionDateDesc().stream().findFirst();
+            if (latestOpt.isPresent()) {
+                YearMonth latestTxnMonth = YearMonth.from(latestOpt.get().getTransactionDate().atZone(ZONE));
+                Instant startNow = activeMonth.atDay(1).atStartOfDay(ZONE).toInstant();
+                Instant endNow = activeMonth.atEndOfMonth().atTime(23, 59, 59).atZone(ZONE).toInstant();
+                if (transactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startNow, endNow).isEmpty()) {
+                    activeMonth = latestTxnMonth;
+                }
             }
         }
 
@@ -62,14 +71,21 @@ public class DashboardService {
                 totalIncome = totalIncome.add(amt);
                 incomeCount++;
             } else if (t.getTransactionType() == TransactionType.REFUND) {
-                // Refunds reduce expenses or add to income
                 totalIncome = totalIncome.add(amt);
             }
         }
 
         BigDecimal netSavings = totalIncome.subtract(totalExpenses);
         long totalTransactionsCount = transactionRepository.count();
-        List<Transaction> recent = transactionRepository.findTop10ByOrderByTransactionDateDesc();
+
+        // If a specific month is selected, show up to 10 transactions from that month
+        List<Transaction> recent = monthlyTxns.stream().limit(10).collect(Collectors.toList());
+        if (recent.isEmpty() && (year == null || month == null)) {
+            recent = transactionRepository.findTop10ByOrderByTransactionDateDesc();
+        }
+
+        DateTimeFormatter nameFmt = DateTimeFormatter.ofPattern("MMMM yyyy");
+        DateTimeFormatter keyFmt = DateTimeFormatter.ofPattern("yyyy-MM");
 
         return DashboardSummaryDto.builder()
             .totalExpensesThisMonth(totalExpenses)
@@ -80,6 +96,8 @@ public class DashboardService {
             .incomeCountThisMonth(incomeCount)
             .recentTransactions(recent)
             .categoryBreakdown(categoryMap)
+            .activeMonthName(activeMonth.format(nameFmt))
+            .activeMonthKey(activeMonth.format(keyFmt))
             .build();
     }
 
@@ -124,6 +142,8 @@ public class DashboardService {
             points.add(MonthlyChartDto.MonthlyPoint.builder()
                 .month(ym.format(shortMonthFmt))
                 .fullMonth(ym.format(fullMonthFmt))
+                .year(ym.getYear())
+                .monthNumber(ym.getMonthValue())
                 .expenses(exp)
                 .income(inc)
                 .savings(inc.subtract(exp))

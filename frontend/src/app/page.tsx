@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { DashboardSummary, MonthlyChartData } from "@/types";
+import { DashboardSummary, MonthlyChartData, MonthlyChartPoint } from "@/types";
 import MetricCard from "@/components/dashboard/MetricCard";
 import ExpenseChart from "@/components/dashboard/ExpenseChart";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
@@ -15,6 +15,9 @@ import {
   PlusCircle,
   Calendar,
   ArrowRight,
+  Filter,
+  X,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
@@ -22,21 +25,39 @@ import { formatCurrency } from "@/lib/utils";
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [monthlyChart, setMonthlyChart] = useState<MonthlyChartData | null>(null);
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+  const [selectedMonthName, setSelectedMonthName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
 
-  const loadData = async () => {
+  const loadData = async (year?: number, month?: number, monthKey?: string) => {
     try {
-      setLoading(true);
+      if (year && month) {
+        setIsFiltering(true);
+      } else {
+        setLoading(true);
+      }
+
       const [sum, chart] = await Promise.all([
-        api.getDashboardSummary(),
+        api.getDashboardSummary(year, month),
         api.getMonthlyChart(),
       ]);
+
       setSummary(sum);
       setMonthlyChart(chart);
+
+      if (monthKey) {
+        setSelectedMonthKey(monthKey);
+        setSelectedMonthName(sum.activeMonthName || monthKey);
+      } else if (sum.activeMonthKey) {
+        setSelectedMonthKey(sum.activeMonthKey);
+        setSelectedMonthName(sum.activeMonthName || sum.activeMonthKey);
+      }
     } catch (e) {
       console.error("Failed to load dashboard data", e);
     } finally {
       setLoading(false);
+      setIsFiltering(false);
     }
   };
 
@@ -44,16 +65,50 @@ export default function DashboardPage() {
     loadData();
   }, []);
 
+  const handleSelectMonth = (point: MonthlyChartPoint) => {
+    if (point.year && point.monthNumber) {
+      loadData(point.year, point.monthNumber, point.fullMonth);
+    } else if (point.fullMonth) {
+      const parts = point.fullMonth.split("-").map(Number);
+      if (parts.length === 2) {
+        loadData(parts[0], parts[1], point.fullMonth);
+      }
+    }
+  };
+
+  const handleResetMonth = () => {
+    setSelectedMonthKey(null);
+    setSelectedMonthName(null);
+    loadData();
+  };
+
   return (
     <div className="space-y-6 pb-28">
       {/* Top Banner & Quick Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Financial Overview
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Financial Overview
+            </h1>
+            {selectedMonthName && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 animate-in fade-in zoom-in-95 duration-200">
+                <Sparkles className="w-3.5 h-3.5" />
+                {selectedMonthName}
+                <button
+                  onClick={handleResetMonth}
+                  className="ml-1 hover:text-rose-200 cursor-pointer p-0.5 rounded-full hover:bg-indigo-700 transition-colors"
+                  title="Clear month filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Real-time automated transaction tracking from HDFC alerts
+            {selectedMonthName
+              ? `Displaying verified expenses, income, and cashflow for ${selectedMonthName}`
+              : "Real-time automated transaction tracking from HDFC alerts"}
           </p>
         </div>
 
@@ -76,14 +131,14 @@ export default function DashboardPage() {
       </div>
 
       {/* 4 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity duration-200 ${isFiltering ? "opacity-60" : "opacity-100"}`}>
         <MetricCard
           title="Total Expenses"
           amount={summary?.totalExpensesThisMonth || 0}
           icon={TrendingDown}
           variant="expense"
           count={summary?.expensesCountThisMonth}
-          subtitle="This Month"
+          subtitle={summary?.activeMonthName || "This Month"}
         />
         <MetricCard
           title="Total Income"
@@ -91,28 +146,33 @@ export default function DashboardPage() {
           icon={TrendingUp}
           variant="income"
           count={summary?.incomeCountThisMonth}
-          subtitle="This Month"
+          subtitle={summary?.activeMonthName || "This Month"}
         />
         <MetricCard
           title="Net Savings"
           amount={summary?.netSavingsThisMonth || 0}
           icon={Wallet}
           variant="savings"
-          subtitle="Inflow - Outflow"
+          subtitle={summary?.activeMonthName ? `${summary.activeMonthName} Savings` : "Inflow - Outflow"}
         />
         <MetricCard
           title="Total Records"
           amount={summary?.totalTransactionsCount || 0}
           icon={ReceiptText}
           variant="neutral"
-          subtitle="All Time"
+          subtitle="All Time Records"
         />
       </div>
 
       {/* Monthly Inflow vs Outflow & Category Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <ExpenseChart data={monthlyChart?.points || []} />
+          <ExpenseChart
+            data={monthlyChart?.points || []}
+            activeMonthKey={selectedMonthKey}
+            onSelectMonth={handleSelectMonth}
+            onResetMonth={handleResetMonth}
+          />
         </div>
 
         {/* Category Breakdown Card */}
@@ -123,9 +183,16 @@ export default function DashboardPage() {
                 <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
                   <PieChart className="w-4 h-4" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900 tracking-tight">
-                  Expense by Category
-                </h4>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Expense by Category
+                  </h4>
+                  {summary?.activeMonthName && (
+                    <span className="text-[10px] text-indigo-600 font-bold">
+                      {summary.activeMonthName}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -151,7 +218,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-indigo-500 to-rose-500 rounded-full"
+                            className="h-full bg-gradient-to-r from-indigo-500 to-rose-500 rounded-full transition-all duration-500"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -161,7 +228,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="py-12 text-center text-xs text-slate-400">
-                No expense categories recorded this month.
+                No expense categories recorded for {summary?.activeMonthName || "this period"}.
               </div>
             )}
           </div>
@@ -198,8 +265,11 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Recent Activity List */}
-      <RecentTransactions transactions={summary?.recentTransactions || []} />
+      {/* Recent Activity List filtered for active month */}
+      <RecentTransactions
+        transactions={summary?.recentTransactions || []}
+        monthName={summary?.activeMonthName}
+      />
     </div>
   );
 }

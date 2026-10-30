@@ -24,4 +24,6 @@ public class DashboardSummaryDto {
     private long incomeCountThisMonth;
     private List<Transaction> recentTransactions;
     private Map<String, BigDecimal> categoryBreakdown;
+    private String activeMonthName;
+    private String activeMonthKey;
 }

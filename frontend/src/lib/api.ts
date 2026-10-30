@@ -43,7 +43,13 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   // Dashboard
-  getDashboardSummary: () => request<DashboardSummary>("/dashboard/summary"),
+  getDashboardSummary: (year?: number, month?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year.toString());
+    if (month) params.append("month", month.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return request<DashboardSummary>(`/dashboard/summary${query}`);
+  },
   getMonthlyChart: () => request<MonthlyChartData>("/dashboard/monthly"),
   getMonthlyCalendar: (year?: number, month?: number) => {
     const params = new URLSearchParams();

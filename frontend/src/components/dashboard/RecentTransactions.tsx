@@ -8,17 +8,20 @@ import Link from "next/link";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
+  monthName?: string;
 }
 
-export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
+export default function RecentTransactions({ transactions, monthName }: RecentTransactionsProps) {
   return (
     <div className="w-full rounded-2xl liquid-glass p-5 border border-slate-200/80">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h4 className="text-sm font-bold text-slate-900 tracking-tight">
-            Recent Activity
+            Recent Activity {monthName && <span className="text-indigo-600 font-extrabold">• {monthName}</span>}
           </h4>
-          <p className="text-xs text-slate-500">Live feed from HDFC alerts & manual entries</p>
+          <p className="text-xs text-slate-500">
+            {monthName ? `Filtered activity recorded for ${monthName}` : "Live feed from HDFC alerts & manual entries"}
+          </p>
         </div>
         <Link
           href="/transactions"

@@ -23,8 +23,11 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/summary")
-    public ResponseEntity<ApiResponse<DashboardSummaryDto>> getSummary() {
-        DashboardSummaryDto summary = dashboardService.getSummary();
+    public ResponseEntity<ApiResponse<DashboardSummaryDto>> getSummary(
+        @RequestParam(required = false) Integer year,
+        @RequestParam(required = false) Integer month
+    ) {
+        DashboardSummaryDto summary = dashboardService.getSummary(year, month);
         return ResponseEntity.ok(ApiResponse.ok(summary));
     }
 

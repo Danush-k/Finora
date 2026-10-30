@@ -23,6 +23,8 @@ public class MonthlyChartDto {
     public static class MonthlyPoint {
         private String month;        // e.g. "Jun", "Jul", "Aug", etc.
         private String fullMonth;    // e.g. "2026-06"
+        private Integer year;
+        private Integer monthNumber;
         private BigDecimal expenses;
         private BigDecimal income;
         private BigDecimal savings;
