@@ -5,15 +5,16 @@ import { api } from "@/lib/api";
 import { CalendarDaySummary, DebtLentRecord, Transaction } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Calendar, ArrowDownRight, ArrowUpRight, X, Link2, ExternalLink } from "lucide-react";
-import InstallmentChecklistDrawer from "@/components/debt-lent/InstallmentChecklistDrawer";
+import { useRouter } from "next/navigation";
+import CategoryBadge from "@/components/common/CategoryBadge";
 
 export default function MonthlyCalendarView() {
+  const router = useRouter();
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 9, 1));
   const [calendarDays, setCalendarDays] = useState<CalendarDaySummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState<CalendarDaySummary | null>(null);
   const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>([]);
-  const [selectedDebtLentRecord, setSelectedDebtLentRecord] = useState<DebtLentRecord | null>(null);
 
   useEffect(() => {
     api.getDashboardSummary().then((summary) => {
@@ -43,21 +44,8 @@ export default function MonthlyCalendarView() {
     }
   };
 
-  const handleOpenMappedRecord = async (recordId: string) => {
-    // 1. Immediate local match
-    const local = debtLentRecords.find((r) => r.id === recordId);
-    if (local) {
-      setSelectedDebtLentRecord(local);
-    }
-    // 2. Fetch full fresh record
-    try {
-      const fullRecord = await api.getDebtLentById(recordId);
-      if (fullRecord) {
-        setSelectedDebtLentRecord(fullRecord);
-      }
-    } catch (e) {
-      console.error("Failed to fetch full mapped debt/lent record", e);
-    }
+  const handleNavigateToMappedRecord = (recordId: string, type: "LENT" | "DEBT") => {
+    router.push(`/debt-lent?tab=${type}&recordId=${recordId}`);
   };
 
   // Quick lookup map for mapped transactions (Lent, Debt, Repayments)
@@ -388,7 +376,7 @@ export default function MonthlyCalendarView() {
                       key={txn.id}
                       onClick={() => {
                         if (mappedInfo) {
-                          handleOpenMappedRecord(mappedInfo.recordId);
+                          handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
                         }
                       }}
                       className={`flex items-center justify-between p-3 rounded-xl border transition-all text-xs ${
@@ -423,9 +411,9 @@ export default function MonthlyCalendarView() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleOpenMappedRecord(mappedInfo.recordId);
+                                  handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
                                 }}
-                                title={`Open ${mappedInfo.counterpartyName}'s ${mappedInfo.type === "LENT" ? "Money Lent" : "Debt"} record`}
+                                title={`Open ${mappedInfo.counterpartyName}'s ${mappedInfo.type === "LENT" ? "Money Lent" : "Debt"} page`}
                                 className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-2xs ${
                                   mappedInfo.type === "LENT"
                                     ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300 ring-2 ring-emerald-500/20"
@@ -442,12 +430,15 @@ export default function MonthlyCalendarView() {
                               </button>
                             )}
                           </div>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            {txn.category} · {txn.paymentMethod} {txn.referenceNumber ? `· Ref: ${txn.referenceNumber}` : ""}
-                            {mappedInfo?.amountDifferenceReason
-                              ? ` · Note: ${mappedInfo.amountDifferenceReason}`
-                              : ""}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 flex-wrap">
+                            <CategoryBadge category={txn.category} className="scale-90 origin-left" />
+                            <span>·</span>
+                            <span>{txn.paymentMethod}</span>
+                            {txn.referenceNumber && <span>· Ref: {txn.referenceNumber}</span>}
+                            {mappedInfo?.amountDifferenceReason && (
+                              <span className="text-amber-800 font-medium">· Note: {mappedInfo.amountDifferenceReason}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
@@ -464,7 +455,7 @@ export default function MonthlyCalendarView() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenMappedRecord(mappedInfo.recordId);
+                              handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
                             }}
                             className={`text-[10px] font-bold mt-1 flex items-center justify-end gap-1 hover:underline cursor-pointer ${
                               mappedInfo.type === "LENT"
@@ -472,7 +463,7 @@ export default function MonthlyCalendarView() {
                                 : "text-amber-700 hover:text-amber-800"
                             }`}
                           >
-                            <span>Mapped Record</span>
+                            <span>Open Tracker</span>
                             <ArrowUpRight className="w-3 h-3" />
                           </button>
                         )}
@@ -487,22 +478,6 @@ export default function MonthlyCalendarView() {
           </div>
         )}
       </div>
-
-      {/* Centered Expanded Debt & Lent Checklist Modal */}
-      <InstallmentChecklistDrawer
-        record={selectedDebtLentRecord}
-        onClose={() => setSelectedDebtLentRecord(null)}
-        onRecordUpdated={(updated) => {
-          setSelectedDebtLentRecord(updated);
-          fetchDebtLentRecords();
-          fetchCalendar();
-        }}
-        onDeleteRecord={(id) => {
-          setSelectedDebtLentRecord(null);
-          fetchDebtLentRecords();
-          fetchCalendar();
-        }}
-      />
     </div>
   );
 }

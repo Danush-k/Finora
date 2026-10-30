@@ -99,6 +99,15 @@ public class DebtLentController {
         return ResponseEntity.ok(ApiResponse.ok(updated, "Installment added successfully"));
     }
 
+    @DeleteMapping("/{id}/installments/{installmentId}")
+    public ResponseEntity<ApiResponse<DebtLentRecord>> deleteInstallment(
+        @PathVariable String id,
+        @PathVariable String installmentId
+    ) {
+        DebtLentRecord updated = debtLentService.deleteInstallment(id, installmentId);
+        return ResponseEntity.ok(ApiResponse.ok(updated, "Installment deleted successfully"));
+    }
+
     @PostMapping("/{id}/repay")
     public ResponseEntity<ApiResponse<DebtLentRecord>> recordRepayment(
         @PathVariable String id,

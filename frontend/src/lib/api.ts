@@ -187,6 +187,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  deleteInstallment: (recordId: string, installmentId: string) =>
+    request<DebtLentRecord>(`/debt-lent/${recordId}/installments/${installmentId}`, {
+      method: "DELETE",
+    }),
+
   recordQuickRepayment: (
     recordId: string,
     amount: number,

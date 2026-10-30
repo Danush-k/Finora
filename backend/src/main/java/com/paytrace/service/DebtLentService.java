@@ -166,8 +166,8 @@ public class DebtLentService {
         List<RepaymentInstallment> installments = new ArrayList<>();
         if (dto.getInstallments() != null && !dto.getInstallments().isEmpty()) {
             installments.addAll(dto.getInstallments());
-        } else if (months > 1) {
-            // Auto-generate periodic checklist checkpoints based on tenure
+        } else if (dto.isHasInterest() && dto.getTenureMonths() != null && dto.getTenureMonths() > 1) {
+            // Auto-generate periodic checklist checkpoints based on tenure ONLY when interest terms are explicitly set
             BigDecimal monthlyAmount = totalExpected.divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP);
             ZonedDateTime cursorDate = dto.getStartDate().atZone(ZONE);
 
@@ -182,16 +182,6 @@ public class DebtLentService {
                     .settledAmount(BigDecimal.ZERO)
                     .build());
             }
-        } else {
-            // Single settlement checkpoint
-            installments.add(RepaymentInstallment.builder()
-                .id(UUID.randomUUID().toString())
-                .title("Full Settlement")
-                .dueDate(dto.getDueDate() != null ? dto.getDueDate() : dto.getStartDate().atZone(ZONE).plusMonths(1).toInstant())
-                .amount(totalExpected)
-                .settled(false)
-                .settledAmount(BigDecimal.ZERO)
-                .build());
         }
 
         // If dueDate was not explicitly passed, take the last installment's due date
@@ -310,6 +300,17 @@ public class DebtLentService {
         record.getInstallments().add(installment);
         recalculateStatusAndBalances(record);
         return debtLentRepository.save(record);
+    }
+
+    @Transactional
+    public DebtLentRecord deleteInstallment(String recordId, String installmentId) {
+        DebtLentRecord record = getRecordById(recordId);
+        if (record.getInstallments() != null) {
+            record.getInstallments().removeIf(inst -> installmentId.equals(inst.getId()));
+            recalculateStatusAndBalances(record);
+            return debtLentRepository.save(record);
+        }
+        return record;
     }
 
     @Transactional

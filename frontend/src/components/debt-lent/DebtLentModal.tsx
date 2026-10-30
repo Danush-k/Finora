@@ -58,7 +58,8 @@ export default function DebtLentModal({
   const [interestRate, setInterestRate] = useState("12");
   const [interestPeriodType, setInterestPeriodType] =
     useState<InterestPeriodType>("YEARLY");
-  const [tenureMonths, setTenureMonths] = useState("3");
+  const [hasInstallmentSchedule, setHasInstallmentSchedule] = useState(false);
+  const [tenureMonths, setTenureMonths] = useState("1");
 
   // Linked Bank Transactions (Supports 1 or multiple statements mapped)
   const [showTxnPicker, setShowTxnPicker] = useState(false);
@@ -86,7 +87,9 @@ export default function DebtLentModal({
       setHasInterest(initialData.hasInterest);
       setInterestRate(initialData.interestRate ? initialData.interestRate.toString() : "12");
       setInterestPeriodType(initialData.interestPeriodType || "YEARLY");
-      setTenureMonths(initialData.tenureMonths ? initialData.tenureMonths.toString() : "3");
+      const initTenure = initialData.tenureMonths || 1;
+      setHasInstallmentSchedule(initTenure > 1);
+      setTenureMonths(initTenure > 1 ? initTenure.toString() : "1");
       setAmountDifferenceReason(initialData.amountDifferenceReason || "");
 
       if (initialData.linkedTransactionId) {
@@ -112,7 +115,8 @@ export default function DebtLentModal({
       setHasInterest(false);
       setInterestRate("12");
       setInterestPeriodType("YEARLY");
-      setTenureMonths("3");
+      setHasInstallmentSchedule(false);
+      setTenureMonths("1");
       setSelectedTxns([]);
       setAmountDifferenceReason("");
       setError(null);
@@ -143,7 +147,8 @@ export default function DebtLentModal({
   // Real-time calculation of interest & expected total
   const principal = parseFloat(principalAmount) || 0;
   const rate = parseFloat(interestRate) || 0;
-  const months = parseInt(tenureMonths, 10) || 1;
+  const isPeriodic = hasInterest || hasInstallmentSchedule;
+  const months = isPeriodic ? parseInt(tenureMonths, 10) || 1 : 1;
 
   let accruedInterest = 0;
   if (hasInterest && principal > 0 && rate > 0) {
@@ -155,7 +160,7 @@ export default function DebtLentModal({
     }
   }
   const totalExpected = principal + accruedInterest;
-  const monthlyInstallment = months > 0 ? totalExpected / months : totalExpected;
+  const monthlyInstallment = months > 1 ? totalExpected / months : totalExpected;
 
   // Total linked bank statements amount
   const totalLinkedAmount = selectedTxns.reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -268,7 +273,7 @@ export default function DebtLentModal({
         hasInterest,
         interestRate: hasInterest ? rate : 0,
         interestPeriodType: hasInterest ? interestPeriodType : "YEARLY",
-        tenureMonths: months,
+        tenureMonths: isPeriodic && months > 1 ? months : 1,
       };
 
       await onSubmit(payload);
@@ -849,10 +854,11 @@ export default function DebtLentModal({
 
           {/* Interest & Return Period Settings */}
           <div className="rounded-2xl border border-slate-200 p-4 space-y-4 bg-slate-50/50">
+            {/* Interest Toggle */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Percent className="w-4 h-4 text-indigo-600" />
-                <span className="text-xs font-bold text-slate-800">Interest & Return Period</span>
+                <span className="text-xs font-bold text-slate-800">Interest</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -864,11 +870,15 @@ export default function DebtLentModal({
                       : "bg-white text-slate-600 border border-slate-200"
                   }`}
                 >
-                  0% (Friends & Family)
+                  0% Free
                 </button>
                 <button
                   type="button"
-                  onClick={() => setHasInterest(true)}
+                  onClick={() => {
+                    setHasInterest(true);
+                    setHasInstallmentSchedule(true);
+                    if (tenureMonths === "1" || !tenureMonths) setTenureMonths("3");
+                  }}
                   className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     hasInterest
                       ? "bg-indigo-600 text-white shadow-2xs"
@@ -880,34 +890,79 @@ export default function DebtLentModal({
               </div>
             </div>
 
-            {hasInterest && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/80 animate-in fade-in duration-150">
+            {/* Repayment Terms Schedule Toggle */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-600" />
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Interest Rate (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
+                  <span className="text-xs font-bold text-slate-800">Repayment Terms</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {hasInstallmentSchedule ? "Fixed monthly installments" : "Open flexible balance (repay anytime)"}
+                  </span>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHasInstallmentSchedule(false)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    !hasInstallmentSchedule
+                      ? "bg-indigo-600 text-white shadow-2xs"
+                      : "bg-white text-slate-600 border border-slate-200"
+                  }`}
+                >
+                  Open Balance
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasInstallmentSchedule(true);
+                    if (tenureMonths === "1" || !tenureMonths) setTenureMonths("3");
+                  }}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    hasInstallmentSchedule
+                      ? "bg-indigo-600 text-white shadow-2xs"
+                      : "bg-white text-slate-600 border border-slate-200"
+                  }`}
+                >
+                  Monthly Installments
+                </button>
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Period Type
-                  </label>
-                  <select
-                    value={interestPeriodType}
-                    onChange={(e) => setInterestPeriodType(e.target.value as InterestPeriodType)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="MONTHLY">Per Month (% p.m.)</option>
-                    <option value="YEARLY">Per Year (% p.a.)</option>
-                  </select>
-                </div>
+            {/* Terms input fields (only shown if interest or installments enabled) */}
+            {(hasInterest || hasInstallmentSchedule) && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/80 animate-in fade-in duration-150">
+                {hasInterest && (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Interest Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={interestRate}
+                        onChange={(e) => setInterestRate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Period Type
+                      </label>
+                      <select
+                        value={interestPeriodType}
+                        onChange={(e) => setInterestPeriodType(e.target.value as InterestPeriodType)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="MONTHLY">Per Month (% p.m.)</option>
+                        <option value="YEARLY">Per Year (% p.a.)</option>
+                      </select>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
@@ -915,7 +970,7 @@ export default function DebtLentModal({
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="2"
                     max="120"
                     value={tenureMonths}
                     onChange={(e) => setTenureMonths(e.target.value)}
@@ -928,9 +983,11 @@ export default function DebtLentModal({
             {/* Live Calculation Preview Banner */}
             <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between text-xs">
               <div>
-                <span className="text-[10px] text-slate-400 block font-semibold">Accrued Interest:</span>
+                <span className="text-[10px] text-slate-400 block font-semibold">
+                  {hasInterest ? "Accrued Interest:" : "Interest:"}
+                </span>
                 <span className="font-extrabold text-indigo-700 tabular-nums">
-                  {formatCurrency(accruedInterest)}
+                  {hasInterest ? formatCurrency(accruedInterest) : "0% Free"}
                 </span>
               </div>
               <div className="text-center">
@@ -941,10 +998,10 @@ export default function DebtLentModal({
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 block font-semibold">
-                  {months} Installments of:
+                  {isPeriodic && months > 1 ? `${months} Installments of:` : "Repayment:"}
                 </span>
                 <span className="font-extrabold text-emerald-700 tabular-nums">
-                  {formatCurrency(monthlyInstallment)}
+                  {isPeriodic && months > 1 ? formatCurrency(monthlyInstallment) : "Open Flexible Balance"}
                 </span>
               </div>
             </div>

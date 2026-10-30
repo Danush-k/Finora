@@ -5,6 +5,7 @@ import { Transaction } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ArrowDownRight, ArrowUpRight, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import CategoryBadge from "@/components/common/CategoryBadge";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -61,9 +62,7 @@ export default function RecentTransactions({ transactions, monthName }: RecentTr
                       {txn.merchant}
                     </h5>
                     <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-medium">
-                        {txn.category || "Other"}
-                      </span>
+                      <CategoryBadge category={txn.category} />
                       <span>·</span>
                       <span className="font-medium text-slate-600">{txn.bank} {txn.accountNumber}</span>
                       <span>·</span>

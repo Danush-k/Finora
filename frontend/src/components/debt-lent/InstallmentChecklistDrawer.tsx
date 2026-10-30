@@ -48,12 +48,6 @@ export default function InstallmentChecklistDrawer({
   onRecordUpdated,
   onDeleteRecord,
 }: InstallmentChecklistDrawerProps) {
-  // New installment manual inline form
-  const [showAddInstallment, setShowAddInstallment] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newAmount, setNewAmount] = useState("");
-  const [newDueDate, setNewDueDate] = useState("");
-
   // Smart Repayment & Transaction Mapping Dialog Session
   const [mappingSession, setMappingSession] = useState<MappingSession | null>(null);
   const [txnSearch, setTxnSearch] = useState("");
@@ -205,19 +199,6 @@ export default function InstallmentChecklistDrawer({
           txnDesc,
           repaymentNotes.trim() || undefined
         );
-
-        // If partial and auto-create enabled
-        if (appliedNum < targetNum && autoCreateRemainingStep && remainingAmountAfter > 0) {
-          const newInst: RepaymentInstallment = {
-            id: "",
-            title: `Remaining Balance Milestone`,
-            amount: remainingAmountAfter,
-            dueDate: remainingDueDate ? new Date(remainingDueDate).toISOString() : new Date().toISOString(),
-            settled: false,
-            settledAmount: 0,
-          };
-          updatedRecord = await api.addInstallment(record.id, newInst);
-        }
       }
 
       onRecordUpdated(updatedRecord);
@@ -230,31 +211,14 @@ export default function InstallmentChecklistDrawer({
     }
   };
 
-  // Add new checklist checkpoint manually
-  const handleCreateInstallment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(newAmount) || 0;
-    if (amt <= 0) return;
-
+  // Delete an installment checkpoint
+  const handleDeleteInstallment = async (installmentId: string) => {
     try {
       setBusy(true);
-      const newInst: RepaymentInstallment = {
-        id: "",
-        title: newTitle.trim() || `Milestone #${record.installments.length + 1}`,
-        amount: amt,
-        dueDate: newDueDate ? new Date(newDueDate).toISOString() : new Date().toISOString(),
-        settled: false,
-        settledAmount: 0,
-      };
-
-      const updated = await api.addInstallment(record.id, newInst);
+      const updated = await api.deleteInstallment(record.id, installmentId);
       onRecordUpdated(updated);
-      setShowAddInstallment(false);
-      setNewTitle("");
-      setNewAmount("");
-      setNewDueDate("");
     } catch (e) {
-      console.error(e);
+      console.error("Failed to delete installment step", e);
     } finally {
       setBusy(false);
     }
@@ -482,25 +446,26 @@ export default function InstallmentChecklistDrawer({
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
-                      Repayment Checklist
+                      {record.installments && record.installments.length > 0 ? "Repayment Checklist" : "Repayments & Settlement"}
                     </h4>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                      {record.installments.filter((i) => i.settled).length} of {record.installments.length} Cleared
-                    </span>
+                    {record.installments && record.installments.length > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        {record.installments.filter((i) => i.settled).length} of {record.installments.length} Cleared
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {isLent ? "Check off milestones as money is received back" : "Check off milestones as money is repaid"}
+                    {record.installments && record.installments.length > 0
+                      ? isLent
+                        ? "Check off milestones as money is received back"
+                        : "Check off milestones as money is repaid"
+                      : isLent
+                      ? "Flexible balance • Record repayments received anytime"
+                      : "Flexible balance • Record repayments sent anytime"}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setShowAddInstallment(!showAddInstallment)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Step</span>
-                  </button>
                   <button
                     onClick={handleOpenGeneralRepayMapping}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-indigo-600/20 active:scale-95"
@@ -511,154 +476,137 @@ export default function InstallmentChecklistDrawer({
                 </div>
               </div>
 
-              {/* Inline Add Checklist Form */}
-              {showAddInstallment && (
-                <form
-                  onSubmit={handleCreateInstallment}
-                  className="p-3.5 rounded-2xl bg-slate-100/80 border border-slate-200 space-y-2.5 animate-in fade-in duration-150"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800">Add Milestone Step</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddInstallment(false)}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+              {/* Checklist Items or Open Balance Repayment View */}
+              {(!record.installments || record.installments.length === 0) ? (
+                <div className="p-8 rounded-2xl bg-slate-50/80 border border-slate-200/90 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-2xs">
+                    <Receipt className="w-6 h-6" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                    <input
-                      type="text"
-                      placeholder="Title (e.g. Month 2 Return)"
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      placeholder="Amount (₹)"
-                      value={newAmount}
-                      onChange={(e) => setNewAmount(e.target.value)}
-                      className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500 font-bold"
-                    />
-                    <input
-                      type="date"
-                      required
-                      value={newDueDate}
-                      onChange={(e) => setNewDueDate(e.target.value)}
-                      className="px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-                    />
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-900">
+                      Open Balance (No Periodic Installments)
+                    </h5>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                      {isLent
+                        ? "No fixed monthly schedule set. Whenever you receive money back, click Record Repayment to map it to a bank statement or log cash."
+                        : "No fixed monthly schedule set. Whenever you send money back, click Record Repayment to map it to your bank transaction."}
+                    </p>
                   </div>
                   <button
-                    type="submit"
-                    disabled={busy}
-                    className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                    onClick={handleOpenGeneralRepayMapping}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95"
                   >
-                    Add Milestone to Checklist
+                    <Coins className="w-4 h-4" />
+                    <span>Record Repayment</span>
                   </button>
-                </form>
-              )}
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                  {record.installments.map((inst) => {
+                    const isOverdue = !inst.settled && inst.dueDate && new Date(inst.dueDate) < new Date();
 
-              {/* Checklist Items */}
-              <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-                {record.installments.map((inst) => {
-                  const isOverdue = !inst.settled && inst.dueDate && new Date(inst.dueDate) < new Date();
-
-                  return (
-                    <div
-                      key={inst.id}
-                      className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                        inst.settled
-                          ? "bg-slate-50/70 border-slate-200/80"
-                          : isOverdue
-                          ? "bg-rose-50/30 border-rose-200/90 hover:border-rose-300"
-                          : "bg-white border-slate-200 hover:border-indigo-300 shadow-2xs"
-                      }`}
-                    >
-                      {/* Checkbox + Title + Date */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => handleToggle(inst)}
-                          disabled={busy}
-                          className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                            inst.settled
-                              ? "bg-emerald-600 text-white shadow-2xs"
-                              : "border border-slate-300 hover:border-indigo-500 bg-white"
-                          }`}
-                        >
-                          {inst.settled && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </button>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-xs font-bold truncate ${
-                                inst.settled ? "line-through text-slate-400" : "text-slate-900"
-                              }`}
-                            >
-                              {inst.title}
-                            </span>
-                            {isOverdue && (
-                              <span className="font-extrabold text-rose-700 bg-rose-100 text-[9px] px-1.5 py-0.2 rounded border border-rose-200">
-                                Overdue
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-400" />
-                              <span>{inst.dueDate ? inst.dueDate.split("T")[0] : "No date"}</span>
-                            </span>
-                            {inst.settled && inst.settledDate && (
-                              <span className="text-emerald-700 font-medium">
-                                · Cleared {inst.settledDate.split("T")[0]}
-                              </span>
-                            )}
-                            {inst.linkedTransactionDescription && (
-                              <span
-                                className="text-indigo-600 font-medium flex items-center gap-0.5 truncate max-w-[140px]"
-                                title={inst.linkedTransactionDescription}
-                              >
-                                · <Link2 className="w-2.5 h-2.5 shrink-0" />
-                                <span className="truncate">{inst.linkedTransactionDescription}</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Amount & Actions */}
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span
-                          className={`text-xs font-extrabold tabular-nums ${
-                            inst.settled ? "text-slate-400 line-through" : "text-slate-900"
-                          }`}
-                        >
-                          {formatCurrency(inst.settled && inst.settledAmount ? inst.settledAmount : inst.amount)}
-                        </span>
-
-                        {!inst.settled ? (
+                    return (
+                      <div
+                        key={inst.id}
+                        className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                          inst.settled
+                            ? "bg-slate-50/70 border-slate-200/80"
+                            : isOverdue
+                            ? "bg-rose-50/30 border-rose-200/90 hover:border-rose-300"
+                            : "bg-white border-slate-200 hover:border-indigo-300 shadow-2xs"
+                        }`}
+                      >
+                        {/* Checkbox + Title + Date */}
+                        <div className="flex items-center gap-3 min-w-0">
                           <button
                             type="button"
-                            onClick={() => handleOpenInstallmentMapping(inst)}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                            onClick={() => handleToggle(inst)}
+                            disabled={busy}
+                            className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                              inst.settled
+                                ? "bg-emerald-600 text-white shadow-2xs"
+                                : "border border-slate-300 hover:border-indigo-500 bg-white"
+                            }`}
                           >
-                            <Link2 className="w-3 h-3" />
-                            <span>Map Txn</span>
+                            {inst.settled && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </button>
-                        ) : (
-                          <Check className="w-4 h-4 text-emerald-600" />
-                        )}
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-xs font-bold truncate ${
+                                  inst.settled ? "line-through text-slate-400" : "text-slate-900"
+                                }`}
+                              >
+                                {inst.title}
+                              </span>
+                              {isOverdue && (
+                                <span className="font-extrabold text-rose-700 bg-rose-100 text-[9px] px-1.5 py-0.2 rounded border border-rose-200">
+                                  Overdue
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <span>{inst.dueDate ? inst.dueDate.split("T")[0] : "No date"}</span>
+                              </span>
+                              {inst.settled && inst.settledDate && (
+                                <span className="text-emerald-700 font-medium">
+                                  · Cleared {inst.settledDate.split("T")[0]}
+                                </span>
+                              )}
+                              {inst.linkedTransactionDescription && (
+                                <span
+                                  className="text-indigo-600 font-medium flex items-center gap-0.5 truncate max-w-[140px]"
+                                  title={inst.linkedTransactionDescription}
+                                >
+                                  · <Link2 className="w-2.5 h-2.5 shrink-0" />
+                                  <span className="truncate">{inst.linkedTransactionDescription}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Amount & Actions */}
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span
+                            className={`text-xs font-extrabold tabular-nums ${
+                              inst.settled ? "text-slate-400 line-through" : "text-slate-900"
+                            }`}
+                          >
+                            {formatCurrency(inst.settled && inst.settledAmount ? inst.settledAmount : inst.amount)}
+                          </span>
+
+                          {!inst.settled ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenInstallmentMapping(inst)}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Link2 className="w-3 h-3" />
+                              <span>Map Txn</span>
+                            </button>
+                          ) : (
+                            <Check className="w-4 h-4 text-emerald-600" />
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteInstallment(inst.id)}
+                            title="Delete step"
+                            className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import React from "react";
 import { Transaction } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ArrowDownRight, ArrowUpRight, Edit2, Trash2 } from "lucide-react";
+import CategoryBadge from "@/components/common/CategoryBadge";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -82,9 +83,7 @@ export default function TransactionTable({
 
                   {/* Category */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 border border-slate-200 text-slate-700">
-                      {txn.category || "Other"}
-                    </span>
+                    <CategoryBadge category={txn.category} />
                   </td>
 
                   {/* Transaction Type */}
