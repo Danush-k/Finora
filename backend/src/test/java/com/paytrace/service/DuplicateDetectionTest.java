@@ -27,12 +27,15 @@ class DuplicateDetectionTest {
     @Mock
     private TransactionRepository transactionRepository;
 
+    @Mock
+    private org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
+
     private TransactionService transactionService;
 
     @BeforeEach
     void setUp() {
         CategoryClassifier classifier = new CategoryClassifier();
-        transactionService = new TransactionService(transactionRepository, classifier);
+        transactionService = new TransactionService(transactionRepository, mongoTemplate, classifier);
     }
 
     @Test

@@ -10,15 +10,18 @@ import com.paytrace.parser.ParsedTransaction;
 import com.paytrace.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -26,6 +29,7 @@ import java.util.Optional;
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
+    private final MongoTemplate mongoTemplate;
     private final CategoryClassifier categoryClassifier;
 
     public Page<Transaction> getTransactions(
@@ -38,7 +42,44 @@ public class TransactionService {
         int size
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "transactionDate"));
-        return transactionRepository.searchTransactions(type, category, startDate, endDate, search, pageable);
+
+        List<Criteria> criteriaList = new ArrayList<>();
+
+        if (type != null) {
+            criteriaList.add(Criteria.where("transactionType").is(type));
+        }
+
+        if (category != null && !category.trim().isEmpty() && !category.equalsIgnoreCase("ALL")) {
+            criteriaList.add(Criteria.where("category").is(category.trim()));
+        }
+
+        if (startDate != null && endDate != null) {
+            criteriaList.add(Criteria.where("transactionDate").gte(startDate).lte(endDate));
+        } else if (startDate != null) {
+            criteriaList.add(Criteria.where("transactionDate").gte(startDate));
+        } else if (endDate != null) {
+            criteriaList.add(Criteria.where("transactionDate").lte(endDate));
+        }
+
+        if (search != null && !search.trim().isEmpty()) {
+            Pattern regex = Pattern.compile(Pattern.quote(search.trim()), Pattern.CASE_INSENSITIVE);
+            criteriaList.add(new Criteria().orOperator(
+                Criteria.where("merchant").regex(regex),
+                Criteria.where("description").regex(regex),
+                Criteria.where("referenceNumber").regex(regex)
+            ));
+        }
+
+        Query query = new Query();
+        if (!criteriaList.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(criteriaList.toArray(new Criteria[0])));
+        }
+
+        long total = mongoTemplate.count(query, Transaction.class);
+        query.with(pageable);
+        List<Transaction> items = mongoTemplate.find(query, Transaction.class);
+
+        return new PageImpl<>(items, pageable, total);
     }
 
     public Transaction getTransactionById(String id) {
