@@ -10,10 +10,6 @@ import {
   PieChart,
   PlusCircle,
   UploadCloud,
-  Calendar,
-  HandCoins,
-  ArrowRight,
-  Sliders,
   ChevronDown,
   ChevronUp,
   ArrowDownRight,
@@ -26,6 +22,11 @@ import {
   RefreshCw,
   Lock,
   Check,
+  Target,
+  Flag,
+  Coins,
+  Banknote,
+  Sliders,
 } from "lucide-react";
 import {
   DashboardSummary,
@@ -36,7 +37,7 @@ import {
   Transaction,
   CalendarDaySummary,
 } from "@/types";
-import { formatCurrency, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { getCategoryTheme } from "@/lib/category-theme";
 import { ChartPeriod, ChartPeriodStats } from "@/components/dashboard/ExpenseChart";
 import { api } from "@/lib/api";
@@ -75,6 +76,14 @@ interface MobileDashboardProps {
   onEditTransaction?: (txn: Transaction) => void;
   onDeleteTransaction?: (id: string) => void;
 }
+
+// Precise currency formatting with 2 decimal places as in the reference screenshot
+const formatExactCurrency = (amt: number) => {
+  return "₹" + Math.abs(amt).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
 export default function MobileDashboard({
   summary,
@@ -277,7 +286,7 @@ export default function MobileDashboard({
       ? Math.max(0, Math.min(100, Math.round((netSavings / totalIncome) * 100)))
       : 0;
 
-  // Dynamically calculated Period Metrics
+  // Period Metrics for Cards
   const periodMetrics = useMemo(() => {
     if (chartPeriod === "WEEKLY" && weeklyData.length > 0) {
       const exp = weeklyData.reduce((acc, p) => acc + p.expenses, 0);
@@ -289,7 +298,7 @@ export default function MobileDashboard({
         income: inc,
         savings: sav,
         savingsRate: rate,
-        heroTitle: "Net Weekly Savings",
+        heroTitle: "Net Monthly Savings",
         heroSubtitle: `${selectedMonthName || summary?.activeMonthName || "Current Month"} (Weekly)`,
         expensesLabel: "Total Outflow",
         incomeLabel: "Total Inflow",
@@ -309,7 +318,7 @@ export default function MobileDashboard({
         income: inc,
         savings: sav,
         savingsRate: rate,
-        heroTitle: `Net Annual Savings (${currentYearData?.label || activeYear})`,
+        heroTitle: "Net Monthly Savings",
         heroSubtitle: `Full Year ${currentYearData?.label || activeYear}`,
         expensesLabel: "Total Outflow",
         incomeLabel: "Total Inflow",
@@ -354,10 +363,10 @@ export default function MobileDashboard({
     }
   }, [chartPeriod, periodMetrics, onPeriodStatsChange]);
 
-  // Max value calculation for bar heights
-  const maxVal = useMemo(() => {
-    if (!activePoints || activePoints.length === 0) return 1000;
-    return Math.max(...activePoints.map((p) => Math.max(p.expenses, p.income, 1)), 1000);
+  // Fixed max scale 6K matching reference screenshot or scaled dynamically
+  const chartMax = useMemo(() => {
+    const rawMax = Math.max(...activePoints.map((p) => Math.max(p.expenses, p.income, 1)), 6000);
+    return Math.max(6000, Math.ceil(rawMax / 1000) * 1000);
   }, [activePoints]);
 
   // Categories breakdown
@@ -373,27 +382,44 @@ export default function MobileDashboard({
   const recentTxns = summary?.recentTransactions?.slice(0, 5) || [];
 
   return (
-    <div className="md:hidden pb-32 select-none bg-[#F7F6FC] min-h-screen">
+    <div className="md:hidden pb-32 select-none bg-[#F6F4FA] min-h-screen">
       {/* ========================================================================= */}
-      {/* 1. EXACT REFERENCE HERO SECTION WITH ORGANIC WAVES & SHINING GOLD ACCENTS  */}
+      {/* 1. EXACT REFERENCE HERO SECTION: DEEP PURPLE + SHINING GOLD CURVY WAVES   */}
       {/* ========================================================================= */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#160228] via-[#2A0750] to-[#3C0B76] text-white pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 shadow-lg">
-        {/* Ambient Radial Lights */}
+      <div className="relative overflow-hidden bg-gradient-to-b from-[#18022E] via-[#2A0550] to-[#3C0974] text-white pt-[calc(env(safe-area-inset-top)+14px)] pb-14 px-5 shadow-lg">
+        {/* Ambient Glows */}
         <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
         <div className="absolute top-12 left-0 w-60 h-60 rounded-full bg-indigo-500/15 blur-2xl pointer-events-none" />
 
+        {/* Ambient Warm Golden Flare behind the wave crest */}
+        <div className="absolute bottom-6 right-6 w-44 h-28 bg-gradient-to-r from-amber-400/35 via-yellow-400/25 to-transparent blur-2xl rounded-full pointer-events-none z-10" />
+
         {/* TOP BRAND BAR */}
         <div className="flex items-center justify-between gap-3 relative z-20">
-          {/* Logo: Finora BY PAYTRACE */}
+          {/* Logo: Stylized Ribbon F + Finora BY PAYTRACE */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#9B51E0] to-[#E056FD] flex items-center justify-center shadow-lg shadow-purple-950/60 ring-1 ring-white/20">
-              <span className="text-white font-black text-lg italic tracking-tighter">F</span>
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-white tracking-tight leading-none">
+            <svg width="34" height="34" viewBox="0 0 36 36" fill="none" className="shrink-0 drop-shadow-md">
+              <defs>
+                <linearGradient id="finoraLogoGradRef" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#C084FC" />
+                  <stop offset="50%" stopColor="#A855F7" />
+                  <stop offset="100%" stopColor="#7E22CE" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M7 8.5C12.5 5.5 22 5.5 29 8C27 12 20 13.5 12.5 14.5L12 28C9.5 27 7.5 25 7 22.5L7 8.5Z"
+                fill="url(#finoraLogoGradRef)"
+              />
+              <path
+                d="M12.5 16.5C17 15 22.5 15.2 26 17.2C24.5 20.2 19 21 12.5 21.2V16.5Z"
+                fill="#E9D5FF"
+              />
+            </svg>
+            <div className="flex flex-col justify-center">
+              <span className="text-xl font-black text-white tracking-tight leading-none">
                 Finora
-              </h2>
-              <span className="text-[8px] font-bold text-purple-200/80 tracking-[0.24em] uppercase block mt-1">
+              </span>
+              <span className="text-[8.5px] font-bold text-purple-200/90 tracking-[0.24em] uppercase leading-none mt-1">
                 BY PAYTRACE
               </span>
             </div>
@@ -435,19 +461,19 @@ export default function MobileDashboard({
         </div>
 
         {/* HERO TITLE & MONTH PICKER */}
-        <div className="mt-6 relative z-20">
+        <div className="mt-5 relative z-20">
           {/* Active Month Dropdown Trigger */}
           <button
             type="button"
             onClick={() => setShowMonthPicker(true)}
-            className="inline-flex items-center gap-1.5 text-[11px] font-extrabold tracking-widest text-purple-200/90 uppercase hover:text-white transition-colors cursor-pointer select-none"
+            className="inline-flex items-center gap-1.5 text-xs font-black tracking-wider text-purple-200/90 uppercase hover:text-white transition-colors cursor-pointer select-none"
           >
             <span>{selectedMonthName || summary?.activeMonthName || "NOVEMBER 2026"}</span>
             <ChevronDown className="w-3.5 h-3.5 text-purple-300" />
           </button>
 
           {/* Heading */}
-          <h1 className="text-2xl font-black text-white tracking-tight leading-tight mt-1">
+          <h1 className="text-2xl font-black text-white tracking-tight leading-tight mt-0.5">
             Financial Overview
           </h1>
 
@@ -473,7 +499,7 @@ export default function MobileDashboard({
           >
             <defs>
               {/* Luxury Gold Shimmer Gradient */}
-              <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient id="finoraGoldGradientRef" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#FFF7D6" />
                 <stop offset="20%" stopColor="#FFD700" />
                 <stop offset="50%" stopColor="#FFA000" />
@@ -482,55 +508,62 @@ export default function MobileDashboard({
               </linearGradient>
 
               {/* Glowing Drop Shadow Filter for Gold Contour */}
-              <filter id="goldGlow" x="-20%" y="-40%" width="140%" height="180%">
+              <filter id="finoraGoldGlowRef" x="-25%" y="-45%" width="150%" height="190%">
                 <feDropShadow
                   dx="0"
                   dy="0"
-                  stdDeviation="2.8"
+                  stdDeviation="3.2"
                   floodColor="#FFC107"
-                  floodOpacity="0.9"
+                  floodOpacity="0.95"
+                />
+                <feDropShadow
+                  dx="0"
+                  dy="0"
+                  stdDeviation="6"
+                  floodColor="#FF9800"
+                  floodOpacity="0.65"
                 />
               </filter>
 
               {/* Back Wave Gradient */}
-              <linearGradient id="backWaveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#4A0E7E" stopOpacity="0.80" />
-                <stop offset="100%" stopColor="#22033F" stopOpacity="0.95" />
+              <linearGradient id="backWaveGradRef" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#4A0E7E" stopOpacity="0.85" />
+                <stop offset="100%" stopColor="#22033F" stopOpacity="0.98" />
               </linearGradient>
 
               {/* Front Wave Gradient */}
-              <linearGradient id="frontWaveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#6D1E9E" stopOpacity="0.85" />
-                <stop offset="100%" stopColor="#2A054E" stopOpacity="0.98" />
+              <linearGradient id="frontWaveGradRef" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#6D1E9E" stopOpacity="0.90" />
+                <stop offset="100%" stopColor="#2A054E" stopOpacity="1.0" />
               </linearGradient>
             </defs>
 
             {/* Back Wave Body */}
             <path
-              d="M0,62 C110,95 240,15 400,58 L400,135 L0,135 Z"
-              fill="url(#backWaveGrad)"
+              d="M-10,58 C110,92 240,12 410,52 L410,135 L-10,135 Z"
+              fill="url(#backWaveGradRef)"
             />
             {/* Back Wave Golden Glowing Contour Line */}
             <path
-              d="M0,62 C110,95 240,15 400,58"
-              stroke="url(#goldGradient)"
-              strokeWidth="2.8"
+              d="M-10,58 C110,92 240,12 410,52"
+              stroke="url(#finoraGoldGradientRef)"
+              strokeWidth="3"
               fill="none"
-              filter="url(#goldGlow)"
+              filter="url(#finoraGoldGlowRef)"
             />
 
             {/* Front Wave Body */}
             <path
-              d="M0,98 C115,58 250,112 400,72 L400,135 L0,135 Z"
-              fill="url(#frontWaveGrad)"
+              d="M-10,95 C115,55 250,110 410,68 L410,135 L-10,135 Z"
+              fill="url(#frontWaveGradRef)"
             />
             {/* Front Wave Golden Glowing Contour Line */}
             <path
-              d="M0,98 C115,58 250,112 400,72"
-              stroke="url(#goldGradient)"
-              strokeWidth="2.2"
+              d="M-10,95 C115,55 250,110 410,68"
+              stroke="url(#finoraGoldGradientRef)"
+              strokeWidth="2.4"
               fill="none"
-              filter="url(#goldGlow)"
+              filter="url(#finoraGoldGlowRef)"
             />
           </svg>
         </div>
@@ -539,16 +572,16 @@ export default function MobileDashboard({
       {/* ========================================================================= */}
       {/* 2. FLOATING CONTENT BODY (OVERLAPPING HERO WAVES)                          */}
       {/* ========================================================================= */}
-      <div className="px-4 -mt-10 relative z-20 space-y-3.5">
+      <div className="px-4 -mt-8 relative z-20 space-y-3.5">
         {/* ========================================================= */}
         {/* CARD 1: NET MONTHLY SAVINGS HERO CARD                     */}
         {/* ========================================================= */}
-        <div className="rounded-[28px] bg-white border border-slate-100 shadow-[0_12px_36px_rgba(26,4,54,0.07)] p-4.5 relative overflow-hidden">
+        <div className="rounded-[28px] bg-white border border-slate-100 shadow-[0_12px_36px_rgba(26,4,54,0.07)] p-5 relative overflow-hidden">
           {/* Card Top Row */}
           <div className="flex items-center justify-between text-xs mb-1">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100/90 flex items-center justify-center shrink-0">
-                <Wallet className="w-3.5 h-3.5" />
+              <div className="w-7 h-7 rounded-lg bg-[#F2EDFF] text-[#6C3BFF] flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4 text-[#6C3BFF]" />
               </div>
               <span className="font-bold text-slate-800 text-xs">
                 {periodMetrics.heroTitle}
@@ -558,21 +591,21 @@ export default function MobileDashboard({
             {/* Status Badge: Deficit vs Saved */}
             <span
               className={cn(
-                "px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-colors",
+                "px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors",
                 periodMetrics.savings < 0
-                  ? "bg-[#FEEAEA] text-[#E53935] border border-rose-100"
-                  : "bg-[#E8F8F0] text-[#10B981] border border-emerald-100"
+                  ? "bg-[#FEEAEA] text-[#E53935]"
+                  : "bg-[#E8F8F0] text-[#10B981]"
               )}
             >
               {periodMetrics.savings < 0 ? (
                 <>
-                  <TrendingDown className="w-3 h-3 text-[#E53935]" />
+                  <TrendingDown className="w-3.5 h-3.5 text-[#E53935]" />
                   <span>Deficit</span>
                 </>
               ) : (
                 <>
-                  <TrendingUp className="w-3 h-3 text-[#10B981]" />
-                  <span>{periodMetrics.savingsRate}% saved</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-[#10B981]" />
+                  <span>{periodMetrics.savingsRate}% of income</span>
                 </>
               )}
             </span>
@@ -582,24 +615,24 @@ export default function MobileDashboard({
           <div className="mt-1">
             <span
               className={cn(
-                "text-3xl font-black tracking-tight tabular-nums",
+                "text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums",
                 periodMetrics.savings < 0 ? "text-[#E53935]" : "text-[#10B981]"
               )}
             >
               {periodMetrics.savings < 0 ? "-" : "+"}
-              {formatCurrency(Math.abs(periodMetrics.savings))}
+              {formatExactCurrency(periodMetrics.savings)}
             </span>
           </div>
 
           {/* Progress Bar & Rate of Income */}
           <div className="flex items-center gap-3 mt-3">
-            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-[#ECE9F5] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] transition-all duration-500"
+                className="h-full rounded-full bg-[#6C3BFF] transition-all duration-500"
                 style={{ width: `${Math.max(5, Math.min(100, periodMetrics.savingsRate))}%` }}
               />
             </div>
-            <span className="text-[11px] font-semibold text-slate-400 shrink-0">
+            <span className="text-xs font-semibold text-slate-400 shrink-0">
               {periodMetrics.savingsRate}% of income
             </span>
           </div>
@@ -607,7 +640,7 @@ export default function MobileDashboard({
           {/* Transactions Count Link */}
           <Link
             href="/transactions"
-            className="flex items-center justify-between pt-3 mt-3.5 border-t border-slate-100/90 text-slate-600 hover:text-slate-900 transition-colors group cursor-pointer"
+            className="flex items-center justify-between pt-3.5 mt-3 border-t border-slate-100 text-slate-600 hover:text-slate-900 transition-colors group cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-[#6C3BFF] group-hover:scale-105 transition-transform" />
@@ -624,14 +657,20 @@ export default function MobileDashboard({
         {/* ========================================================= */}
         <div className="grid grid-cols-2 gap-3">
           {/* Expenses Card */}
-          <div className="rounded-2xl bg-white border border-rose-100/80 p-3.5 shadow-2xs relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+          <div className="rounded-2xl bg-white border border-rose-100/60 p-4 shadow-xs relative overflow-hidden flex flex-col justify-between min-h-[115px]">
             {/* Ambient soft wave glow in corner */}
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-tl from-rose-200/40 via-rose-100/20 to-transparent pointer-events-none" />
+            <svg
+              viewBox="0 0 100 60"
+              fill="none"
+              className="absolute bottom-0 right-0 w-24 h-16 pointer-events-none opacity-85"
+            >
+              <path d="M0,60 C30,30 70,50 100,20 L100,60 Z" fill="#FEECEF" />
+            </svg>
 
             {/* Header */}
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-1.5">
-                <div className="w-6 h-6 rounded-lg bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center shrink-0">
+                <div className="w-6 h-6 rounded-lg bg-rose-50 flex items-center justify-center text-[#E53935] shrink-0">
                   <Wallet className="w-3.5 h-3.5" />
                 </div>
                 <span className="text-xs font-bold text-slate-800">
@@ -642,32 +681,38 @@ export default function MobileDashboard({
                     : "Expenses"}
                 </span>
               </div>
-              <div className="w-5 h-5 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center text-[#E53935]">
                 <ArrowDownRight className="w-3.5 h-3.5" />
               </div>
             </div>
 
             {/* Figures */}
             <div className="relative z-10 mt-2">
-              <div className="text-lg font-black text-[#E53935] tabular-nums">
-                {formatCurrency(periodMetrics.expenses)}
+              <div className="text-xl font-black text-[#E53935] tabular-nums">
+                {formatExactCurrency(periodMetrics.expenses)}
               </div>
-              <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+              <span className="text-xs text-slate-400 font-medium block mt-0.5">
                 {periodMetrics.expensesLabel}
               </span>
             </div>
           </div>
 
           {/* Income Card */}
-          <div className="rounded-2xl bg-white border border-emerald-100/80 p-3.5 shadow-2xs relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+          <div className="rounded-2xl bg-white border border-emerald-100/60 p-4 shadow-xs relative overflow-hidden flex flex-col justify-between min-h-[115px]">
             {/* Ambient soft wave glow in corner */}
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-tl from-emerald-200/40 via-emerald-100/20 to-transparent pointer-events-none" />
+            <svg
+              viewBox="0 0 100 60"
+              fill="none"
+              className="absolute bottom-0 right-0 w-24 h-16 pointer-events-none opacity-85"
+            >
+              <path d="M0,60 C30,30 70,50 100,20 L100,60 Z" fill="#EAF8F1" />
+            </svg>
 
             {/* Header */}
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-1.5">
-                <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-3.5 h-3.5" />
+                <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center text-[#00A86B] shrink-0">
+                  <Banknote className="w-3.5 h-3.5" />
                 </div>
                 <span className="text-xs font-bold text-slate-800">
                   {chartPeriod === "WEEKLY"
@@ -677,17 +722,17 @@ export default function MobileDashboard({
                     : "Income"}
                 </span>
               </div>
-              <div className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center text-[#00A86B]">
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
             </div>
 
             {/* Figures */}
             <div className="relative z-10 mt-2">
-              <div className="text-lg font-black text-[#10B981] tabular-nums">
-                {formatCurrency(periodMetrics.income)}
+              <div className="text-xl font-black text-[#00A86B] tabular-nums">
+                {formatExactCurrency(periodMetrics.income)}
               </div>
-              <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+              <span className="text-xs text-slate-400 font-medium block mt-0.5">
                 {periodMetrics.incomeLabel}
               </span>
             </div>
@@ -695,26 +740,26 @@ export default function MobileDashboard({
         </div>
 
         {/* ========================================================= */}
-        {/* CARD 3: CASHFLOW FLOW (BAR CHART WITH M / W / Y TOGGLE)   */}
+        {/* CARD 3: CASHFLOW FLOW (BAR CHART WITH DOTTED GRIDLINES)   */}
         {/* ========================================================= */}
-        <div className="rounded-3xl bg-white border border-slate-100 shadow-2xs p-4">
+        <div className="rounded-3xl bg-white border border-slate-100 shadow-xs p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-purple-50 border border-purple-100 text-[#6C3BFF] flex items-center justify-center">
+              <div className="w-7 h-7 rounded-xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div>
                 <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
                   Cashflow Flow
                 </h4>
-                <span className="text-[10px] text-slate-400 block -mt-0.5">
+                <span className="text-[11px] text-slate-400 block -mt-0.5">
                   Inflow vs Outflow
                 </span>
               </div>
             </div>
 
             {/* Segmented Period Control: M | W | Y */}
-            <div className="flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200/80 text-[11px] font-bold">
+            <div className="flex items-center p-0.5 rounded-xl bg-[#F0EDF7] text-xs font-bold">
               {(["MONTHLY", "WEEKLY", "YEARLY"] as ChartPeriod[]).map((period) => {
                 const isActive = chartPeriod === period;
                 return (
@@ -735,7 +780,7 @@ export default function MobileDashboard({
                     {isActive && (
                       <motion.div
                         layoutId="activeChartPeriodPill"
-                        className="absolute inset-0 rounded-lg bg-[#6C3BFF] shadow-xs"
+                        className="absolute inset-0 rounded-lg bg-[#6C3BFF] shadow-2xs"
                         transition={{ type: "spring", stiffness: 450, damping: 32 }}
                       />
                     )}
@@ -773,7 +818,7 @@ export default function MobileDashboard({
                       }
                     >
                       {inspectedPoint.savings >= 0 ? "+" : ""}
-                      {formatCurrency(inspectedPoint.savings)}
+                      {formatExactCurrency(inspectedPoint.savings)}
                     </strong>
                   </span>
                 </div>
@@ -781,10 +826,10 @@ export default function MobileDashboard({
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right text-[11px] font-bold">
                     <span className="text-emerald-600 block">
-                      +{formatCurrency(inspectedPoint.income)}
+                      +{formatExactCurrency(inspectedPoint.income)}
                     </span>
                     <span className="text-rose-600 block">
-                      -{formatCurrency(inspectedPoint.expenses)}
+                      -{formatExactCurrency(inspectedPoint.expenses)}
                     </span>
                   </div>
                   <button
@@ -803,7 +848,7 @@ export default function MobileDashboard({
             )}
           </AnimatePresence>
 
-          {/* Chart Bars */}
+          {/* DOTTED GRIDLINE BAR CHART */}
           {weeklyLoading && chartPeriod === "WEEKLY" ? (
             <div className="h-44 flex items-end justify-between gap-2 pt-4 px-1">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -817,90 +862,107 @@ export default function MobileDashboard({
               ))}
             </div>
           ) : activePoints.length > 0 ? (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={chartPeriod}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="h-44 flex items-end justify-between gap-2 pt-4 px-1">
-                  {activePoints.map((pt, idx) => {
-                    const expenseH = Math.max(8, Math.round((pt.expenses / maxVal) * 100));
-                    const incomeH = Math.max(8, Math.round((pt.income / maxVal) * 100));
-                    const isSelected =
-                      inspectedPoint?.id === pt.id ||
-                      (!inspectedPoint &&
-                        chartPeriod === "MONTHLY" &&
-                        selectedMonthKey === pt.id) ||
-                      (!inspectedPoint &&
-                        chartPeriod === "YEARLY" &&
-                        pt.year === activeYear);
+            <div className="relative pt-2">
+              <div className="relative h-44 w-full flex">
+                {/* Y-Axis Labels: 6K, 5K, 4K, 3K, 2K, 1K, 0 */}
+                <div className="flex flex-col justify-between text-[10px] text-slate-400 font-semibold pr-2 pb-5 h-36 shrink-0 text-right w-6">
+                  <span>6K</span>
+                  <span>5K</span>
+                  <span>4K</span>
+                  <span>3K</span>
+                  <span>2K</span>
+                  <span>1K</span>
+                  <span>0</span>
+                </div>
 
-                    return (
+                {/* Chart Canvas with Horizontal Dotted Gridlines */}
+                <div className="relative flex-1 h-36 flex items-end">
+                  {/* 7 Horizontal Dotted Lines */}
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                    {[6, 5, 4, 3, 2, 1, 0].map((val) => (
                       <div
-                        key={pt.id || idx}
-                        onClick={() => {
-                          if (inspectedPoint?.id === pt.id) {
-                            setInspectedPoint(null);
-                          } else {
-                            setInspectedPoint(pt);
-                          }
-                          if (chartPeriod === "MONTHLY" && pt.originalPoint) {
-                            if (selectedMonthKey === pt.id) {
-                              onResetMonth();
-                            } else {
-                              onSelectMonth(pt.originalPoint);
-                            }
-                          } else if (chartPeriod === "YEARLY" && pt.year) {
-                            const yrPoints = monthlyChart?.points?.filter(
-                              (p) => p.year === pt.year
-                            );
-                            if (yrPoints && yrPoints.length > 0) {
-                              onSelectMonth(yrPoints[yrPoints.length - 1]);
-                            }
-                          }
-                        }}
-                        className={cn(
-                          "flex-1 flex flex-col items-center gap-1 cursor-pointer transition-transform active:scale-95 group",
-                          isSelected ? "scale-105" : ""
-                        )}
-                      >
-                        <div className="w-full flex items-end justify-center gap-1 h-32">
-                          {/* Income Bar (Mint Green) */}
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: `${incomeH}%` }}
-                            transition={{ type: "spring", stiffness: 320, damping: 26 }}
-                            className={cn(
-                              "w-full max-w-[12px] rounded-t-sm transition-colors duration-300",
-                              isSelected
-                                ? "bg-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.4)] ring-1 ring-emerald-300"
-                                : "bg-emerald-400/80 group-hover:bg-emerald-500"
-                            )}
-                            title={`Income: ${formatCurrency(pt.income)}`}
-                          />
-                          {/* Expense Bar (Finora Violet) */}
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: `${expenseH}%` }}
-                            transition={{ type: "spring", stiffness: 320, damping: 26 }}
-                            className={cn(
-                              "w-full max-w-[12px] rounded-t-sm transition-colors duration-300",
-                              isSelected
-                                ? "bg-[#6C3BFF] shadow-[0_2px_8px_rgba(108,59,255,0.4)] ring-1 ring-purple-300"
-                                : "bg-purple-300/85 group-hover:bg-purple-400"
-                            )}
-                            title={`Expenses: ${formatCurrency(pt.expenses)}`}
-                          />
-                        </div>
+                        key={val}
+                        className="w-full border-b border-dashed border-slate-200/90"
+                      />
+                    ))}
+                  </div>
 
-                        {/* Label */}
-                        <div className="text-center">
+                  {/* Dual Bars for each month */}
+                  <div className="relative z-10 w-full h-full flex items-end justify-between px-1">
+                    {activePoints.map((pt, idx) => {
+                      const expenseH = Math.max(6, Math.min(100, Math.round((pt.expenses / chartMax) * 100)));
+                      const incomeH = Math.max(6, Math.min(100, Math.round((pt.income / chartMax) * 100)));
+                      const isSelected =
+                        inspectedPoint?.id === pt.id ||
+                        (!inspectedPoint &&
+                          chartPeriod === "MONTHLY" &&
+                          selectedMonthKey === pt.id) ||
+                        (!inspectedPoint &&
+                          chartPeriod === "YEARLY" &&
+                          pt.year === activeYear);
+
+                      return (
+                        <div
+                          key={pt.id || idx}
+                          onClick={() => {
+                            if (inspectedPoint?.id === pt.id) {
+                              setInspectedPoint(null);
+                            } else {
+                              setInspectedPoint(pt);
+                            }
+                            if (chartPeriod === "MONTHLY" && pt.originalPoint) {
+                              if (selectedMonthKey === pt.id) {
+                                onResetMonth();
+                              } else {
+                                onSelectMonth(pt.originalPoint);
+                              }
+                            } else if (chartPeriod === "YEARLY" && pt.year) {
+                              const yrPoints = monthlyChart?.points?.filter(
+                                (p) => p.year === pt.year
+                              );
+                              if (yrPoints && yrPoints.length > 0) {
+                                onSelectMonth(yrPoints[yrPoints.length - 1]);
+                              }
+                            }
+                          }}
+                          className={cn(
+                            "flex-1 flex flex-col items-center gap-1 cursor-pointer transition-transform active:scale-95 group",
+                            isSelected ? "scale-105" : ""
+                          )}
+                        >
+                          <div className="w-full flex items-end justify-center gap-1 h-32">
+                            {/* Inflow Bar (Mint Green) */}
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: `${incomeH}%` }}
+                              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                              className={cn(
+                                "w-full max-w-[13px] rounded-t-sm transition-colors duration-300",
+                                isSelected
+                                  ? "bg-[#10B981] shadow-[0_2px_8px_rgba(16,185,129,0.5)] ring-1 ring-emerald-300"
+                                  : "bg-[#34D399] group-hover:bg-[#10B981]"
+                              )}
+                              title={`Inflow: ${formatExactCurrency(pt.income)}`}
+                            />
+                            {/* Outflow Bar (Purple) */}
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: `${expenseH}%` }}
+                              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                              className={cn(
+                                "w-full max-w-[13px] rounded-t-sm transition-colors duration-300",
+                                isSelected
+                                  ? "bg-[#8B5CF6] shadow-[0_2px_8px_rgba(139,92,246,0.5)] ring-1 ring-purple-300"
+                                  : "bg-[#A855F7] group-hover:bg-[#8B5CF6]"
+                              )}
+                              title={`Outflow: ${formatExactCurrency(pt.expenses)}`}
+                            />
+                          </div>
+
+                          {/* Month Label */}
                           <span
                             className={cn(
-                              "text-[10px] font-bold block truncate transition-colors",
+                              "text-[11px] font-semibold block truncate transition-colors",
                               isSelected
                                 ? "text-[#6C3BFF] font-black underline underline-offset-2"
                                 : "text-slate-500 group-hover:text-slate-800"
@@ -909,29 +971,24 @@ export default function MobileDashboard({
                             {pt.label}
                           </span>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Legend */}
-                <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 text-[10px] text-slate-500 font-semibold">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
-                      Inflow
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#6C3BFF]" />
-                      Outflow
-                    </span>
+                      );
+                    })}
                   </div>
-                  <span className="text-[9px] text-slate-400 font-normal">
-                    Tap bar to filter
-                  </span>
                 </div>
-              </motion.div>
-            </AnimatePresence>
+              </div>
+
+              {/* Legend below */}
+              <div className="flex items-center gap-5 pt-3 mt-2 border-t border-slate-100 text-xs font-semibold text-slate-600">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
+                  Inflow
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]" />
+                  Outflow
+                </span>
+              </div>
+            </div>
           ) : (
             <div className="h-32 flex items-center justify-center text-xs text-slate-400">
               No cashflow data available.
@@ -940,15 +997,15 @@ export default function MobileDashboard({
         </div>
 
         {/* ========================================================= */}
-        {/* ROW 4: THE 4 QUICK ACTION BUTTONS (INSPIRED BY REFERENCE) */}
+        {/* ROW 4: THE 4 QUICK ACTION BUTTONS (EXACT REFERENCE STYLE) */}
         {/* ========================================================= */}
         <div className="grid grid-cols-4 gap-2.5">
           {/* 1. Add Transaction */}
           <Link
             href="/transactions?action=new"
-            className="p-3 rounded-2xl bg-white border border-slate-100/90 shadow-2xs flex flex-col items-center justify-center text-center gap-1.5 active:scale-95 transition-all cursor-pointer group"
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100/80 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
               <PlusCircle className="w-5 h-5 text-[#6C3BFF]" />
             </div>
             <span className="text-[11px] font-bold text-slate-800 leading-tight">
@@ -960,40 +1017,40 @@ export default function MobileDashboard({
           <button
             type="button"
             onClick={onOpenBudgetModal}
-            className="p-3 rounded-2xl bg-white border border-slate-100/90 shadow-2xs flex flex-col items-center justify-center text-center gap-1.5 active:scale-95 transition-all cursor-pointer group"
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100/80 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Sliders className="w-5 h-5 text-[#6C3BFF]" />
+            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Target className="w-5 h-5 text-[#6C3BFF]" />
             </div>
             <span className="text-[11px] font-bold text-slate-800 leading-tight">
               Set<br />Budget
             </span>
           </button>
 
-          {/* 3. Goals / CSV Import */}
+          {/* 3. Goals */}
           <button
             type="button"
             onClick={onOpenCsvModal}
-            className="p-3 rounded-2xl bg-white border border-slate-100/90 shadow-2xs flex flex-col items-center justify-center text-center gap-1.5 active:scale-95 transition-all cursor-pointer group"
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100/80 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <UploadCloud className="w-5 h-5 text-[#6C3BFF]" />
+            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Flag className="w-5 h-5 text-[#6C3BFF]" />
             </div>
-            <span className="text-[11px] font-bold text-slate-800 leading-tight">
-              Import<br />CSV
+            <span className="text-[11px] font-bold text-slate-800 leading-tight mt-1">
+              Goals
             </span>
           </button>
 
-          {/* 4. Debt & Lent / Reports */}
+          {/* 4. Reports */}
           <Link
             href="/debt-lent"
-            className="p-3 rounded-2xl bg-white border border-slate-100/90 shadow-2xs flex flex-col items-center justify-center text-center gap-1.5 active:scale-95 transition-all cursor-pointer group"
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100/80 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <HandCoins className="w-5 h-5 text-[#6C3BFF]" />
+            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <BarChart3 className="w-5 h-5 text-[#6C3BFF]" />
             </div>
-            <span className="text-[11px] font-bold text-slate-800 leading-tight">
-              Debt &<br />Lent
+            <span className="text-[11px] font-bold text-slate-800 leading-tight mt-1">
+              Reports
             </span>
           </Link>
         </div>
@@ -1049,7 +1106,7 @@ export default function MobileDashboard({
                       </div>
                       <div className="text-right shrink-0">
                         <span className="font-bold text-slate-900 text-xs">
-                          {formatCurrency(amt)}
+                          {formatExactCurrency(amt)}
                         </span>
                         <span className="text-[10px] text-slate-400 ml-1">({pct}%)</span>
                       </div>
@@ -1162,7 +1219,7 @@ export default function MobileDashboard({
                         )}
                       >
                         {isExpense ? "-" : "+"}
-                        {formatCurrency(txn.amount)}
+                        {formatExactCurrency(txn.amount)}
                       </span>
                     </div>
                   </div>
@@ -1207,7 +1264,7 @@ export default function MobileDashboard({
                 <button
                   type="button"
                   onClick={() => setShowMonthPicker(false)}
-                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400"
+                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1237,7 +1294,7 @@ export default function MobileDashboard({
                       <div>
                         <span className="text-sm block">{pt.month} {pt.year || ""}</span>
                         <span className="text-[10px] text-slate-400 font-normal">
-                          Expenses: {formatCurrency(pt.expenses)} · Inflow: {formatCurrency(pt.income)}
+                          Expenses: {formatExactCurrency(pt.expenses)} · Inflow: {formatExactCurrency(pt.income)}
                         </span>
                       </div>
                       {isCurrentSelected && (
