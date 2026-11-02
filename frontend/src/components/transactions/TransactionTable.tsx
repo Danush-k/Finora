@@ -3,8 +3,9 @@
 import React from "react";
 import { Transaction } from "@/types";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import { ArrowDownRight, ArrowUpRight, Edit2, Trash2 } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Edit2, Trash2, Search } from "lucide-react";
 import CategoryBadge from "@/components/common/CategoryBadge";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -21,10 +22,10 @@ export default function TransactionTable({
   loading = false,
   isFetching = false,
 }: TransactionTableProps) {
-  // Only display skeleton when initial load is underway and no transactions exist yet
+  // Skeleton loader for initial load when no data exists yet
   if (loading && (!transactions || transactions.length === 0)) {
     return (
-      <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs animate-fadeIn">
+      <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs min-h-[420px]">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
@@ -57,20 +58,49 @@ export default function TransactionTable({
     );
   }
 
+  // Stable empty state that doesn't collapse page height
   if (!transactions || transactions.length === 0) {
     return (
-      <div className="w-full py-16 text-center text-xs text-slate-400 liquid-glass rounded-2xl border border-slate-200/80">
-        No transactions match the selected filters.
+      <div className="w-full min-h-[380px] flex flex-col items-center justify-center py-16 text-center liquid-glass rounded-2xl border border-slate-200/80 shadow-xs relative">
+        {isFetching && (
+          <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] animate-pulse z-20 pointer-events-none" />
+        )}
+        <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#6C3BFF] border border-purple-100 flex items-center justify-center mb-3 shadow-2xs">
+          <Search className="w-5 h-5" />
+        </div>
+        <p className="text-sm font-bold text-slate-800">No transactions found</p>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm px-4">
+          No records match your active search or filters. Try adjusting your query or resetting filters.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs relative">
-      {/* Non-destructive Apple-style subtle progress line during background fetch */}
+    <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs relative min-h-[420px] transition-all duration-200">
+      {/* 1. Subtle top progress beam during page transitions or search queries */}
       {isFetching && (
-        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-purple-500 via-indigo-400 to-purple-600 animate-pulse z-20 pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] animate-pulse z-20 pointer-events-none" />
       )}
+
+      {/* 2. Frosted loading indicator overlay (non-blocking, keeps layout intact) */}
+      <AnimatePresence>
+        {isFetching && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute inset-0 bg-white/35 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none"
+          >
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 border border-purple-100 shadow-[0_4px_16px_rgba(108,59,255,0.12)] text-xs font-semibold text-[#5228E0]">
+              <div className="w-3.5 h-3.5 border-2 border-[#6C3BFF] border-t-transparent rounded-full animate-spin shrink-0" />
+              <span>Updating transactions...</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="overflow-x-auto">
         <table className={cn("w-full text-left text-xs transition-opacity duration-200", isFetching && "opacity-75")}>
           <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
@@ -85,12 +115,19 @@ export default function TransactionTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
-            {transactions.map((txn) => {
+            {transactions.map((txn, index) => {
               const isExpense = txn.transactionType === "EXPENSE";
 
               return (
-                <tr
+                <motion.tr
                   key={txn.id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.18,
+                    delay: Math.min(index * 0.015, 0.15),
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
                   className="hover:bg-slate-50/70 transition-colors group"
                 >
                   {/* Date */}
@@ -185,7 +222,7 @@ export default function TransactionTable({
                       </button>
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               );
             })}
           </tbody>

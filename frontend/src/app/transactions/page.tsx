@@ -127,16 +127,37 @@ function TransactionsContent() {
       isInitialSearchMount.current = false;
       return;
     }
+    // If search was cleared, immediately reload full list
+    if (search.trim() === "") {
+      setPage(0);
+      loadTransactions("", typeFilter, categoryFilter, 0);
+      return;
+    }
     const timer = setTimeout(() => {
       setPage(0);
       loadTransactions(search, typeFilter, categoryFilter, 0);
-    }, 280);
+    }, 450);
     return () => clearTimeout(timer);
   }, [search]);
 
   const handleSearchSubmit = (val: string = search) => {
     setPage(0);
     loadTransactions(val, typeFilter, categoryFilter, 0);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === page || isFetching) return;
+    setPage(newPage);
+    const anchor = document.getElementById("transactions-table-anchor");
+    if (anchor) {
+      const rect = anchor.getBoundingClientRect();
+      if (rect.top < 80) {
+        window.scrollTo({
+          top: window.scrollY + rect.top - 80,
+          behavior: "smooth",
+        });
+      }
+    }
   };
 
   const handleCreateOrUpdate = async (data: TransactionRequest) => {
@@ -234,7 +255,7 @@ function TransactionsContent() {
           />
           <button
             type="submit"
-            className="btn-secondary px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
+            className="btn-primary px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl text-xs font-semibold cursor-pointer shrink-0 text-white shadow-2xs hover:shadow-xs active:scale-95 transition-all"
           >
             Search
           </button>
@@ -303,39 +324,41 @@ function TransactionsContent() {
         </div>
       </div>
 
-      {/* Transaction Table */}
-      <TransactionTable
-        transactions={transactions}
-        loading={initialLoading}
-        isFetching={isFetching}
-        onEdit={(txn) => {
-          setEditingTxn(txn);
-          setModalOpen(true);
-        }}
-        onDelete={handleDelete}
-      />
-
+      {/* Transaction Table with Anchor */}
+      <div id="transactions-table-anchor" className="scroll-mt-24">
+        <TransactionTable
+          transactions={transactions}
+          loading={initialLoading}
+          isFetching={isFetching}
+          onEdit={(txn) => {
+            setEditingTxn(txn);
+            setModalOpen(true);
+          }}
+          onDelete={handleDelete}
+        />
+      </div>
 
       {/* Pagination Bar */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-500">
           <span>
-            Showing {transactions.length} of {totalElements} transactions
+            Showing <strong className="text-slate-700 font-semibold">{transactions.length}</strong> of{" "}
+            <strong className="text-slate-700 font-semibold">{totalElements}</strong> transactions
           </span>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
+              onClick={() => handlePageChange(Math.max(0, page - 1))}
+              disabled={page === 0 || isFetching}
               className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-slate-800 font-bold">
+            <span className="text-slate-800 font-bold tabular-nums">
               Page {page + 1} of {totalPages}
             </span>
             <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
+              onClick={() => handlePageChange(Math.min(totalPages - 1, page + 1))}
+              disabled={page >= totalPages - 1 || isFetching}
               className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 transition-colors cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
