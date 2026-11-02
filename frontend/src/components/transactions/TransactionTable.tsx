@@ -61,12 +61,6 @@ export default function TransactionTable({
   if (!transactions || transactions.length === 0) {
     return (
       <div className="w-full min-h-[460px] flex flex-col items-center justify-center py-16 text-center liquid-glass rounded-2xl border border-slate-200/80 shadow-xs relative">
-        {/* Hairline progress bar if search is actively running */}
-        {isFetching && (
-          <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden z-20 pointer-events-none bg-purple-50/50">
-            <div className="w-1/2 h-full bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] rounded-full animate-indeterminate-bar" />
-          </div>
-        )}
         <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#6C3BFF] border border-purple-100 flex items-center justify-center mb-3 shadow-2xs">
           <Search className="w-5 h-5" />
         </div>
@@ -80,14 +74,7 @@ export default function TransactionTable({
 
   return (
     <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs relative min-h-[460px] transition-all duration-200">
-      {/* 1. Google/Stripe Style Hairline Top Progress Bar during page changes or search */}
-      {isFetching && (
-        <div className="absolute top-0 left-0 right-0 h-[2.5px] overflow-hidden z-20 pointer-events-none bg-purple-50/60">
-          <div className="w-1/2 h-full bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] rounded-full animate-indeterminate-bar shadow-[0_0_8px_rgba(117,71,245,0.5)]" />
-        </div>
-      )}
-
-      {/* 2. Table with In-Place Smooth Crossfade (No jarring jump, no center popup, no staggered delay) */}
+      {/* Table with In-Place Smooth Crossfade (Clean, stable, no intrusive loading lines or popups) */}
       <div className="overflow-x-auto">
         <table
           className={cn(

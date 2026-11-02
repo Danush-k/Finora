@@ -266,10 +266,10 @@ export default function IntelligentSearchBar({
                         onMouseEnter={() => setActiveIndex(thisIndex)}
                         onClick={() => handleSelectRecent(r.query)}
                         className={cn(
-                          "flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors group select-none",
+                          "flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-150 group select-none",
                           isSelected
-                            ? "bg-purple-50/80 text-purple-900 border-l-2 border-[#6C3BFF]"
-                            : "text-slate-700 hover:bg-slate-50"
+                            ? "bg-gradient-to-r from-purple-50/95 via-[#F6F2FF] to-indigo-50/60 text-purple-950 ring-1 ring-[#7547F5]/25 border border-purple-200/70 shadow-[0_2px_10px_rgba(108,59,255,0.07)]"
+                            : "text-slate-700 hover:bg-slate-50 border border-transparent"
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -314,15 +314,20 @@ export default function IntelligentSearchBar({
                         onMouseEnter={() => setActiveIndex(thisIndex)}
                         onClick={() => handleSelectMerchant(m)}
                         className={cn(
-                          "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors group select-none",
+                          "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-all duration-150 group select-none",
                           isSelected
-                            ? "bg-purple-50/80 text-purple-900 border-l-2 border-[#6C3BFF]"
-                            : "text-slate-800 hover:bg-slate-50"
+                            ? "bg-gradient-to-r from-purple-50/95 via-[#F6F2FF] to-indigo-50/60 text-slate-900 ring-1 ring-[#7547F5]/25 border border-purple-200/70 shadow-[0_2px_10px_rgba(108,59,255,0.07)]"
+                            : "text-slate-800 hover:bg-slate-50 border border-transparent"
                         )}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           {/* Understated Merchant Icon */}
-                          <div className="w-6.5 h-6.5 rounded-lg bg-purple-50 text-[#6C3BFF] border border-purple-100/80 flex items-center justify-center shrink-0">
+                          <div
+                            className={cn(
+                              "w-6.5 h-6.5 rounded-lg bg-purple-50 text-[#6C3BFF] border border-purple-100/80 flex items-center justify-center shrink-0 transition-transform",
+                              isSelected && "scale-[1.04] shadow-2xs"
+                            )}
+                          >
                             <Store className="w-3.5 h-3.5" />
                           </div>
 
@@ -349,7 +354,12 @@ export default function IntelligentSearchBar({
                         </div>
 
                         {/* Subtle arrow indicator on hover/selection (no oversized filter button) */}
-                        <div className="shrink-0 pl-2">
+                        <div className="shrink-0 pl-2 flex items-center gap-1.5">
+                          {isSelected && (
+                            <span className="hidden sm:inline-flex items-center text-[10px] font-bold text-[#6C3BFF] bg-white/90 border border-purple-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
+                              ↵
+                            </span>
+                          )}
                           <ArrowUpRight
                             className={cn(
                               "w-3.5 h-3.5 transition-colors",
@@ -383,17 +393,18 @@ export default function IntelligentSearchBar({
                         onMouseEnter={() => setActiveIndex(thisIndex)}
                         onClick={() => handleSelectTxn(t)}
                         className={cn(
-                          "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors group select-none",
+                          "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-all duration-150 group select-none",
                           isSelected
-                            ? "bg-purple-50/80 text-purple-900 border-l-2 border-[#6C3BFF]"
-                            : "text-slate-800 hover:bg-slate-50"
+                            ? "bg-gradient-to-r from-purple-50/95 via-[#F6F2FF] to-indigo-50/60 text-slate-900 ring-1 ring-[#7547F5]/25 border border-purple-200/70 shadow-[0_2px_10px_rgba(108,59,255,0.07)]"
+                            : "text-slate-800 hover:bg-slate-50 border border-transparent"
                         )}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           {/* Financial Direction Indicator */}
                           <div
                             className={cn(
-                              "w-6.5 h-6.5 rounded-lg flex items-center justify-center shrink-0 border",
+                              "w-6.5 h-6.5 rounded-lg flex items-center justify-center shrink-0 border transition-transform",
+                              isSelected && "scale-[1.04] shadow-2xs",
                               t.transactionType === "EXPENSE"
                                 ? "bg-rose-50 border-rose-100 text-rose-600"
                                 : "bg-emerald-50 border-emerald-100 text-emerald-600"
@@ -443,7 +454,7 @@ export default function IntelligentSearchBar({
                         </div>
 
                         {/* Right-aligned Amount */}
-                        <div className="shrink-0 text-right pl-3">
+                        <div className="shrink-0 text-right pl-3 flex items-center gap-2">
                           <span
                             className={cn(
                               "font-black text-xs tabular-nums block",
@@ -453,6 +464,11 @@ export default function IntelligentSearchBar({
                             {t.transactionType === "EXPENSE" ? "-" : "+"}
                             {formatCurrency(t.amount)}
                           </span>
+                          {isSelected && (
+                            <span className="hidden sm:inline-flex items-center text-[10px] font-bold text-[#6C3BFF] bg-white/90 border border-purple-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
+                              ↵
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
