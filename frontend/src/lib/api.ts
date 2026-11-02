@@ -21,6 +21,8 @@ import {
 } from "@/types";
 
 
+import { apiCache } from "./api-cache";
+
 const getBaseUrl = () => {
   if (typeof window !== "undefined") {
     return process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -29,6 +31,16 @@ const getBaseUrl = () => {
 };
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const isGet = !options?.method || options.method.toUpperCase() === "GET";
+
+  // Check cache for GET requests
+  if (isGet) {
+    const cached = apiCache.get<T>(endpoint);
+    if (cached && apiCache.isFresh(endpoint)) {
+      return cached;
+    }
+  }
+
   const url = `${getBaseUrl()}${endpoint}`;
   try {
     const res = await fetch(url, {
@@ -51,6 +63,15 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     }
 
     const json: ApiResponse<T> = await res.json();
+
+    // Cache successful GET results
+    if (isGet && json.data) {
+      apiCache.set(endpoint, json.data);
+    } else if (!isGet) {
+      // Invalidate on mutations
+      apiCache.invalidate();
+    }
+
     return json.data;
   } catch (err: any) {
     console.error(`API Error on ${endpoint}:`, err);
@@ -59,6 +80,40 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // Synchronous cache access for initial state (Frame 1 stability)
+  getCachedDashboardSummary: (year?: number, month?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year.toString());
+    if (month) params.append("month", month.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiCache.get<DashboardSummary>(`/dashboard/summary${query}`);
+  },
+  getCachedMonthlyChart: () => apiCache.get<MonthlyChartData>("/dashboard/monthly"),
+  getCachedBudgetSummary: (year?: number, month?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year.toString());
+    if (month) params.append("month", month.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiCache.get<BudgetSummaryResponse>(`/budget/summary${query}`);
+  },
+  getCachedMonthlyCalendar: (year?: number, month?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year.toString());
+    if (month) params.append("month", month.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiCache.get<CalendarDaySummary[]>(`/dashboard/calendar${query}`);
+  },
+  getCachedDebtLentRecords: (type?: DebtLentType, status?: DebtLentStatus, search?: string) => {
+    const params = new URLSearchParams();
+    if (type) params.append("type", type);
+    if (status) params.append("status", status);
+    if (search) params.append("search", search);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiCache.get<DebtLentRecord[]>(`/debt-lent${query}`);
+  },
+  getCachedDebtLentSummary: () => apiCache.get<DebtLentSummary>("/debt-lent/summary"),
+  getCachedGmailStatus: () => apiCache.get<GmailStatus>("/settings/gmail-status"),
+
   // Dashboard
   getDashboardSummary: (year?: number, month?: number) => {
     const params = new URLSearchParams();

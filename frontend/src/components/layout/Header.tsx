@@ -13,7 +13,7 @@ import { useToast } from "@/lib/toast-context";
 export default function Header() {
   const { user, lock, logout } = useAuth();
   const { success, error: toastError } = useToast();
-  const [status, setStatus] = useState<GmailStatus | null>(null);
+  const [status, setStatus] = useState<GmailStatus | null>(() => api.getCachedGmailStatus() || null);
   const [syncing, setSyncing] = useState(false);
 
   const fetchStatus = async () => {

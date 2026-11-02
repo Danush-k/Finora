@@ -31,10 +31,10 @@ import { DashboardSkeleton } from "@/components/common/LoadingSkeletons";
 import { getCategoryTheme } from "@/lib/category-theme";
 
 export default function DashboardPage() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [monthlyChart, setMonthlyChart] = useState<MonthlyChartData | null>(null);
-  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudgetStatus[]>([]);
-  const [overallBudget, setOverallBudget] = useState<OverallBudgetInfo | null>(null);
+  const [summary, setSummary] = useState<DashboardSummary | null>(() => api.getCachedDashboardSummary() || null);
+  const [monthlyChart, setMonthlyChart] = useState<MonthlyChartData | null>(() => api.getCachedMonthlyChart() || null);
+  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudgetStatus[]>(() => api.getCachedBudgetSummary()?.categories || []);
+  const [overallBudget, setOverallBudget] = useState<OverallBudgetInfo | null>(() => api.getCachedBudgetSummary()?.overallBudget || null);
   const [budgetModalOpen, setBudgetModalOpen] = useState(() => {
     if (typeof window !== "undefined") {
       return new URLSearchParams(window.location.search).get("modal") === "budget";
@@ -43,7 +43,7 @@ export default function DashboardPage() {
   });
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
   const [selectedMonthName, setSelectedMonthName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !api.getCachedDashboardSummary());
   const [isFiltering, setIsFiltering] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
 

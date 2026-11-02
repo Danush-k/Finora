@@ -4,11 +4,5 @@ import React from "react";
 import { usePathname } from "next/navigation";
 
 export default function Template({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  return (
-    <div key={pathname} className="animate-page-enter w-full">
-      {children}
-    </div>
-  );
+  return <div className="w-full">{children}</div>;
 }

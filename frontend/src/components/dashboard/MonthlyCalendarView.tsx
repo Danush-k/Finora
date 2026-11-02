@@ -131,11 +131,16 @@ export default function MonthlyCalendarView() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [calendarDays, setCalendarDays] = useState<CalendarDaySummary[]>([]);
+  const [calendarDays, setCalendarDays] = useState<CalendarDaySummary[]>(() => {
+    const now = new Date();
+    return api.getCachedMonthlyCalendar(now.getFullYear(), now.getMonth() + 1) || [];
+  });
   const [loading, setLoading] = useState(false);
   const [selectedDayNumbers, setSelectedDayNumbers] = useState<number[]>([]);
   const [isMultiDayDrawerOpen, setIsMultiDayDrawerOpen] = useState(false);
-  const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>([]);
+  const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>(() => {
+    return api.getCachedDebtLentRecords() || [];
+  });
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [todayYear, setTodayYear] = useState<number>(() => new Date().getFullYear());
   const [todayMonth, setTodayMonth] = useState<number>(() => new Date().getMonth() + 1);
