@@ -206,7 +206,7 @@ function TransactionsContent() {
 
       {/* Filter and Search Bar with Intelligent Predictive Search & Sliding Type Selector */}
       <div className="rounded-2xl liquid-glass p-4 border border-slate-200/80 space-y-3 shadow-xs relative">
-        <div className="flex flex-col sm:flex-row gap-2 relative z-20">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 relative z-30">
           <IntelligentSearchBar
             value={search}
             onChange={setSearch}
@@ -224,11 +224,12 @@ function TransactionsContent() {
             }}
             allTransactions={suggestionPool}
             placeholder="Search by merchant, description, category, ₹amount, UPI ref..."
+            className="w-full sm:max-w-xl md:max-w-2xl"
           />
           <button
             type="button"
             onClick={() => handleSearchSubmit(search)}
-            className="btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
+            className="btn-primary h-11 sm:h-12 px-5 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
           >
             Search
           </button>
