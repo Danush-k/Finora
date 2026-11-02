@@ -143,6 +143,18 @@ export default function MonthlyCalendarView() {
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [todayYear, setTodayYear] = useState<number>(() => new Date().getFullYear());
   const [todayMonth, setTodayMonth] = useState<number>(() => new Date().getMonth() + 1);
+
+  // Preserve last active selection data so exit animations collapse smoothly without glitching or flashing empty
+  const [lastSelectionData, setLastSelectionData] = useState<{
+    days: number[];
+    list: CalendarDaySummary[];
+    expense: number;
+    income: number;
+    net: number;
+    txns: Transaction[];
+    count: number;
+    title: string;
+  } | null>(null);
   const [monthDirection, setMonthDirection] = useState<"next" | "prev">("next");
 
   const transactionsSectionRef = useRef<HTMLDivElement>(null);
@@ -329,12 +341,92 @@ export default function MonthlyCalendarView() {
 
   const selectedTxnCount = selectedTransactions.length;
 
+  // Title formatting: clean, minimal Apple style
+  const selectionTitle = useMemo(() => {
+    if (selectedDayNumbers.length === 0) return "";
+    if (selectedDayNumbers.length === 1) {
+      const d = selectedDaysList[0];
+      return d ? `${d.date}` : `${monthName} ${selectedDayNumbers[0]}`;
+    }
+
+    // Check if column match (e.g. all Sundays)
+    const cols = selectedDaysList.map((d) => (startOffset + (d.dayOfMonth - 1)) % 7);
+    const uniqueCols = Array.from(new Set(cols));
+    if (uniqueCols.length === 1) {
+      const colName = dayNames[uniqueCols[0]];
+      const fullNames: Record<string, string> = {
+        Mon: "Mondays",
+        Tue: "Tuesdays",
+        Wed: "Wednesdays",
+        Thu: "Thursdays",
+        Fri: "Fridays",
+        Sat: "Saturdays",
+        Sun: "Sundays",
+      };
+      return `All ${fullNames[colName] || colName}`;
+    }
+
+    const sorted = [...selectedDayNumbers].sort((a, b) => a - b);
+    const isContiguous = sorted.every((num, idx) => idx === 0 || num === sorted[idx - 1] + 1);
+    if (isContiguous) {
+      return `${monthName} ${sorted[0]} – ${sorted[sorted.length - 1]}`;
+    }
+
+    if (sorted.length <= 4) {
+      return `${monthName} ${sorted.join(", ")}`;
+    }
+
+    return `${monthName} ${sorted[0]} – ${sorted[sorted.length - 1]}`;
+  }, [selectedDayNumbers, selectedDaysList, startOffset, dayNames, monthName]);
+
+  // Keep lastSelectionData synced whenever an active selection exists
+  useEffect(() => {
+    if (selectedDayNumbers.length > 0) {
+      setLastSelectionData({
+        days: selectedDayNumbers,
+        list: selectedDaysList,
+        expense: selectedTotalExpense,
+        income: selectedTotalIncome,
+        net: selectedNet,
+        txns: selectedTransactions,
+        count: selectedTxnCount,
+        title: selectionTitle,
+      });
+    }
+  }, [
+    selectedDayNumbers,
+    selectedDaysList,
+    selectedTotalExpense,
+    selectedTotalIncome,
+    selectedNet,
+    selectedTransactions,
+    selectedTxnCount,
+    selectionTitle,
+  ]);
+
+  // Stabilized values for the details panel: during an exit transition when selectedDayNumbers becomes [],
+  // we seamlessly retain the last valid selection data so the UI collapses smoothly with 0 glitching or snapping
+  const panelDaysCount =
+    selectedDayNumbers.length > 0 ? selectedDayNumbers.length : (lastSelectionData?.days.length || 0);
+  const panelTransactions =
+    selectedDayNumbers.length > 0 ? selectedTransactions : (lastSelectionData?.txns || []);
+  const panelTitle =
+    selectedDayNumbers.length > 0 ? selectionTitle : (lastSelectionData?.title || "");
+  const panelTxnCount =
+    selectedDayNumbers.length > 0 ? selectedTxnCount : (lastSelectionData?.count || 0);
+  const panelExpense =
+    selectedDayNumbers.length > 0 ? selectedTotalExpense : (lastSelectionData?.expense || 0);
+  const panelIncome =
+    selectedDayNumbers.length > 0 ? selectedTotalIncome : (lastSelectionData?.income || 0);
+  const panelNet =
+    selectedDayNumbers.length > 0 ? selectedNet : (lastSelectionData?.net || 0);
+
   // Group transactions chronologically by date for multiple selected dates
   const groupedTransactionsByDate = useMemo(() => {
-    if (selectedDayNumbers.length <= 1) return [];
+    if (panelDaysCount <= 1) return [];
 
     const map = new Map<string, Transaction[]>();
-    const sorted = [...selectedTransactions].sort((a, b) => {
+    const sorted = [...panelTransactions].sort((a, b) => {
       return new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime();
     });
 
@@ -381,45 +473,7 @@ export default function MonthlyCalendarView() {
     });
 
     return groups;
-  }, [selectedTransactions, selectedDayNumbers.length]);
-
-  // Title formatting: clean, minimal Apple style
-  const selectionTitle = useMemo(() => {
-    if (selectedDayNumbers.length === 0) return "";
-    if (selectedDayNumbers.length === 1) {
-      const d = selectedDaysList[0];
-      return d ? `${d.date}` : `${monthName} ${selectedDayNumbers[0]}`;
-    }
-
-    // Check if column match (e.g. all Sundays)
-    const cols = selectedDaysList.map((d) => (startOffset + (d.dayOfMonth - 1)) % 7);
-    const uniqueCols = Array.from(new Set(cols));
-    if (uniqueCols.length === 1) {
-      const colName = dayNames[uniqueCols[0]];
-      const fullNames: Record<string, string> = {
-        Mon: "Mondays",
-        Tue: "Tuesdays",
-        Wed: "Wednesdays",
-        Thu: "Thursdays",
-        Fri: "Fridays",
-        Sat: "Saturdays",
-        Sun: "Sundays",
-      };
-      return `All ${fullNames[colName] || colName}`;
-    }
-
-    const sorted = [...selectedDayNumbers].sort((a, b) => a - b);
-    const isContiguous = sorted.every((num, idx) => idx === 0 || num === sorted[idx - 1] + 1);
-    if (isContiguous) {
-      return `${monthName} ${sorted[0]} – ${sorted[sorted.length - 1]}`;
-    }
-
-    if (sorted.length <= 4) {
-      return `${monthName} ${sorted.join(", ")}`;
-    }
-
-    return `${monthName} ${sorted[0]} – ${sorted[sorted.length - 1]}`;
-  }, [selectedDayNumbers, selectedDaysList, startOffset, dayNames, monthName]);
+  }, [panelTransactions, panelDaysCount]);
 
   // Column header click: toggle all dates in that column
   const handleWeekdayClick = useCallback((colIdx: number) => {
@@ -599,7 +653,7 @@ export default function MonthlyCalendarView() {
         {/* ========================================================================= */}
         {/* SECTION 7: SMOOTH HORIZONTAL MONTH SLIDE TRANSITION                       */}
         {/* ========================================================================= */}
-        <div className="relative min-h-[460px] sm:min-h-[540px]">
+        <div className="relative">
           <AnimatePresence mode="wait" custom={monthDirection}>
             <motion.div
               key={`${year}-${month}`}
@@ -711,12 +765,30 @@ export default function MonthlyCalendarView() {
           {selectedDayNumbers.length > 0 && (
             <motion.div
               id="calendar-transactions-section"
+              key="calendar-transactions-section"
               ref={transactionsSectionRef}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden mt-6"
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{
+                opacity: 1,
+                height: "auto",
+                marginTop: 24,
+                transition: {
+                  height: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.22, ease: "easeOut" },
+                  marginTop: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              exit={{
+                opacity: 0,
+                height: 0,
+                marginTop: 0,
+                transition: {
+                  height: { duration: 0.24, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.16, ease: "easeIn" },
+                  marginTop: { duration: 0.24, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              className="overflow-hidden"
             >
               <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-purple-200/80 shadow-md p-4 sm:p-5">
                 {/* Header of details panel with title, metrics and clear button */}
@@ -724,28 +796,28 @@ export default function MonthlyCalendarView() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs sm:text-sm font-black text-slate-900">
-                        {selectedDayNumbers.length === 1
-                          ? `Transactions on ${selectionTitle}`
-                          : `Consolidated Transactions (${selectionTitle})`}
+                        {panelDaysCount === 1
+                          ? `Transactions on ${panelTitle}`
+                          : `Consolidated Transactions (${panelTitle})`}
                       </span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-200">
-                        {selectedTxnCount} {selectedTxnCount === 1 ? "record" : "records"}
+                        {panelTxnCount} {panelTxnCount === 1 ? "record" : "records"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2.5 mt-0.5 text-[11px] text-slate-500 font-medium">
                       <span>
-                        Spent: <strong className="text-rose-600">{formatCurrency(selectedTotalExpense)}</strong>
+                        Spent: <strong className="text-rose-600">{formatCurrency(panelExpense)}</strong>
                       </span>
                       <span>·</span>
                       <span>
-                        Inflow: <strong className="text-emerald-600">{formatCurrency(selectedTotalIncome)}</strong>
+                        Inflow: <strong className="text-emerald-600">{formatCurrency(panelIncome)}</strong>
                       </span>
                       <span>·</span>
                       <span>
                         Net:{" "}
-                        <strong className={selectedNet >= 0 ? "text-emerald-700" : "text-rose-600"}>
-                          {selectedNet >= 0 ? "+" : ""}
-                          {formatCurrency(selectedNet)}
+                        <strong className={panelNet >= 0 ? "text-emerald-700" : "text-rose-600"}>
+                          {panelNet >= 0 ? "+" : ""}
+                          {formatCurrency(panelNet)}
                         </strong>
                       </span>
                     </div>
@@ -761,17 +833,17 @@ export default function MonthlyCalendarView() {
                   </button>
                 </div>
 
-                {selectedTransactions.length === 0 ? (
+                {panelTransactions.length === 0 ? (
                   <div className="py-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center">
                     <CalendarIcon className="w-6 h-6 text-slate-300 mb-1.5" />
                     <p className="font-medium">
-                      No transactions recorded for {selectedDayNumbers.length === 1 ? "this date" : "these selected dates"}.
+                      No transactions recorded for {panelDaysCount === 1 ? "this date" : "these selected dates"}.
                     </p>
                   </div>
-                ) : selectedDayNumbers.length === 1 ? (
+                ) : panelDaysCount === 1 ? (
                   /* Single Day: Direct Clean List */
                   <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                    {selectedTransactions.map((txn: Transaction) => {
+                    {panelTransactions.map((txn: Transaction) => {
                       const mappedInfo = mappedTxnMap.get(txn.id);
                       return (
                         <div

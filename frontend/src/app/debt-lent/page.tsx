@@ -621,25 +621,14 @@ export default function DebtLentPage() {
           </button>
         </div>
       ) : (
-        <div className="relative">
-          {/* Smooth non-destructive loading bar during background sync */}
-          {isFetching && (
-            <div className="absolute -top-3 left-0 right-0 h-[2.5px] bg-gradient-to-r from-emerald-400 via-indigo-500 to-amber-500 animate-pulse z-10 rounded-full" />
-          )}
-          <div
-            className={cn(
-              "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 transition-opacity duration-150",
-              isFetching ? "opacity-75" : "opacity-100"
-            )}
-          >
-            {activeRecords.map((record) => (
-              <DebtLentCard
-                key={record.id}
-                record={record}
-                onClick={() => setSelectedRecord(record)}
-              />
-            ))}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {activeRecords.map((record) => (
+            <DebtLentCard
+              key={record.id}
+              record={record}
+              onClick={() => setSelectedRecord(record)}
+            />
+          ))}
         </div>
       )}
 

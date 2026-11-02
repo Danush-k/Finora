@@ -45,11 +45,13 @@ class ApiCache {
       this.memory.forEach((v, k) => {
         // Only persist dashboard, chart, and settings to avoid large storage usage
         if (
-          (k.startsWith("dashboard") ||
-            k.startsWith("calendar") ||
-            k.startsWith("debt_lent") ||
-            k.startsWith("gmail") ||
-            k.startsWith("rules")) &&
+          (k.includes("dashboard") ||
+            k.includes("calendar") ||
+            k.includes("budget") ||
+            k.includes("debt-lent") ||
+            k.includes("transactions") ||
+            k.includes("settings") ||
+            k.includes("rules")) &&
           now - v.timestamp < v.ttlMs
         ) {
           obj[k] = v;
