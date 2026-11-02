@@ -598,9 +598,6 @@ export default function MonthlyCalendarView() {
               </span>
               {loading && <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />}
             </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              Click individual dates or drag horizontally/vertically. Click column headers to toggle weekdays.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-center">

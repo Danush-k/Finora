@@ -27,7 +27,13 @@ import CategoryBudgetModal from "@/components/dashboard/CategoryBudgetModal";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { CategoryBudgetStatus, OverallBudgetInfo } from "@/types";
-import { DashboardSkeleton } from "@/components/common/LoadingSkeletons";
+import {
+  HorizontalMetricsBarSkeleton,
+  ChartSkeleton,
+  CategoryBreakdownSkeleton,
+  RecentTransactionsSkeleton,
+  TopProgressBar,
+} from "@/components/common/LoadingSkeletons";
 import { getCategoryTheme } from "@/lib/category-theme";
 
 export default function DashboardPage() {
@@ -43,7 +49,8 @@ export default function DashboardPage() {
   });
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
   const [selectedMonthName, setSelectedMonthName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(() => !api.getCachedDashboardSummary());
+  const [loadingSummary, setLoadingSummary] = useState(() => !api.getCachedDashboardSummary());
+  const [loadingChart, setLoadingChart] = useState(() => !api.getCachedMonthlyChart());
   const [isFiltering, setIsFiltering] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
 
@@ -60,40 +67,66 @@ export default function DashboardPage() {
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   const loadData = async (year?: number, month?: number, monthKey?: string) => {
-    try {
-      if (year && month) {
-        setIsFiltering(true);
-      } else {
-        setLoading(true);
-      }
+    if (year && month) {
+      setIsFiltering(true);
+    } else {
+      if (!summary) setLoadingSummary(true);
+      if (!monthlyChart) setLoadingChart(true);
+    }
 
-      const [sum, chart, budgetRes] = await Promise.all([
-        api.getDashboardSummary(year, month),
-        api.getMonthlyChart(),
-        api.getBudgetSummary(year, month).catch(() => null),
-      ]);
+    // 1. Progressive fetch: Dashboard Summary (metrics, category breakdown, recent activity)
+    const summaryPromise = api
+      .getDashboardSummary(year, month)
+      .then((sum) => {
+        setSummary(sum);
+        if (monthKey) {
+          setSelectedMonthKey(monthKey);
+          setSelectedMonthName(sum.activeMonthName || monthKey);
+        } else if (sum.activeMonthKey) {
+          setSelectedMonthKey(sum.activeMonthKey);
+          setSelectedMonthName(sum.activeMonthName || sum.activeMonthKey);
+        }
+      })
+      .catch((e) => {
+        console.error("Failed to load dashboard summary", e);
+      })
+      .finally(() => {
+        setLoadingSummary(false);
+      });
 
-      setSummary(sum);
-      setMonthlyChart(chart);
-      if (budgetRes) {
-        setCategoryBudgets(budgetRes.categories || []);
-        setOverallBudget(budgetRes.overallBudget || null);
-      } else {
+    // 2. Progressive fetch: Monthly Inflow vs Outflow Chart
+    const chartPromise = api
+      .getMonthlyChart()
+      .then((chart) => {
+        setMonthlyChart(chart);
+      })
+      .catch((e) => {
+        console.error("Failed to load monthly chart", e);
+      })
+      .finally(() => {
+        setLoadingChart(false);
+      });
+
+    // 3. Progressive fetch: Budget limits & summary
+    const budgetPromise = api
+      .getBudgetSummary(year, month)
+      .then((budgetRes) => {
+        if (budgetRes) {
+          setCategoryBudgets(budgetRes.categories || []);
+          setOverallBudget(budgetRes.overallBudget || null);
+        } else {
+          setCategoryBudgets([]);
+          setOverallBudget(null);
+        }
+      })
+      .catch(() => {
         setCategoryBudgets([]);
         setOverallBudget(null);
-      }
+      });
 
-      if (monthKey) {
-        setSelectedMonthKey(monthKey);
-        setSelectedMonthName(sum.activeMonthName || monthKey);
-      } else if (sum.activeMonthKey) {
-        setSelectedMonthKey(sum.activeMonthKey);
-        setSelectedMonthName(sum.activeMonthName || sum.activeMonthKey);
-      }
-    } catch (e) {
-      console.error("Failed to load dashboard data", e);
+    try {
+      await Promise.allSettled([summaryPromise, chartPromise, budgetPromise]);
     } finally {
-      setLoading(false);
       setIsFiltering(false);
     }
   };
@@ -156,11 +189,6 @@ export default function DashboardPage() {
     loadData();
   };
 
-  // If loading initially, show the smooth Apple Liquid Glass skeleton loader
-  if (loading && !summary) {
-    return <DashboardSkeleton />;
-  }
-
   // Compute category breakdown entries
   const categoryEntries = summary?.categoryBreakdown
     ? Object.entries(summary.categoryBreakdown).sort((a, b) => b[1] - a[1])
@@ -170,6 +198,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 sm:space-y-6 pb-32 sm:pb-24">
+      {/* Top Hairline Progress Bar during Background Refreshes & Filtering */}
+      {isFiltering && <TopProgressBar />}
+
       {/* ========================================================= */}
       {/* 1. TOP HEADER: Clean Title & Compact Action Buttons       */}
       {/* ========================================================= */}
@@ -227,35 +258,39 @@ export default function DashboardPage() {
       {/* 2. STATS OVERVIEW: HORIZONTAL FINANCIAL SUMMARY RIBBON     */}
       {/* ========================================================= */}
       <div
-        className={`transition-opacity duration-200 ${
+        className={`transition-opacity duration-300 ${
           isFiltering ? "opacity-60" : "opacity-100"
         }`}
       >
-        <HorizontalMetricsBar
-          totalExpenses={activeToggleStats ? activeToggleStats.expenses : summary?.totalExpensesThisMonth || 0}
-          totalIncome={activeToggleStats ? activeToggleStats.income : summary?.totalIncomeThisMonth || 0}
-          netSavings={activeToggleStats ? activeToggleStats.savings : summary?.netSavingsThisMonth || 0}
-          totalRecords={
-            chartPeriod === "YEARLY" && activeToggleStats?.count !== undefined
-              ? activeToggleStats.count
-              : summary?.totalTransactionsCount || 0
-          }
-          expensesTitle={
-            chartPeriod === "YEARLY"
-              ? "Annual Expenses"
-              : chartPeriod === "WEEKLY"
-              ? "Weekly Expenses"
-              : "Total Expenses"
-          }
-          incomeTitle={
-            chartPeriod === "YEARLY"
-              ? "Annual Income"
-              : chartPeriod === "WEEKLY"
-              ? "Weekly Income"
-              : "Total Income"
-          }
-          recordsTitle={chartPeriod === "YEARLY" ? "Annual Records" : "Total Records"}
-        />
+        {summary ? (
+          <HorizontalMetricsBar
+            totalExpenses={activeToggleStats ? activeToggleStats.expenses : summary.totalExpensesThisMonth || 0}
+            totalIncome={activeToggleStats ? activeToggleStats.income : summary.totalIncomeThisMonth || 0}
+            netSavings={activeToggleStats ? activeToggleStats.savings : summary.netSavingsThisMonth || 0}
+            totalRecords={
+              chartPeriod === "YEARLY" && activeToggleStats?.count !== undefined
+                ? activeToggleStats.count
+                : summary.totalTransactionsCount || 0
+            }
+            expensesTitle={
+              chartPeriod === "YEARLY"
+                ? "Annual Expenses"
+                : chartPeriod === "WEEKLY"
+                ? "Weekly Expenses"
+                : "Total Expenses"
+            }
+            incomeTitle={
+              chartPeriod === "YEARLY"
+                ? "Annual Income"
+                : chartPeriod === "WEEKLY"
+                ? "Weekly Income"
+                : "Total Income"
+            }
+            recordsTitle={chartPeriod === "YEARLY" ? "Annual Records" : "Total Records"}
+          />
+        ) : (
+          <HorizontalMetricsBarSkeleton />
+        )}
       </div>
 
       {/* ========================================================= */}
@@ -264,25 +299,30 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
         {/* Chart Column (2 Cols) */}
         <div className="lg:col-span-2">
-          <ExpenseChart
-            data={monthlyChart?.points || []}
-            activeMonthKey={selectedMonthKey}
-            activeMonthName={selectedMonthName}
-            period={chartPeriod}
-            onPeriodChange={handlePeriodChange}
-            onPeriodStatsChange={setActiveToggleStats}
-            onSelectMonth={handleSelectMonth}
-            onResetMonth={handleResetMonth}
-          />
+          {monthlyChart ? (
+            <ExpenseChart
+              data={monthlyChart.points || []}
+              activeMonthKey={selectedMonthKey}
+              activeMonthName={selectedMonthName}
+              period={chartPeriod}
+              onPeriodChange={handlePeriodChange}
+              onPeriodStatsChange={setActiveToggleStats}
+              onSelectMonth={handleSelectMonth}
+              onResetMonth={handleResetMonth}
+            />
+          ) : (
+            <ChartSkeleton />
+          )}
         </div>
 
         {/* ========================================================= */}
         {/* CATEGORY BREAKDOWN CARD: Standard Box with "More" Toggle  */}
         {/* ========================================================= */}
-        <div
-          id="expense-by-category"
-          className="rounded-3xl liquid-glass p-5 sm:p-6 border border-slate-200/80 flex flex-col justify-between shadow-xs select-none"
-        >
+        {summary ? (
+          <div
+            id="expense-by-category"
+            className="rounded-3xl liquid-glass p-5 sm:p-6 border border-slate-200/80 flex flex-col justify-between shadow-xs select-none"
+          >
           <div>
             <div className="flex items-center justify-between mb-3.5">
               <div className="flex items-center gap-2">
@@ -477,7 +517,10 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <CategoryBreakdownSkeleton />
+      )}
+    </div>
 
       {/* Quick Access Feature Cards (Calendar & Debt/Lent) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -488,9 +531,9 @@ export default function DashboardPage() {
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Monthly Cashflow Calendar</h4>
+              <h4 className="text-sm font-bold text-slate-900">Cashflow Calendar</h4>
               <p className="text-xs text-slate-500">
-                Daily transaction distribution, spikes, and multi-day selection.
+                Daily distribution & multi-day overview
               </p>
             </div>
           </div>
@@ -515,7 +558,7 @@ export default function DashboardPage() {
             <div>
               <h4 className="text-sm font-bold text-slate-900">Debt & Lent Tracker</h4>
               <p className="text-xs text-slate-500">
-                Money lent to friends, debts owed, interest rates, and installment checklists.
+                Lent balances, debts & installment schedules
               </p>
             </div>
           </div>
@@ -532,10 +575,14 @@ export default function DashboardPage() {
 
       {/* Recent Activity List with Section Anchor */}
       <div id="recent-transactions-section">
-        <RecentTransactions
-          transactions={summary?.recentTransactions || []}
-          monthName={summary?.activeMonthName}
-        />
+        {summary ? (
+          <RecentTransactions
+            transactions={summary.recentTransactions || []}
+            monthName={summary.activeMonthName}
+          />
+        ) : (
+          <RecentTransactionsSkeleton />
+        )}
       </div>
 
       {/* CSV Import & Verification Modal */}

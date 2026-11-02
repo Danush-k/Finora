@@ -20,9 +20,6 @@ export default function RecentTransactions({ transactions, monthName }: RecentTr
           <h4 className="text-sm font-bold text-slate-900 tracking-tight">
             Recent Activity {monthName && <span className="text-indigo-600 font-extrabold">• {monthName}</span>}
           </h4>
-          <p className="text-xs text-slate-500">
-            {monthName ? `Filtered activity recorded for ${monthName}` : "Live feed from HDFC alerts & manual entries"}
-          </p>
         </div>
         <Link
           href="/transactions"

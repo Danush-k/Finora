@@ -529,14 +529,6 @@ export default function ExpenseChart({
               </button>
             )}
           </div>
-
-          <p className="text-xs text-slate-500 mt-0.5">
-            {period === "MONTHLY"
-              ? "Click any month bar to filter the dashboard. June's spike is balanced automatically."
-              : period === "WEEKLY"
-              ? `Weekly breakdown of ${activePoint?.month || "month"}'s cashflow.`
-              : "Annual cashflow totals and year-over-year balance."}
-          </p>
         </div>
 
         {/* ========================================================================= */}
@@ -894,9 +886,6 @@ export default function ExpenseChart({
           <span>
             Displaying all 5 weeks of <strong>{activePoint?.month} {activePoint?.year || "2026"}</strong>.
           </span>
-          <span className="text-[11px] text-slate-400">
-            Hover over any week to inspect exact cashflow.
-          </span>
         </div>
       )}
 
@@ -904,7 +893,6 @@ export default function ExpenseChart({
       {period === "YEARLY" && (
         <div className="flex items-center justify-between pt-3 mt-1 border-t border-slate-100/80 text-xs text-slate-500">
           <span>Annual comparison across all recorded calendar years.</span>
-          <span className="text-[11px] text-[#6C3BFF] font-semibold">Click any year to inspect.</span>
         </div>
       )}
     </motion.div>

@@ -500,7 +500,6 @@ export default function DebtLentPage() {
                       className="w-full px-3.5 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 flex items-center justify-between cursor-pointer"
                     >
                       <span>{name}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Click to filter</span>
                     </button>
                   ))}
                 </motion.div>

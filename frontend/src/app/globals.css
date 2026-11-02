@@ -448,6 +448,37 @@ body {
   animation: indeterminateProgress 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* Enterprise Lavender & Slate Shimmer Effect (Stripe / Google style) */
+@keyframes enterpriseShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(241, 245, 249, 0.9) 0%,
+    rgba(237, 233, 254, 0.6) 25%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(237, 233, 254, 0.6) 75%,
+    rgba(241, 245, 249, 0.9) 100%
+  );
+  background-size: 200% 100%;
+  animation: enterpriseShimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-skeleton,
+  .animate-indeterminate-bar {
+    animation: none !important;
+    background: rgba(241, 245, 249, 0.9) !important;
+  }
+}
+
 /* Custom sleek scrollbar for light theme */
 ::-webkit-scrollbar {
   width: 6px;
