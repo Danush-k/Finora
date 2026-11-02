@@ -4,11 +4,11 @@ FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 
 # Copy POM and download dependencies for caching
-COPY pom.xml .
+COPY backend/pom.xml ./pom.xml
 RUN mvn dependency:go-offline -B
 
 # Copy source code and build production JAR
-COPY src ./src
+COPY backend/src ./src
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: Minimal Production JRE Runtime
@@ -22,7 +22,7 @@ USER spring:spring
 # Copy built JAR from builder
 COPY --from=build --chown=spring:spring /app/target/*.jar app.jar
 
-# Dynamic port binding (Render/Railway/Cloud Run supply $PORT)
+# Dynamic port binding (Render supplies $PORT)
 ENV PORT=8080
 EXPOSE 8080
 
