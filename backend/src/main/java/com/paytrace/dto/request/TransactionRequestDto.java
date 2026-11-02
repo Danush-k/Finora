@@ -44,4 +44,9 @@ public class TransactionRequestDto {
 
     @NotNull(message = "Payment method is required")
     private PaymentMethod paymentMethod;
+
+    // Optional merchant rule options when updating
+    private Boolean createMerchantRule;
+    private Boolean applyToAllMatching;
+    private String originalMerchant;
 }

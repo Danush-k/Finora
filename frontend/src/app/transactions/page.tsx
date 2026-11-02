@@ -18,21 +18,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-const CATEGORIES = [
-  "ALL",
-  "Food & Dining",
-  "Shopping",
-  "Groceries",
-  "Travel & Fuel",
-  "Utilities & Bills",
-  "Entertainment",
-  "Health & Medical",
-  "Investment",
-  "Salary & Income",
-  "Refund",
-  "Transfer",
-  "Other",
-];
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { CATEGORIES as ALL_CATEGORIES } from "@/lib/constants";
+import { TransactionsSkeleton } from "@/components/common/LoadingSkeletons";
+
+const CATEGORIES = ["ALL", ...ALL_CATEGORIES];
 
 function TransactionsContent() {
   const searchParams = useSearchParams();
@@ -81,6 +72,12 @@ function TransactionsContent() {
 
   useEffect(() => {
     loadTransactions();
+
+    const handleSync = () => {
+      loadTransactions();
+    };
+    window.addEventListener("finora-sync-completed", handleSync);
+    return () => window.removeEventListener("finora-sync-completed", handleSync);
   }, [typeFilter, categoryFilter, page]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -109,6 +106,10 @@ function TransactionsContent() {
     }
   };
 
+  if (loading && transactions.length === 0) {
+    return <TransactionsSkeleton />;
+  }
+
   return (
     <div className="space-y-6 pb-28">
       {/* Top Header */}
@@ -125,9 +126,9 @@ function TransactionsContent() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setCsvModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+            className="btn-secondary flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer"
           >
-            <UploadCloud className="w-4 h-4 text-indigo-600" />
+            <UploadCloud className="w-4 h-4 text-[#5228E0]" />
             <span>Upload CSV</span>
           </button>
 
@@ -136,10 +137,10 @@ function TransactionsContent() {
               setEditingTxn(null);
               setModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>Manual Entry</span>
+            <PlusCircle className="w-4 h-4 text-white" />
+            <span className="text-white font-semibold">Manual Entry</span>
           </button>
         </div>
       </div>
@@ -154,36 +155,55 @@ function TransactionsContent() {
               placeholder="Search by merchant, description, reference number..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 transition-colors shadow-2xs"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 transition-colors shadow-2xs font-medium"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+            className="btn-secondary px-5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
           >
             Search
           </button>
         </form>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-          {/* Type Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {["ALL", "EXPENSE", "INCOME", "REFUND", "TRANSFER"].map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  setTypeFilter(t);
-                  setPage(0);
-                }}
-                className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                  typeFilter === t
-                    ? "bg-indigo-600 text-white shadow-2xs"
-                    : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+          {/* Type Filter Pills with Smooth Sliding Indicator */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 p-1 bg-slate-100/90 border border-slate-200/70 rounded-2xl relative">
+            {["ALL", "EXPENSE", "INCOME", "REFUND", "TRANSFER"].map((t) => {
+              const isSelected = typeFilter === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setTypeFilter(t);
+                    setPage(0);
+                  }}
+                  className={cn(
+                    "relative px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-colors select-none cursor-pointer outline-none",
+                    isSelected ? "text-white" : "text-[#475569] hover:text-[#5228E0]"
+                  )}
+                >
+                  {isSelected && (
+                    <motion.div
+                      layoutId="txn-filter-active-pill"
+                      transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
+                      className="absolute inset-0 rounded-xl z-0 pointer-events-none"
+                    >
+                      <div
+                        className="w-full h-full rounded-xl btn-primary overflow-hidden"
+                        style={{
+                          backgroundColor: "#6C3BFF",
+                          background: "linear-gradient(135deg, #8F6BFF 0%, #7547F5 45%, #5228E0 100%)",
+                          boxShadow: "0 4px 12px rgba(108,59,255,0.22), 0 8px 18px rgba(82,40,224,0.12), inset 0 1px 0 rgba(255,255,255,0.40)",
+                          border: "1px solid rgba(255,255,255,0.32)",
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                  <span className={cn("relative z-10", isSelected ? "text-white font-bold drop-shadow-[0_1px_1px_rgba(0,0,0,0.18)]" : "text-[#475569] hover:text-[#5228E0]")}>{t}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Category Dropdown */}
@@ -210,12 +230,14 @@ function TransactionsContent() {
       {/* Transaction Table */}
       <TransactionTable
         transactions={transactions}
+        loading={loading}
         onEdit={(txn) => {
           setEditingTxn(txn);
           setModalOpen(true);
         }}
         onDelete={handleDelete}
       />
+
 
       {/* Pagination Bar */}
       {totalPages > 1 && (

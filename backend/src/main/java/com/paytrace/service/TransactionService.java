@@ -23,14 +23,37 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import com.paytrace.model.MerchantRule;
+
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final MongoTemplate mongoTemplate;
     private final CategoryClassifier categoryClassifier;
+    private final MerchantRuleService merchantRuleService;
+
+    public TransactionService(
+        TransactionRepository transactionRepository,
+        MongoTemplate mongoTemplate,
+        CategoryClassifier categoryClassifier
+    ) {
+        this(transactionRepository, mongoTemplate, categoryClassifier, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public TransactionService(
+        TransactionRepository transactionRepository,
+        MongoTemplate mongoTemplate,
+        CategoryClassifier categoryClassifier,
+        MerchantRuleService merchantRuleService
+    ) {
+        this.transactionRepository = transactionRepository;
+        this.mongoTemplate = mongoTemplate;
+        this.categoryClassifier = categoryClassifier;
+        this.merchantRuleService = merchantRuleService;
+    }
 
     public Page<Transaction> getTransactions(
         TransactionType type,
@@ -88,9 +111,21 @@ public class TransactionService {
     }
 
     public Transaction createTransaction(TransactionRequestDto dto) {
+        String merchant = dto.getMerchant() != null ? dto.getMerchant().trim() : "Unknown";
         String category = dto.getCategory();
+
+        if (merchantRuleService != null && (category == null || category.trim().isEmpty() || "Other".equalsIgnoreCase(category))) {
+            MerchantRuleService.MerchantResolution res = merchantRuleService.resolve(merchant);
+            if (res.isMatched()) {
+                if (res.getMerchant() != null && !res.getMerchant().isEmpty()) {
+                    merchant = res.getMerchant();
+                }
+                category = res.getCategory();
+            }
+        }
+
         if (category == null || category.trim().isEmpty()) {
-            category = categoryClassifier.classify(dto.getMerchant(), dto.getDescription(), dto.getTransactionType());
+            category = categoryClassifier.classify(merchant, dto.getDescription(), dto.getTransactionType());
         }
 
         Transaction transaction = Transaction.builder()
@@ -98,7 +133,7 @@ public class TransactionService {
             .accountNumber(dto.getAccountNumber() != null ? dto.getAccountNumber() : "XX0000")
             .amount(dto.getAmount())
             .transactionType(dto.getTransactionType())
-            .merchant(dto.getMerchant())
+            .merchant(merchant)
             .description(dto.getDescription())
             .transactionDate(dto.getTransactionDate())
             .referenceNumber(dto.getReferenceNumber())
@@ -114,6 +149,7 @@ public class TransactionService {
 
     public Transaction updateTransaction(String id, TransactionRequestDto dto) {
         Transaction existing = getTransactionById(id);
+        String oldMerchant = existing.getMerchant();
 
         existing.setBank(dto.getBank());
         existing.setAccountNumber(dto.getAccountNumber());
@@ -127,7 +163,25 @@ public class TransactionService {
         existing.setPaymentMethod(dto.getPaymentMethod());
         existing.setUpdatedAt(Instant.now());
 
-        return transactionRepository.save(existing);
+        Transaction saved = transactionRepository.save(existing);
+
+        // If the user opted to save this rename/category change as an auto-rule
+        if (Boolean.TRUE.equals(dto.getCreateMerchantRule()) && merchantRuleService != null) {
+            String rawPattern = dto.getOriginalMerchant() != null && !dto.getOriginalMerchant().trim().isEmpty()
+                ? dto.getOriginalMerchant().trim()
+                : oldMerchant;
+
+            MerchantRule rule = MerchantRule.builder()
+                .rawMerchant(rawPattern)
+                .cleanMerchantName(dto.getMerchant().trim())
+                .category(dto.getCategory() != null ? dto.getCategory().trim() : saved.getCategory())
+                .matchType("CONTAINS")
+                .build();
+
+            merchantRuleService.saveRule(rule, Boolean.TRUE.equals(dto.getApplyToAllMatching()));
+        }
+
+        return saved;
     }
 
     public void deleteTransaction(String id) {
@@ -175,16 +229,32 @@ public class TransactionService {
             }
         }
 
+        String finalMerchant = parsed.getMerchant();
+        String finalCategory = parsed.getCategory();
+
+        // Check custom user merchant rules first!
+        if (merchantRuleService != null) {
+            MerchantRuleService.MerchantResolution res = merchantRuleService.resolve(parsed.getMerchant());
+            if (res.isMatched()) {
+                if (res.getMerchant() != null && !res.getMerchant().isEmpty()) {
+                    finalMerchant = res.getMerchant();
+                }
+                if (res.getCategory() != null && !res.getCategory().isEmpty()) {
+                    finalCategory = res.getCategory();
+                }
+            }
+        }
+
         Transaction transaction = Transaction.builder()
             .bank(parsed.getBank())
             .accountNumber(parsed.getAccountNumber())
             .amount(parsed.getAmount())
             .transactionType(parsed.getTransactionType())
-            .merchant(parsed.getMerchant())
+            .merchant(finalMerchant)
             .description(parsed.getDescription())
             .transactionDate(parsed.getTransactionDate())
             .referenceNumber(parsed.getReferenceNumber())
-            .category(parsed.getCategory())
+            .category(finalCategory)
             .paymentMethod(parsed.getPaymentMethod())
             .source(TransactionSource.GMAIL_AUTOMATED)
             .gmailMessageId(gmailMessageId)

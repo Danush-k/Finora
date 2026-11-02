@@ -4,29 +4,28 @@ import React, { useState, useEffect, useMemo } from "react";
 import { api } from "@/lib/api";
 import { CalendarDaySummary, DebtLentRecord, Transaction } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar, ArrowDownRight, ArrowUpRight, X, Link2, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, ArrowDownRight, ArrowUpRight, X, Link2, ExternalLink, Sliders } from "lucide-react";
 import { useRouter } from "next/navigation";
 import CategoryBadge from "@/components/common/CategoryBadge";
+import CategoryBudgetModal from "@/components/dashboard/CategoryBudgetModal";
 
 export default function MonthlyCalendarView() {
   const router = useRouter();
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 9, 1));
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 10, 1));
   const [calendarDays, setCalendarDays] = useState<CalendarDaySummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState<CalendarDaySummary | null>(null);
   const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>([]);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
+  const [todayYear, setTodayYear] = useState<number>(2026);
+  const [todayMonth, setTodayMonth] = useState<number>(11);
 
   useEffect(() => {
-    api.getDashboardSummary().then((summary) => {
-      if (summary.recentTransactions && summary.recentTransactions.length > 0) {
-        const latestDate = new Date(summary.recentTransactions[0].transactionDate);
-        setCurrentDate(new Date(latestDate.getFullYear(), latestDate.getMonth(), 1));
-      } else {
-        setCurrentDate(new Date());
-      }
-    }).catch(() => {
-      setCurrentDate(new Date());
-    });
+    // Always default calendar to current real-time month on client mount
+    const now = new Date();
+    setTodayYear(now.getFullYear());
+    setTodayMonth(now.getMonth() + 1);
+    setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
 
     api.getDebtLentRecords().then((records) => {
       setDebtLentRecords(records);
@@ -126,6 +125,13 @@ export default function MonthlyCalendarView() {
   useEffect(() => {
     fetchCalendar();
     setSelectedDay(null);
+
+    const handleSync = () => {
+      fetchCalendar();
+      fetchDebtLentRecords();
+    };
+    window.addEventListener("finora-sync-completed", handleSync);
+    return () => window.removeEventListener("finora-sync-completed", handleSync);
   }, [year, month]);
 
   const handlePrevMonth = () => {
@@ -134,6 +140,11 @@ export default function MonthlyCalendarView() {
 
   const handleNextMonth = () => {
     setCurrentDate(new Date(year, month, 1));
+  };
+
+  const handleCurrentMonth = () => {
+    const now = new Date();
+    setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
   };
 
   const monthName = currentDate.toLocaleString("default", { month: "long" });
@@ -224,27 +235,59 @@ export default function MonthlyCalendarView() {
             </div>
           </div>
 
-          {/* Month Navigation */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          {/* Controls: Month Navigation & Set Limits */}
+          <div className="flex items-center gap-2.5">
+            {/* Month Navigation */}
+            {/* Month Navigation */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1.5 rounded-lg hover:bg-white text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                title="Previous Month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleCurrentMonth}
+                className="text-xs font-bold px-3 min-w-[130px] text-center text-slate-900 hover:text-[#5228E0] transition-colors cursor-pointer"
+                title="Click to jump to Current Month"
+              >
+                {monthName} {year}
+              </button>
+              <button
+                onClick={handleNextMonth}
+                className="p-1.5 rounded-lg hover:bg-white text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                title="Next Month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {(year !== todayYear || month !== todayMonth) && (
+              <button
+                type="button"
+                onClick={handleCurrentMonth}
+                className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                title="Return to Current Month"
+              >
+                Current Month
+              </button>
+            )}
+
+            {/* Budget Limits Button */}
             <button
-              onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg hover:bg-white text-slate-700 transition-colors cursor-pointer shadow-2xs"
-              title="Previous Month"
+              type="button"
+              onClick={() => setBudgetModalOpen(true)}
+              className="btn-secondary flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+              title={`Configure monthly overall budget and category limits for ${monthName} ${year}`}
             >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-xs font-bold px-3 min-w-[130px] text-center text-slate-900">
-              {monthName} {year}
-            </span>
-            <button
-              onClick={handleNextMonth}
-              className="p-1.5 rounded-lg hover:bg-white text-slate-700 transition-colors cursor-pointer shadow-2xs"
-              title="Next Month"
-            >
-              <ChevronRight className="w-4 h-4" />
+              <Sliders className="w-3.5 h-3.5 text-[#5228E0]" />
+              <span>Budget Limits</span>
             </button>
           </div>
+
         </div>
+
 
         {/* Weekday Labels */}
         <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
@@ -478,6 +521,20 @@ export default function MonthlyCalendarView() {
           </div>
         )}
       </div>
+
+      {/* Category Spending Limits Modal for Calendar Month */}
+      <CategoryBudgetModal
+        isOpen={budgetModalOpen}
+        onClose={() => setBudgetModalOpen(false)}
+        onUpdated={() => {
+          fetchCalendar();
+        }}
+        year={year}
+        month={month}
+        monthName={`${monthName} ${year}`}
+        totalExpenses={totalMonthExpense}
+      />
     </div>
   );
 }
+

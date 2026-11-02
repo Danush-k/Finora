@@ -36,6 +36,7 @@ public class CsvImportService {
     private final TransactionRepository transactionRepository;
     private final MongoTemplate mongoTemplate;
     private final CategoryClassifier categoryClassifier;
+    private final MerchantRuleService merchantRuleService;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Kolkata");
 
@@ -454,8 +455,19 @@ public class CsvImportService {
             ref = extractRefFromNarration(narration);
         }
 
-        // Category
+        // Category & Custom Merchant Rules
         String category = getColValue(row, colMap.get("category"));
+        if (merchantRuleService != null) {
+            MerchantRuleService.MerchantResolution res = merchantRuleService.resolve(merchant);
+            if (res.isMatched()) {
+                if (res.getMerchant() != null && !res.getMerchant().isEmpty()) {
+                    merchant = res.getMerchant();
+                }
+                if (category == null || category.isEmpty()) {
+                    category = res.getCategory();
+                }
+            }
+        }
         if (category == null || category.isEmpty()) {
             category = categoryClassifier.classify(merchant, description, type);
         }

@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import MonthlyCalendarView from "@/components/dashboard/MonthlyCalendarView";
 import { Calendar, PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { CalendarSkeleton } from "@/components/common/LoadingSkeletons";
 
 export default function CalendarPage() {
   return (
@@ -21,15 +22,17 @@ export default function CalendarPage() {
 
         <Link
           href="/transactions?action=new"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
+          className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold cursor-pointer"
         >
-          <PlusCircle className="w-4 h-4" />
-          <span>New Entry</span>
+          <PlusCircle className="w-4 h-4 text-white" />
+          <span className="text-white font-semibold">New Entry</span>
         </Link>
       </div>
 
-      {/* Segregated Calendar View */}
-      <MonthlyCalendarView />
+      {/* Segregated Calendar View with Smooth Skeleton Fallback */}
+      <Suspense fallback={<CalendarSkeleton />}>
+        <MonthlyCalendarView />
+      </Suspense>
     </div>
   );
 }

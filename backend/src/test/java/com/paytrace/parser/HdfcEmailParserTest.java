@@ -155,4 +155,21 @@ class HdfcEmailParserTest {
 
         assertThat(result).isEmpty();
     }
+
+    @Test
+    @DisplayName("Should classify Chai track ssn as Food & Dining instead of Education & Fees")
+    void shouldClassifyChaiTrackSsnAsFoodAndDining() {
+        String subject = "You have done a UPI txn. Check details!";
+        String body = """
+            HDFC BANK --> Dear Customer, Greetings from HDFC Bank!
+            Rs.295.00 is debited from your account ending 1480 towards VPA ******1502@ybl (Chai track ssn) on 30-10-26.
+            UPI transaction reference no.: 630327469755.
+            """;
+
+        Optional<ParsedTransaction> result = parser.parse(subject, body);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getMerchant()).isEqualTo("Chai track ssn");
+        assertThat(result.get().getCategory()).isEqualTo("Food & Dining");
+    }
 }

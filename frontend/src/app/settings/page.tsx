@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { GmailStatus } from "@/types";
+import { GmailStatus, MerchantRule } from "@/types";
 import { formatDateTime } from "@/lib/utils";
+import { CATEGORIES } from "@/lib/constants";
+import CategoryBadge from "@/components/common/CategoryBadge";
 import {
   Mail,
   ShieldCheck,
@@ -17,7 +19,13 @@ import {
   KeyRound,
   Copy,
   Check,
+  Sparkles,
+  Plus,
+  Trash2,
+  Store,
+  ArrowRight,
 } from "lucide-react";
+import { SettingsSkeleton } from "@/components/common/LoadingSkeletons";
 
 export default function SettingsPage() {
   const [status, setStatus] = useState<GmailStatus | null>(null);
@@ -35,21 +43,98 @@ export default function SettingsPage() {
   const [simResult, setSimResult] = useState<any>(null);
   const [copiedRedirect, setCopiedRedirect] = useState(false);
 
+  // Merchant Rules State
+  const [rules, setRules] = useState<MerchantRule[]>([]);
+  const [loadingRules, setLoadingRules] = useState(false);
+  const [newRuleOpen, setNewRuleOpen] = useState(false);
+  const [ruleForm, setRuleForm] = useState({
+    rawMerchant: "",
+    cleanMerchantName: "",
+    category: "Food & Dining",
+    matchType: "CONTAINS",
+    applyToExisting: true,
+  });
+  const [savingRule, setSavingRule] = useState(false);
+  const [applyingAllRules, setApplyingAllRules] = useState(false);
+  const [ruleFeedback, setRuleFeedback] = useState<string | null>(null);
+
   const fetchStatus = async () => {
     try {
-      setLoading(true);
-      const data = await api.getGmailStatus();
-      setStatus(data);
+      setLoadingRules(true);
+      const [gmailData, rulesData] = await Promise.all([
+        api.getGmailStatus(),
+        api.getMerchantRules().catch(() => []),
+      ]);
+      setStatus(gmailData);
+      setRules(rulesData);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+      setLoadingRules(false);
     }
   };
 
   useEffect(() => {
     fetchStatus();
   }, []);
+
+  const handleSaveRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ruleForm.rawMerchant.trim() || !ruleForm.cleanMerchantName.trim()) {
+      return;
+    }
+    try {
+      setSavingRule(true);
+      setRuleFeedback(null);
+      await api.saveMerchantRule({
+        rawMerchant: ruleForm.rawMerchant.trim(),
+        cleanMerchantName: ruleForm.cleanMerchantName.trim(),
+        category: ruleForm.category,
+        matchType: ruleForm.matchType,
+        applyToExisting: ruleForm.applyToExisting,
+      });
+      setRuleFeedback(`Rule saved: "${ruleForm.rawMerchant.trim()}" ➔ "${ruleForm.cleanMerchantName.trim()}"`);
+      setRuleForm({
+        rawMerchant: "",
+        cleanMerchantName: "",
+        category: "Food & Dining",
+        matchType: "CONTAINS",
+        applyToExisting: true,
+      });
+      setNewRuleOpen(false);
+      const updated = await api.getMerchantRules();
+      setRules(updated);
+    } catch (err: any) {
+      setRuleFeedback(err.message || "Failed to save rule");
+    } finally {
+      setSavingRule(false);
+    }
+  };
+
+  const handleDeleteRule = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this merchant auto-classification rule?")) return;
+    try {
+      await api.deleteMerchantRule(id);
+      const updated = await api.getMerchantRules();
+      setRules(updated);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete rule");
+    }
+  };
+
+  const handleApplyAllRules = async () => {
+    try {
+      setApplyingAllRules(true);
+      setRuleFeedback(null);
+      const res = await api.applyAllMerchantRules();
+      setRuleFeedback(`Successfully processed historical transactions: ${res.totalModifiedCount} transactions updated!`);
+    } catch (err: any) {
+      setRuleFeedback(err.message || "Failed to apply rules");
+    } finally {
+      setApplyingAllRules(false);
+    }
+  };
 
   const handleConnectGmail = async () => {
     try {
@@ -74,6 +159,9 @@ export default function SettingsPage() {
         `Sync completed: ${result.processed} new transactions extracted, ${result.duplicates} duplicates skipped.`
       );
       await fetchStatus();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("finora-sync-completed"));
+      }
     } catch (err: any) {
       setSyncFeedback(err.message || "Failed to trigger sync");
     } finally {
@@ -118,6 +206,10 @@ export default function SettingsPage() {
     setCopiedRedirect(true);
     setTimeout(() => setCopiedRedirect(false), 2000);
   };
+
+  if (loading && !status) {
+    return <SettingsSkeleton />;
+  }
 
   return (
     <div className="space-y-6 pb-28 max-w-4xl mx-auto">
@@ -178,10 +270,10 @@ export default function SettingsPage() {
             ) : (
               <button
                 onClick={handleConnectGmail}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
+                className="btn-primary flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-white text-xs font-semibold cursor-pointer"
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Connect Gmail</span>
+                <ShieldCheck className="w-4 h-4 text-white" />
+                <span className="text-white font-semibold">Connect Gmail</span>
               </button>
             )}
           </div>
@@ -220,9 +312,9 @@ export default function SettingsPage() {
           <button
             onClick={handleSyncNow}
             disabled={syncing || !status?.connected}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-800 text-xs font-semibold border border-slate-200 transition-all cursor-pointer"
+            className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-40"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${syncing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-[#5228E0] ${syncing ? "animate-spin" : ""}`} />
             <span>{syncing ? "Synchronising Inbox..." : "Sync Now"}</span>
           </button>
 
@@ -230,6 +322,187 @@ export default function SettingsPage() {
             <p className="text-xs text-indigo-700 font-semibold">{syncFeedback}</p>
           )}
         </div>
+      </div>
+
+      {/* Merchant Auto-Classification Rules & Aliases */}
+      <div className="rounded-2xl liquid-glass p-6 border border-slate-200/80 space-y-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-2xs">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Merchant Classification Rules &amp; Aliases
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/70">
+                  {rules.length} active rule{rules.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Automatically rename raw UPI recipient names (e.g. &quot;PREMNATH A&quot;) to friendly shop names (e.g. &quot;PREMNATH A (Metro Cafe)&quot;) and assign categories.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleApplyAllRules}
+              disabled={applyingAllRules || rules.length === 0}
+              className="btn-secondary flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-40"
+              title="Run all rules across entire historical database"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-[#5228E0] ${applyingAllRules ? "animate-spin" : ""}`} />
+              <span>{applyingAllRules ? "Applying..." : "Run On History"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewRuleOpen(!newRuleOpen)}
+              className="btn-primary flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-white" />
+              <span className="text-white font-semibold">New Rule</span>
+            </button>
+          </div>
+        </div>
+
+        {ruleFeedback && (
+          <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-indigo-600" />
+            <span>{ruleFeedback}</span>
+          </div>
+        )}
+
+        {/* New Rule Form */}
+        {newRuleOpen && (
+          <form
+            onSubmit={handleSaveRule}
+            className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200/80 space-y-3 animate-fadeIn text-xs"
+          >
+            <div className="font-bold text-slate-900 flex items-center gap-2">
+              <Store className="w-4 h-4 text-indigo-600" />
+              <span>Create Merchant Auto-Classification Rule</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Raw Merchant Name / ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. PREMNATH A, 7010818264@slc"
+                  value={ruleForm.rawMerchant}
+                  onChange={(e) => setRuleForm({ ...ruleForm, rawMerchant: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Target Display Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. PREMNATH A (Metro Cafe)"
+                  value={ruleForm.cleanMerchantName}
+                  onChange={(e) => setRuleForm({ ...ruleForm, cleanMerchantName: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Default Category</label>
+                <select
+                  value={ruleForm.category}
+                  onChange={(e) => setRuleForm({ ...ruleForm, category: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 font-medium"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={ruleForm.applyToExisting}
+                  onChange={(e) => setRuleForm({ ...ruleForm, applyToExisting: e.target.checked })}
+                  className="w-3.5 h-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-slate-700 font-medium">
+                  Apply to all existing transactions matching this pattern immediately
+                </span>
+              </label>
+
+              <div className="flex items-center gap-2 self-end">
+                <button
+                  type="button"
+                  onClick={() => setNewRuleOpen(false)}
+                  className="btn-secondary px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingRule}
+                  className="btn-primary px-5 py-2 rounded-xl text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  <span className="text-white font-semibold">{savingRule ? "Saving..." : "Save Rule"}</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* Rules Table / Cards */}
+        {loadingRules ? (
+          <div className="py-8 text-center text-xs text-slate-400">Loading rules...</div>
+        ) : rules.length === 0 ? (
+          <div className="p-8 text-center rounded-2xl bg-slate-50 border border-slate-200/60 text-xs text-slate-500 space-y-2">
+            <Store className="w-6 h-6 mx-auto text-slate-400" />
+            <p className="font-semibold text-slate-700">No merchant rules configured yet</p>
+            <p className="max-w-md mx-auto text-[11px] text-slate-500">
+              When you edit a transaction and rename a merchant (like changing PREMNATH A to Metro Cafe), Finora can remember that rule and auto-classify all past and future transactions!
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {rules.map((rule) => (
+              <div
+                key={rule.id}
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-colors"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-mono font-semibold text-[11px]">
+                    {rule.rawMerchant}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="font-bold text-slate-900">
+                    {rule.cleanMerchantName}
+                  </span>
+                  <CategoryBadge category={rule.category} />
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteRule(rule.id!)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    title="Delete Rule"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Instant Test Simulator (Zero Credentials Required!) */}
@@ -323,9 +596,9 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={simulating}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-all shadow-sm shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
+              className="btn-primary px-5 py-2.5 rounded-2xl text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
             >
-              {simulating ? "Processing..." : "Simulate Ingestion"}
+              <span className="text-white font-semibold">{simulating ? "Processing..." : "Simulate Ingestion"}</span>
             </button>
           </div>
         </form>

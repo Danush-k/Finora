@@ -14,7 +14,12 @@ import {
   DebtLentStatus,
   DebtLentSummary,
   DebtLentType,
+  MerchantRule,
+  CategoryBudgetStatus,
+  OverallBudgetInfo,
+  BudgetSummaryResponse,
 } from "@/types";
+
 
 const getBaseUrl = () => {
   if (typeof window !== "undefined") {
@@ -240,4 +245,91 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // Merchant Rules & Aliases
+  getMerchantRules: () => request<MerchantRule[]>("/merchant-rules"),
+  saveMerchantRule: (rule: {
+    id?: string;
+    rawMerchant: string;
+    cleanMerchantName: string;
+    category: string;
+    matchType?: string;
+    applyToExisting?: boolean;
+  }) =>
+    request<MerchantRule>("/merchant-rules", {
+      method: "POST",
+      body: JSON.stringify(rule),
+    }),
+  deleteMerchantRule: (id: string) =>
+    request<void>(`/merchant-rules/${id}`, {
+      method: "DELETE",
+    }),
+  applyMerchantRule: (id: string) =>
+    request<{ ruleId: string; modifiedCount: number }>(`/merchant-rules/${id}/apply`, {
+      method: "POST",
+    }),
+  applyAllMerchantRules: () =>
+    request<{ totalModifiedCount: number }>("/merchant-rules/apply-all", {
+      method: "POST",
+    }),
+  previewMerchantCount: (merchant: string, matchType = "CONTAINS") => {
+    const params = new URLSearchParams({ merchant, matchType });
+    return request<{ merchant: string; matchingCount: number }>(`/merchant-rules/preview-count?${params.toString()}`);
+  },
+
+  // Category Budgets & Limits
+  getBudgetSummary: (year?: number, month?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year.toString());
+    if (month) params.append("month", month.toString());
+    const q = params.toString() ? `?${params.toString()}` : "";
+    return request<BudgetSummaryResponse>(`/budgets${q}`);
+  },
+  getCategoryBudgets: async (year?: number, month?: number): Promise<CategoryBudgetStatus[]> => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year.toString());
+    if (month) params.append("month", month.toString());
+    const q = params.toString() ? `?${params.toString()}` : "";
+    const res = await request<any>(`/budgets${q}`);
+    if (res && res.categories && Array.isArray(res.categories)) {
+      return res.categories;
+    }
+    if (Array.isArray(res)) {
+      return res;
+    }
+    return [];
+  },
+  saveCategoryBudget: (
+    category: string,
+    limitType: string,
+    limitValue: number,
+    year?: number,
+    month?: number,
+    applyToUpcoming?: boolean
+  ) =>
+    request<any>("/budgets", {
+      method: "POST",
+      body: JSON.stringify({ category, limitType, limitValue, year, month, applyToUpcoming }),
+    }),
+  saveCategoryBudgetsBulk: (
+    data:
+      | { category: string; limitType: string; limitValue: number }[]
+      | {
+          year?: number;
+          month?: number;
+          applyToUpcoming?: boolean;
+          overallLimit?: number;
+          budgets: { category: string; limitType: string; limitValue: number }[];
+        }
+  ) =>
+    request<string>("/budgets/bulk", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteCategoryBudget: (category: string) =>
+    request<void>(`/budgets/${encodeURIComponent(category)}`, {
+      method: "DELETE",
+    }),
+
+
 };

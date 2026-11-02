@@ -10,13 +10,50 @@ interface TransactionTableProps {
   transactions: Transaction[];
   onEdit: (txn: Transaction) => void;
   onDelete: (id: string) => void;
+  loading?: boolean;
 }
 
 export default function TransactionTable({
   transactions,
   onEdit,
   onDelete,
+  loading = false,
 }: TransactionTableProps) {
+  if (loading) {
+    return (
+      <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs animate-fadeIn">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
+              <tr>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Merchant</th>
+                <th className="py-3 px-4">Category</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">Account / Bank</th>
+                <th className="py-3 px-4 text-right">Amount</th>
+                <th className="py-3 px-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-800">
+              {[...Array(6)].map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td className="py-3.5 px-4"><div className="h-3.5 w-20 bg-slate-200/70 rounded-md" /></td>
+                  <td className="py-3.5 px-4"><div className="h-4 w-36 bg-slate-200/80 rounded-md" /></td>
+                  <td className="py-3.5 px-4"><div className="h-4 w-24 bg-slate-200/60 rounded-full" /></td>
+                  <td className="py-3.5 px-4"><div className="h-3.5 w-16 bg-slate-200/60 rounded-md" /></td>
+                  <td className="py-3.5 px-4"><div className="h-3.5 w-20 bg-slate-200/60 rounded-md" /></td>
+                  <td className="py-3.5 px-4 text-right"><div className="h-4 w-16 bg-slate-200/80 rounded-md ml-auto" /></td>
+                  <td className="py-3.5 px-4 text-center"><div className="h-4 w-12 bg-slate-200/60 rounded-md mx-auto" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   if (!transactions || transactions.length === 0) {
     return (
       <div className="w-full py-16 text-center text-xs text-slate-400 liquid-glass rounded-2xl border border-slate-200/80">
@@ -24,6 +61,7 @@ export default function TransactionTable({
       </div>
     );
   }
+
 
   return (
     <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs">

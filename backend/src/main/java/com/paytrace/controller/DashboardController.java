@@ -42,7 +42,7 @@ public class DashboardController {
         @RequestParam(required = false) Integer year,
         @RequestParam(required = false) Integer month
     ) {
-        LocalDate now = LocalDate.now();
+        LocalDate now = LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
         int targetYear = (year != null) ? year : now.getYear();
         int targetMonth = (month != null) ? month : now.getMonthValue();
 

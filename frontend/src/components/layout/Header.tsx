@@ -3,10 +3,14 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { GmailStatus } from "@/types";
-import { ShieldCheck, RefreshCw, AlertCircle, ArrowUpRight } from "lucide-react";
+import { RefreshCw, AlertCircle, ArrowUpRight, Lock, LogOut, Shield } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import GlassSurface from "@/components/ui/GlassSurface";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Header() {
+  const { user, lock, logout } = useAuth();
   const [status, setStatus] = useState<GmailStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -30,6 +34,9 @@ export default function Header() {
       setSyncing(true);
       await api.triggerSync();
       await fetchStatus();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("finora-sync-completed"));
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -38,40 +45,45 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full px-4 sm:px-8 py-3.5 liquid-glass-dock border-b border-slate-200/80">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Brand */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-emerald-500 p-[1px] shadow-sm shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center">
-              <span className="text-indigo-600 font-bold text-sm tracking-tight">FP</span>
-            </div>
+    <GlassSurface
+      as="header"
+      variant="toolbar"
+      className="sticky top-0 z-40 w-full px-4 sm:px-8 py-[11px] pt-[calc(env(safe-area-inset-top)+11px)]"
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        {/* Brand Logo - Fixed Dimensions: Height: 33px, Width: 128px */}
+        <Link href="/" className="flex items-center gap-3 group shrink-0">
+          <div className="relative flex items-center" style={{ width: "128px", height: "33px" }}>
+            <Image
+              src="/finora-logo-transparent.png"
+              alt="Finora by PayTrace"
+              width={128}
+              height={33}
+              priority
+              style={{ width: "128px", height: "33px", objectFit: "contain" }}
+              className="select-none transition-transform duration-200 group-hover:scale-[1.02]"
+            />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-base sm:text-lg tracking-tight text-slate-900">
-                Finora
-              </span>
-              <span className="text-[11px] font-semibold text-indigo-600 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200">
-                by PayTrace
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 hidden sm:block font-medium">Automated HDFC Expense Tracking</p>
+
+          <div className="hidden lg:block pl-3 border-l border-slate-200/80">
+            <p className="text-[11px] text-slate-500 font-medium leading-tight">
+              Automated HDFC Expense Tracking
+            </p>
           </div>
         </Link>
 
-        {/* Sync Status Pill & Actions */}
-        <div className="flex items-center gap-3">
+        {/* Sync Status Badge & Quick Actions */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {status?.connected ? (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Gmail Linked</span>
               <span className="text-slate-500 font-normal text-[11px]">({status.email})</span>
             </div>
           ) : (
             <Link
               href="/settings"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100/70 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50/90 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100/70 transition-colors shadow-2xs"
             >
               <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
               <span>Connect Gmail</span>
@@ -79,17 +91,42 @@ export default function Header() {
             </Link>
           )}
 
+          {/* Quick Sync Button */}
           <button
             onClick={handleQuickSync}
             disabled={syncing}
             title="Trigger Instant Gmail Synchronisation"
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 active:scale-95 border border-slate-200 text-slate-700 text-xs font-semibold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            className="btn-secondary flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${syncing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-[#5228E0] ${syncing ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Sync Now</span>
           </button>
+
+          {/* Profile & Lock Screen Toggle */}
+          <div className="flex items-center gap-1 pl-1 border-l border-slate-200/80">
+            <button
+              type="button"
+              onClick={lock}
+              title="Lock Screen with Face ID"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/80 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold cursor-pointer transition-all active:scale-95 shadow-2xs"
+            >
+              <Lock className="w-3 h-3 text-[#6C3BFF]" />
+              <span className="hidden sm:inline">Lock</span>
+            </button>
+
+            {/* User Avatar */}
+            <div
+              className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#6C3BFF] to-[#A78BFA] p-0.5 shadow-2xs cursor-pointer"
+              title={`${user?.name || "Danush"} (${user?.role || "Owner"}) - Click to sign out`}
+              onClick={logout}
+            >
+              <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden text-[10px] font-extrabold text-[#6C3BFF]">
+                {user?.name ? user.name.slice(0, 2).toUpperCase() : "DA"}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </header>
+    </GlassSurface>
   );
 }

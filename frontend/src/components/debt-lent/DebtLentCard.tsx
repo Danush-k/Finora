@@ -2,16 +2,13 @@
 
 import React from "react";
 import { DebtLentRecord } from "@/types";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import {
   ArrowUpRight,
   ArrowDownLeft,
   Calendar,
-  Clock,
-  CheckCircle2,
   Percent,
   ChevronRight,
-  AlertCircle,
   Link2,
 } from "lucide-react";
 
@@ -30,9 +27,10 @@ export default function DebtLentCard({ record, onClick }: DebtLentCardProps) {
   const settledCount = record.installments ? record.installments.filter((i) => i.settled).length : 0;
   const totalInstallments = record.installments ? record.installments.length : 0;
 
-  // Get initials for avatar
+  // Initials for avatar
   const initials = record.counterpartyName
     .split(" ")
+    .filter(Boolean)
     .map((n) => n[0])
     .slice(0, 2)
     .join("")
@@ -41,154 +39,204 @@ export default function DebtLentCard({ record, onClick }: DebtLentCardProps) {
   const isOverdue =
     record.status !== "SETTLED" && record.dueDate && new Date(record.dueDate) < new Date();
 
+  // Formatted date string (e.g. "12 Jan 2027")
+  const dueDateFormatted = record.dueDate
+    ? new Date(record.dueDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
   return (
     <div
       onClick={onClick}
-      className="p-5 rounded-3xl liquid-glass border border-slate-200/90 shadow-xs hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4 group select-none"
+      className="p-5 rounded-3xl liquid-glass border border-slate-200/90 shadow-xs hover:border-[#6C3BFF]/40 hover:shadow-lg hover:shadow-[#6C3BFF]/5 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3.5 group select-none"
     >
-      {/* Top Row: Avatar, Name, Type, Status */}
+      {/* 1. Header Row: Avatar, Counterparty, Unified Badge Cluster */}
       <div>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
+          {/* Avatar + Name */}
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xs shadow-2xs border ${
+              className={cn(
+                "w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs shadow-2xs border shrink-0",
                 isLent
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                  : "bg-amber-50 border-amber-200 text-amber-700"
-              }`}
+                  ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                  : "bg-indigo-500/10 text-[#5228E0] border-indigo-500/20"
+              )}
             >
               {initials}
             </div>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">
-                  {record.counterpartyName}
-                </h4>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium">
+            <div className="min-w-0">
+              <h4 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-[#6C3BFF] transition-colors truncate">
+                {record.counterpartyName}
+              </h4>
+              <p className="text-[11px] text-slate-400 font-medium truncate">
                 {record.description || (isLent ? "Money Lent" : "Personal Debt")}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1">
+          {/* Clean Horizontal Status Badges */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <span
-              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              className={cn(
+                "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border",
                 isLent
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-amber-50 text-amber-700 border-amber-200"
-              }`}
+                  : "bg-indigo-50 text-[#5228E0] border-indigo-200"
+              )}
             >
-              {isLent ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownLeft className="w-3 h-3" />}
-              <span>{isLent ? "Lent (Receivable)" : "Debt (Payable)"}</span>
+              {isLent ? (
+                <ArrowUpRight className="w-3 h-3 text-emerald-600" />
+              ) : (
+                <ArrowDownLeft className="w-3 h-3 text-[#6C3BFF]" />
+              )}
+              <span>{isLent ? "Lent" : "Debt"}</span>
             </span>
 
             <span
-              className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${
+              className={cn(
+                "inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border",
                 record.status === "SETTLED"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : record.status === "PARTIALLY_SETTLED"
-                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                   : isOverdue || record.status === "OVERDUE"
                   ? "bg-rose-50 text-rose-700 border-rose-200"
+                  : record.status === "PARTIALLY_SETTLED"
+                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                   : "bg-slate-100 text-slate-600 border-slate-200"
-              }`}
+              )}
             >
-              {record.status.replace("_", " ")}
+              <span
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  record.status === "SETTLED"
+                    ? "bg-emerald-500"
+                    : isOverdue || record.status === "OVERDUE"
+                    ? "bg-rose-500 animate-pulse"
+                    : record.status === "PARTIALLY_SETTLED"
+                    ? "bg-indigo-500"
+                    : "bg-slate-400"
+                )}
+              />
+              <span>
+                {record.status === "PARTIALLY_SETTLED"
+                  ? "Partial"
+                  : record.status.charAt(0) + record.status.slice(1).toLowerCase().replace("_", " ")}
+              </span>
             </span>
           </div>
         </div>
 
-        {/* Amount & Expected Total */}
-        <div className="mt-4 pt-3 border-t border-slate-100 flex items-baseline justify-between">
+        {/* 2. Hero Balance: Prominent Remaining Amount with Contextual Total */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-baseline justify-between gap-3">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              {isLent ? "Principal Lent" : "Principal Borrowed"}
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              {isLent ? "Remaining to Collect" : "Remaining to Pay"}
             </span>
-            <p className="text-lg font-extrabold text-slate-900 tabular-nums">
-              {formatCurrency(record.principalAmount)}
-            </p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span
+                className={cn(
+                  "text-xl sm:text-2xl font-extrabold tabular-nums tracking-tight",
+                  remaining <= 0
+                    ? "text-slate-400"
+                    : isOverdue
+                    ? "text-rose-600"
+                    : isLent
+                    ? "text-emerald-700"
+                    : "text-slate-900"
+                )}
+              >
+                {formatCurrency(remaining)}
+              </span>
+            </div>
           </div>
 
           <div className="text-right">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Remaining
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              {isLent ? "Total Lent" : "Total Borrowed"}
             </span>
-            <p
-              className={`text-sm font-extrabold tabular-nums ${
-                remaining > 0 ? (isLent ? "text-emerald-700" : "text-rose-600") : "text-slate-400"
-              }`}
-            >
-              {formatCurrency(remaining)}
-            </p>
+            <span className="text-xs font-extrabold text-slate-700 tabular-nums">
+              {formatCurrency(record.principalAmount)}
+            </span>
           </div>
         </div>
 
-        {/* Interest & Tenure Tag */}
-        <div className="mt-2.5 flex items-center gap-2 text-[11px] text-slate-500">
+        {/* 3. Metadata Tags: Interest & Bank Link */}
+        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
           {record.hasInterest && record.interestRate ? (
-            <span className="inline-flex items-center gap-1 font-semibold text-indigo-600 bg-indigo-50/70 border border-indigo-200/60 px-2 py-0.5 rounded-md">
-              <Percent className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2 py-0.5 rounded-lg">
+              <Percent className="w-2.5 h-2.5" />
               <span>
-                {record.interestRate}% {record.interestPeriodType === "MONTHLY" ? "p.m." : "p.a."} ({record.tenureMonths || 1} mo)
+                {record.interestRate}% {record.interestPeriodType === "MONTHLY" ? "p.m." : "p.a."}
               </span>
             </span>
           ) : (
-            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-              0% Interest Free
+            <span className="inline-flex items-center text-[10px] font-semibold text-slate-500 bg-slate-100/80 px-2 py-0.5 rounded-lg">
+              Interest-free
             </span>
           )}
 
           {record.linkedTransactionDescription && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 bg-slate-50 border border-slate-200/80 px-1.5 py-0.5 rounded truncate max-w-[140px]" title={record.linkedTransactionDescription}>
-              <Link2 className="w-2.5 h-2.5 shrink-0" />
-              <span className="truncate">Mapped Txn</span>
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-50 border border-slate-200/70 px-2 py-0.5 rounded-lg truncate max-w-[150px]"
+              title={record.linkedTransactionDescription}
+            >
+              <Link2 className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+              <span className="truncate">Linked to bank alert</span>
             </span>
           )}
 
           {record.amountDifferenceReason && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded truncate max-w-[170px]"
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-lg truncate max-w-[150px]"
               title={record.amountDifferenceReason}
             >
-              <span>Note: {record.amountDifferenceReason}</span>
+              <span className="truncate">Note: {record.amountDifferenceReason}</span>
             </span>
           )}
         </div>
       </div>
 
-      {/* Bottom Progress & Checklist Summary */}
-      <div className="space-y-2 pt-3 border-t border-slate-100">
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-          <span>
+      {/* 4. Progress Bar & Checklist Summary */}
+      <div className="space-y-1.5 pt-2.5 border-t border-slate-100">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="font-semibold text-slate-500">
             {totalInstallments > 0
-              ? `${settledCount} of ${totalInstallments} checklist steps cleared`
-              : `${pct}% settled`}
+              ? `${settledCount} of ${totalInstallments} payments cleared`
+              : repaid > 0
+              ? `${formatCurrency(repaid)} paid (${pct}%)`
+              : "0% paid"}
           </span>
-          <span className="font-bold text-slate-700">{pct}%</span>
+          <span className="font-bold text-slate-700 tabular-nums">{pct}%</span>
         </div>
 
         <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-300 ${
+            className={cn(
+              "h-full rounded-full transition-all duration-300",
               pct === 100
                 ? "bg-emerald-500"
                 : isLent
                 ? "bg-emerald-500"
-                : "bg-amber-500"
-            }`}
+                : "bg-[#6C3BFF]"
+            )}
             style={{ width: `${pct}%` }}
           />
         </div>
 
+        {/* 5. Footer: Due Date & Action Link */}
         <div className="flex items-center justify-between pt-1 text-[11px]">
-          <span className="flex items-center gap-1 text-slate-400">
-            <Calendar className="w-3 h-3" />
-            <span>{record.dueDate ? `Due ${record.dueDate.split("T")[0]}` : "No set due date"}</span>
+          <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span className={isOverdue ? "text-rose-600 font-bold" : "text-slate-500"}>
+              {dueDateFormatted ? `Due ${dueDateFormatted}` : "No due date"}
+            </span>
           </span>
 
-          <span className="inline-flex items-center gap-0.5 text-indigo-600 font-bold group-hover:translate-x-0.5 transition-transform">
+          <span className="inline-flex items-center gap-0.5 text-[#6C3BFF] font-bold text-xs group-hover:translate-x-0.5 transition-transform">
             <span>Checklist</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </span>

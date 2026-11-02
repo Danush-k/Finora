@@ -113,6 +113,14 @@ public class EmailSyncScheduler {
                         Optional<ParsedTransaction> parsedOpt = hdfcEmailParser.parse(email.subject(), email.body());
                         if (parsedOpt.isPresent()) {
                             ParsedTransaction parsed = parsedOpt.get();
+                            if (email.receivedAt() != null && parsed.getTransactionDate() != null) {
+                                java.time.ZoneId zone = java.time.ZoneId.of("Asia/Kolkata");
+                                java.time.LocalDate parsedDate = parsed.getTransactionDate().atZone(zone).toLocalDate();
+                                java.time.LocalDate emailDate = email.receivedAt().atZone(zone).toLocalDate();
+                                if (parsedDate.equals(emailDate)) {
+                                    parsed.setTransactionDate(email.receivedAt());
+                                }
+                            }
                             Optional<Transaction> savedOpt = transactionService.saveExtractedTransaction(parsed, email.messageId());
                             if (savedOpt.isPresent()) {
                                 record.setProcessingStatus(ProcessingStatus.PROCESSED);

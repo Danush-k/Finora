@@ -22,6 +22,7 @@
         <google.api.client.version>2.6.0</google.api.client.version>
         <google.gmail.version>v1-rev20240520-2.0.0</google.gmail.version>
         <google.oauth.version>1.36.0</google.oauth.version>
+        <lombok.version>1.18.36</lombok.version>
     </properties>
 
     <dependencies>
@@ -110,6 +111,14 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
                 </configuration>
             </plugin>
         </plugins>

@@ -1,30 +1,390 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #6C3BFF;
+  --color-primary-dark: #5228E0;
+  --color-primary-light: #8F6BFF;
+  --color-accent: #A78BFF;
+  --color-brand-bg: #F5F6FF;
+  --color-brand-text: #0F172A;
+
+  /* Finora Custom Brand Palette Ramp */
+  --color-indigo-50: #F5F6FF;
+  --color-indigo-100: #ECEBFF;
+  --color-indigo-200: #DDD6FE;
+  --color-indigo-300: #C4B5FD;
+  --color-indigo-400: #A78BFF;
+  --color-indigo-500: #8F6BFF;
+  --color-indigo-600: #6C3BFF;
+  --color-indigo-700: #5228E0;
+  --color-indigo-800: #421DB8;
+  --color-indigo-900: #331694;
+}
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --surface: rgba(255, 255, 255, 0.8);
-  --surface-elevated: rgba(255, 255, 255, 0.95);
-  --surface-border: rgba(226, 232, 240, 0.85);
-  --surface-highlight: rgba(255, 255, 255, 0.9);
+  --background: #F5F6FF;
+  --foreground: #0F172A;
+  --surface: rgba(255, 255, 255, 0.85);
+  --surface-elevated: rgba(255, 255, 255, 0.98);
+  --surface-border: rgba(221, 214, 254, 0.65);
+  --surface-highlight: rgba(255, 255, 255, 0.95);
   
-  --brand-primary: #4f46e5;
+  --brand-primary: #6C3BFF;
+  --brand-primary-dark: #5228E0;
+  --brand-primary-light: #8F6BFF;
+  --brand-accent: #A78BFF;
   --brand-income: #059669;
   --brand-expense: #e11d48;
-  --brand-accent: #0284c7;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  font-family: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.07) 0px, transparent 45%),
-    radial-gradient(at 100% 15%, rgba(16, 185, 129, 0.05) 0px, transparent 45%),
-    radial-gradient(at 50% 100%, rgba(244, 63, 94, 0.04) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(108, 59, 255, 0.08) 0px, transparent 45%),
+    radial-gradient(at 100% 15%, rgba(16, 185, 129, 0.04) 0px, transparent 45%),
+    radial-gradient(at 50% 100%, rgba(225, 29, 72, 0.03) 0px, transparent 50%);
   background-attachment: fixed;
+}
+
+/* Premium Glassmorphism & Apple Glossy Glass Treatment */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 
+    0 8px 30px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.glass-dock {
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.80);
+  box-shadow: 
+    0 16px 36px -6px rgba(15, 23, 42, 0.08),
+    0 4px 12px rgba(15, 23, 42, 0.03),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.glass-toolbar {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.75);
+  box-shadow: 
+    0 4px 20px -2px rgba(15, 23, 42, 0.03),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.85);
+}
+
+/* ========================================================= */
+/* FINORA – PREMIUM GLOSSY BUTTON DESIGN SYSTEM               */
+/* Pixel-matched to reference image                          */
+/* ========================================================= */
+
+/* 1. PRIMARY BUTTON – GLOSSY PURPLE */
+.btn-primary,
+.glass-purple-btn,
+.glass-btn-primary,
+.nav-active-pill,
+.active-navigation,
+.glass-purple {
+  background-color: #6C3BFF !important;
+  background: linear-gradient(
+    135deg,
+    #8F6BFF 0%,
+    #7547F5 45%,
+    #5228E0 100%
+  ) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  box-shadow:
+    0 4px 12px rgba(108, 59, 255, 0.16),
+    0 8px 22px rgba(108, 59, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    filter 220ms ease,
+    background 220ms ease;
+  cursor: pointer;
+  outline: none;
+}
+
+.btn-primary *,
+.glass-purple-btn *,
+.glass-btn-primary *,
+.nav-active-pill *,
+.active-navigation *,
+.glass-purple * {
+  color: #FFFFFF !important;
+}
+
+/* Soft reflective highlight along the upper edge */
+.btn-primary::before,
+.glass-purple-btn::before,
+.glass-btn-primary::before,
+.nav-active-pill::before,
+.active-navigation::before,
+.glass-purple::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10px;
+  right: 10px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent) !important;
+  pointer-events: none;
+  border-radius: 9999px;
+  z-index: 1;
+}
+
+/* Primary Button Hover: Slightly increase brightness, subtle shadow boost, 1px lift */
+.btn-primary:hover,
+.glass-purple-btn:hover,
+.glass-btn-primary:hover {
+  background: linear-gradient(
+    135deg,
+    #9B7AFF 0%,
+    #7E52F8 45%,
+    #5B30E8 100%
+  ) !important;
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 16px rgba(108, 59, 255, 0.24),
+    0 10px 26px rgba(108, 59, 255, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Primary Button Press: Scale down to 0.98, reduce elevation */
+.btn-primary:active,
+.glass-purple-btn:active,
+.glass-btn-primary:active {
+  transform: scale(0.98);
+  box-shadow:
+    0 2px 6px rgba(108, 59, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+/* Primary Button Focus: Accessible purple focus ring without excessive glow */
+.btn-primary:focus-visible,
+.glass-purple-btn:focus-visible,
+.glass-btn-primary:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(108, 59, 255, 0.35),
+    0 4px 12px rgba(108, 59, 255, 0.18) !important;
+}
+
+/* 2. SECONDARY BUTTON – FROSTED GLASS (Pixel-matched to reference image) */
+.btn-secondary,
+.glass-secondary-btn {
+  background: rgba(255, 255, 255, 0.68) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  color: #5228E0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 16px;
+  box-shadow:
+    0 3px 12px rgba(15, 23, 42, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease,
+    border-color 220ms ease;
+  cursor: pointer;
+  outline: none;
+  font-weight: 600;
+}
+
+.btn-secondary *,
+.glass-secondary-btn * {
+  color: #5228E0 !important;
+}
+
+/* Delicate white reflective edge along the upper border of secondary buttons */
+.btn-secondary::before,
+.glass-secondary-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent) !important;
+  pointer-events: none;
+  border-radius: 9999px;
+  z-index: 1;
+}
+
+/* Secondary Button Hover: Slightly increase brightness, 1px lift, soft shadow */
+.btn-secondary:hover,
+.glass-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.85) !important;
+  transform: translateY(-1px);
+  border-color: rgba(221, 214, 254, 0.80) !important;
+  box-shadow:
+    0 5px 16px rgba(108, 59, 255, 0.08),
+    0 2px 6px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 #ffffff !important;
+}
+
+/* Secondary Button Press: Scale down to 0.98 */
+.btn-secondary:active,
+.glass-secondary-btn:active {
+  transform: scale(0.98);
+  box-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Secondary Button Focus */
+.btn-secondary:focus-visible,
+.glass-secondary-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(108, 59, 255, 0.30),
+    0 3px 12px rgba(15, 23, 42, 0.045) !important;
+}
+
+/* Translucent Glossy Emerald Action Button */
+.glass-emerald-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.92),
+    rgba(5, 150, 105, 0.90),
+    rgba(4, 120, 87, 0.94)
+  );
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 5px 14px rgba(5, 150, 105, 0.18),
+    0 10px 24px rgba(4, 120, 87, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ffffff;
+}
+
+.glass-emerald-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10px;
+  right: 10px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.60), transparent);
+  pointer-events: none;
+  border-radius: 9999px;
+}
+
+.glass-emerald-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.94),
+    rgba(16, 185, 129, 0.92),
+    rgba(5, 150, 105, 0.96)
+  );
+  box-shadow:
+    0 6px 18px rgba(5, 150, 105, 0.24),
+    0 12px 28px rgba(4, 120, 87, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.glass-emerald-btn:active {
+  transform: scale(0.97);
+}
+
+/* Translucent Glossy Amber Action Button */
+.glass-amber-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.92),
+    rgba(217, 119, 6, 0.90),
+    rgba(180, 83, 9, 0.94)
+  );
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 5px 14px rgba(217, 119, 6, 0.18),
+    0 10px 24px rgba(180, 83, 9, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ffffff;
+}
+
+.glass-amber-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10px;
+  right: 10px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.60), transparent);
+  pointer-events: none;
+  border-radius: 9999px;
+}
+
+.glass-amber-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.94),
+    rgba(245, 158, 11, 0.92),
+    rgba(217, 119, 6, 0.96)
+  );
+  box-shadow:
+    0 6px 18px rgba(217, 119, 6, 0.24),
+    0 12px 28px rgba(180, 83, 9, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.glass-amber-btn:active {
+  transform: scale(0.97);
+}
+
+/* Frosted Translucent Secondary Button */
+.glass-secondary-btn {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(221, 214, 254, 0.6);
+  box-shadow:
+    0 4px 14px rgba(108, 59, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.glass-secondary-btn:active {
+  transform: scale(0.97);
 }
 
 /* Apple Liquid Glass in Light Theme */
@@ -51,14 +411,14 @@ body {
 }
 
 .liquid-glass-dock {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(30px) saturate(200%);
-  -webkit-backdrop-filter: blur(30px) saturate(200%);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow: 
-    0 20px 40px -10px rgba(15, 23, 42, 0.1),
-    0 1px 3px 0 rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 0 rgba(255, 255, 255, 1);
+    0 16px 36px -6px rgba(15, 23, 42, 0.08),
+    0 4px 12px rgba(15, 23, 42, 0.03),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 /* Subtle glowing pulse */
@@ -109,3 +469,64 @@ div:focus-visible {
   pointer-events: auto !important;
   outline: none !important;
 }
+
+/* Silky-Smooth Native Page & Route Transitions */
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: pageEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Hide floating navigation dock smoothly when any modal or drawer is active */
+body.modal-open .navigation-dock {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate(-50%, 28px) !important;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* FinTech Subtle Chart & Interface Animations */
+@keyframes chart-beacon-pulse {
+  0% {
+    r: 6;
+    opacity: 0.85;
+  }
+  65% {
+    r: 16;
+    opacity: 0;
+  }
+  100% {
+    r: 16;
+    opacity: 0;
+  }
+}
+
+.animate-chart-beacon {
+  animation: chart-beacon-pulse 2.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+

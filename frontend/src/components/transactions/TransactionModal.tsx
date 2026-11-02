@@ -1,8 +1,9 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Transaction, TransactionRequest, TransactionType, PaymentMethod } from "@/types";
-import { X, Check } from "lucide-react";
+import { CATEGORIES } from "@/lib/constants";
+import { api } from "@/lib/api";
+import { X, Check, Sparkles } from "lucide-react";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -11,27 +12,31 @@ interface TransactionModalProps {
   initialData?: Transaction | null;
 }
 
-const CATEGORIES = [
-  "Food & Dining",
-  "Shopping",
-  "Groceries",
-  "Travel & Fuel",
-  "Utilities & Bills",
-  "Entertainment",
-  "Health & Medical",
-  "Investment",
-  "Salary & Income",
-  "Refund",
-  "Transfer",
-  "Other",
-];
-
 export default function TransactionModal({
   isOpen,
   onClose,
   onSubmit,
   initialData,
 }: TransactionModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
   const [amount, setAmount] = useState<string>("");
   const [transactionType, setTransactionType] = useState<TransactionType>("EXPENSE");
   const [merchant, setMerchant] = useState("");
@@ -44,6 +49,20 @@ export default function TransactionModal({
   const [accountNumber, setAccountNumber] = useState("XX0000");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Smart merchant rule options
+  const [createMerchantRule, setCreateMerchantRule] = useState(true);
+  const [applyToAllMatching, setApplyToAllMatching] = useState(true);
+  const [matchCount, setMatchCount] = useState<number>(0);
+
+  // Dynamic categories list ensuring initialData.category is always selectable
+  const availableCategories = React.useMemo(() => {
+    const set = new Set<string>(CATEGORIES);
+    if (initialData?.category && initialData.category.trim()) {
+      set.add(initialData.category.trim());
+    }
+    return Array.from(set);
+  }, [initialData?.category]);
 
   useEffect(() => {
     if (initialData) {
@@ -61,6 +80,14 @@ export default function TransactionModal({
       setPaymentMethod(initialData.paymentMethod || "UPI");
       setBank(initialData.bank || "HDFC");
       setAccountNumber(initialData.accountNumber || "XX0000");
+
+      setCreateMerchantRule(true);
+      setApplyToAllMatching(true);
+
+      // Check how many transactions share this merchant
+      api.previewMerchantCount(initialData.merchant)
+        .then((res) => setMatchCount(res.matchingCount))
+        .catch(() => setMatchCount(1));
     } else {
       setAmount("");
       setTransactionType("EXPENSE");
@@ -72,11 +99,16 @@ export default function TransactionModal({
       setPaymentMethod("UPI");
       setBank("HDFC");
       setAccountNumber("XX1234");
+      setMatchCount(0);
     }
     setError(null);
   }, [initialData, isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
+
+  const isMerchantOrCategoryChanged =
+    !!initialData &&
+    (merchant.trim() !== initialData.merchant || category.trim() !== initialData.category);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +136,9 @@ export default function TransactionModal({
         paymentMethod,
         bank: bank.trim() || "HDFC",
         accountNumber: accountNumber.trim() || "XX0000",
+        createMerchantRule: isMerchantOrCategoryChanged ? createMerchantRule : false,
+        applyToAllMatching: isMerchantOrCategoryChanged ? applyToAllMatching : false,
+        originalMerchant: initialData?.merchant,
       };
 
       await onSubmit(payload);
@@ -115,8 +150,8 @@ export default function TransactionModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
       <div className="w-full max-w-lg rounded-2xl liquid-glass-elevated border border-slate-200 p-6 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
@@ -189,7 +224,7 @@ export default function TransactionModal({
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-medium focus:outline-none focus:border-indigo-500 transition-colors"
               >
-                {CATEGORIES.map((c) => (
+                {availableCategories.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -260,26 +295,67 @@ export default function TransactionModal({
             </div>
           </div>
 
+          {/* Smart Merchant Rule Callout */}
+          {initialData && isMerchantOrCategoryChanged && (
+            <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs space-y-2 animate-fadeIn">
+              <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>Auto-Classification Rule</span>
+              </div>
+              <p className="text-[11px] text-indigo-800 leading-snug">
+                You changed <span className="font-semibold text-slate-900 underline decoration-indigo-300">{initialData.merchant}</span> to{" "}
+                <span className="font-semibold text-slate-900 underline decoration-indigo-300">{merchant}</span> ({category}).
+              </p>
+              <div className="pt-1 space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={createMerchantRule}
+                    onChange={(e) => setCreateMerchantRule(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-semibold text-indigo-950">
+                    Always auto-classify future transactions like this
+                  </span>
+                </label>
+                {matchCount > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={applyToAllMatching}
+                      onChange={(e) => setApplyToAllMatching(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className="text-[11px] text-indigo-800">
+                      Also apply to all {matchCount} existing transaction{matchCount === 1 ? "" : "s"} with name &quot;{initialData.merchant}&quot;
+                    </span>
+                  </label>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors font-semibold cursor-pointer"
+              className="btn-secondary px-5 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold transition-all shadow-sm shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
+              className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer disabled:opacity-50"
             >
-              <Check className="w-3.5 h-3.5" />
-              <span>{submitting ? "Saving..." : "Save Transaction"}</span>
+              <Check className="w-3.5 h-3.5 text-white" />
+              <span className="text-white font-semibold">{submitting ? "Saving..." : "Save Transaction"}</span>
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

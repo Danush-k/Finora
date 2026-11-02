@@ -17,6 +17,7 @@ public interface TransactionRepository extends MongoRepository<Transaction, Stri
 
     Optional<Transaction> findByGmailMessageId(String gmailMessageId);
 
+    @org.springframework.data.mongodb.repository.Query(value = "{ 'transactionDate' : { $gte: ?0, $lte: ?1 } }", sort = "{ 'transactionDate' : -1 }")
     List<Transaction> findByTransactionDateBetweenOrderByTransactionDateDesc(Instant start, Instant end);
 
     List<Transaction> findTop10ByOrderByTransactionDateDesc();

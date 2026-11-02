@@ -33,6 +33,9 @@ export interface TransactionRequest {
   referenceNumber?: string;
   category?: string;
   paymentMethod: PaymentMethod;
+  createMerchantRule?: boolean;
+  applyToAllMatching?: boolean;
+  originalMerchant?: string;
 }
 
 export interface DashboardSummary {
@@ -204,3 +207,51 @@ export interface DebtLentRequest {
   tenureMonths?: number;
   installments?: RepaymentInstallment[];
 }
+
+export interface MerchantRule {
+  id?: string;
+  rawMerchant: string;
+  cleanMerchantName: string;
+  category: string;
+  matchType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CategoryBudgetStatus {
+  category: string;
+  year?: number;
+  month?: number;
+  hasLimit: boolean;
+  limitType?: "RUPEES" | "PERCENTAGE";
+  limitValue?: number;
+  computedLimitAmount?: number;
+  currentSpend: number;
+  percentageUsed: number;
+  remainingAmount: number;
+  status: "NORMAL" | "WARNING" | "EXCEEDED";
+  applyToUpcoming?: boolean;
+  inherited?: boolean;
+  pastMonth?: boolean;
+}
+
+export interface OverallBudgetInfo {
+  hasLimit: boolean;
+  limitValue: number;
+  totalExpenses: number;
+  totalAllocated: number;
+  remainingBuffer: number;
+  percentageUsed: number;
+  applyToUpcoming?: boolean;
+  inherited?: boolean;
+  pastMonth?: boolean;
+  status: "NORMAL" | "WARNING" | "EXCEEDED";
+}
+
+export interface BudgetSummaryResponse {
+  overallBudget: OverallBudgetInfo;
+  categories: CategoryBudgetStatus[];
+}
+
+
+

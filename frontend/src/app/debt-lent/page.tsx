@@ -12,7 +12,9 @@ import {
 import DebtLentCard from "@/components/debt-lent/DebtLentCard";
 import DebtLentModal from "@/components/debt-lent/DebtLentModal";
 import InstallmentChecklistDrawer from "@/components/debt-lent/InstallmentChecklistDrawer";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { DebtLentSkeleton } from "@/components/common/LoadingSkeletons";
 import {
   PlusCircle,
   Coins,
@@ -125,45 +127,57 @@ export default function DebtLentPage() {
 
   const isLentTab = activeTab === "LENT";
 
+  if (loading && records.length === 0) {
+    return <DebtLentSkeleton />;
+  }
+
   return (
     <div className="space-y-6 pb-28">
       {/* Top Main Segregation Selector */}
       <div className="p-1.5 rounded-3xl bg-slate-100/90 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="grid grid-cols-2 gap-2 flex-1 sm:max-w-xl">
+        <div className="grid grid-cols-2 gap-2 flex-1 sm:max-w-xl relative">
           {/* Lent Tab Button */}
           <button
             onClick={() => {
               setActiveTab("LENT");
               setStatusFilter("ALL");
             }}
-            className={`flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
-              isLentTab
-                ? "bg-white text-emerald-800 shadow-sm border border-emerald-100 ring-2 ring-emerald-500/20"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-            }`}
+            className={cn(
+              "relative flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
+              isLentTab ? "text-emerald-900" : "text-slate-600 hover:text-slate-900"
+            )}
           >
-            <div
-              className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                isLentTab ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"
-              }`}
-            >
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </div>
-            <div className="text-left">
-              <span className="block leading-none">Money Lent</span>
-              <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
-                Receivables • Owed to you
+            {isLentTab && (
+              <motion.div
+                layoutId="debt-lent-main-tab-pill"
+                transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
+                className="absolute inset-0 rounded-2xl bg-white shadow-sm border border-emerald-100 ring-2 ring-emerald-500/20 z-0"
+              />
+            )}
+            <div className="relative z-10 flex items-center gap-2.5 w-full">
+              <div
+                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                  isLentTab ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"
+                }`}
+              >
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-left">
+                <span className="block leading-none">Money Lent</span>
+                <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
+                  Receivables • Owed to you
+                </span>
+              </div>
+              <span
+                className={`ml-auto text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
+                  isLentTab
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-200/80 text-slate-600"
+                }`}
+              >
+                {summary?.lentActiveCount || 0}
               </span>
             </div>
-            <span
-              className={`ml-auto text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
-                isLentTab
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-slate-200/80 text-slate-600"
-              }`}
-            >
-              {summary?.lentActiveCount || 0}
-            </span>
           </button>
 
           {/* Debt Tab Button */}
@@ -172,34 +186,42 @@ export default function DebtLentPage() {
               setActiveTab("DEBT");
               setStatusFilter("ALL");
             }}
-            className={`flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
-              !isLentTab
-                ? "bg-white text-amber-800 shadow-sm border border-amber-100 ring-2 ring-amber-500/20"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-            }`}
+            className={cn(
+              "relative flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
+              !isLentTab ? "text-amber-900" : "text-slate-600 hover:text-slate-900"
+            )}
           >
-            <div
-              className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                !isLentTab ? "bg-amber-600 text-white" : "bg-slate-200 text-slate-500"
-              }`}
-            >
-              <ArrowDownLeft className="w-3.5 h-3.5" />
-            </div>
-            <div className="text-left">
-              <span className="block leading-none">Debt</span>
-              <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
-                Payables • You owe
+            {!isLentTab && (
+              <motion.div
+                layoutId="debt-lent-main-tab-pill"
+                transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
+                className="absolute inset-0 rounded-2xl bg-white shadow-sm border border-amber-100 ring-2 ring-amber-500/20 z-0"
+              />
+            )}
+            <div className="relative z-10 flex items-center gap-2.5 w-full">
+              <div
+                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                  !isLentTab ? "bg-amber-600 text-white" : "bg-slate-200 text-slate-500"
+                }`}
+              >
+                <ArrowDownLeft className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-left">
+                <span className="block leading-none">Debt</span>
+                <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
+                  Payables • You owe
+                </span>
+              </div>
+              <span
+                className={`ml-auto text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
+                  !isLentTab
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-slate-200/80 text-slate-600"
+                }`}
+              >
+                {summary?.debtActiveCount || 0}
               </span>
             </div>
-            <span
-              className={`ml-auto text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
-                !isLentTab
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-slate-200/80 text-slate-600"
-              }`}
-            >
-              {summary?.debtActiveCount || 0}
-            </span>
           </button>
         </div>
 
@@ -250,14 +272,10 @@ export default function DebtLentPage() {
             setEditingRecord(null);
             setModalOpen(true);
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl active:scale-95 text-white text-xs font-bold shadow-md transition-all cursor-pointer ${
-            isLentTab
-              ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25"
-              : "bg-amber-600 hover:bg-amber-700 shadow-amber-600/25"
-          }`}
+          className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white text-xs font-semibold cursor-pointer"
         >
-          <PlusCircle className="w-4 h-4" />
-          <span>{isLentTab ? "Log Money Lent" : "Log New Debt"}</span>
+          <PlusCircle className="w-4 h-4 text-white" />
+          <span className="text-white font-semibold">{isLentTab ? "Log Money Lent" : "Log New Debt"}</span>
         </button>
       </div>
 
@@ -433,7 +451,7 @@ export default function DebtLentPage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+            className="btn-secondary px-5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
           >
             Search
           </button>

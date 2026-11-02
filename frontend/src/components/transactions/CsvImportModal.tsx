@@ -1,6 +1,5 @@
-"use client";
-
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/lib/api";
 import { CsvTransaction, CsvVerificationResult } from "@/types";
 import { formatCurrency } from "@/lib/utils";
@@ -43,8 +42,27 @@ export default function CsvImportModal({
   const [importSuccessCount, setImportSuccessCount] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
 
   const handleReset = () => {
     setFile(null);
@@ -160,8 +178,8 @@ export default function CsvImportModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
       <div
         className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
@@ -221,7 +239,7 @@ export default function CsvImportModal({
                     handleReset();
                     onClose();
                   }}
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
+                  className="btn-primary px-6 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer"
                 >
                   Done & View Dashboard
                 </button>
@@ -264,13 +282,13 @@ export default function CsvImportModal({
                   <div className="pt-2 flex items-center gap-3">
                     <button
                       onClick={handleReset}
-                      className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                      className="btn-secondary px-4 py-2 rounded-2xl text-xs font-semibold cursor-pointer"
                     >
                       Upload Another File
                     </button>
                     <button
                       onClick={onClose}
-                      className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
+                      className="btn-primary px-5 py-2 rounded-2xl text-xs font-semibold cursor-pointer"
                     >
                       Done
                     </button>
@@ -520,9 +538,9 @@ export default function CsvImportModal({
                 type="button"
                 onClick={handleReset}
                 disabled={importing}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+                className="btn-secondary flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <RotateCcw className="w-3.5 h-3.5 text-[#5228E0]" />
                 <span>Choose Different File</span>
               </button>
 
@@ -530,17 +548,17 @@ export default function CsvImportModal({
                 type="button"
                 onClick={handleConfirmImport}
                 disabled={importing || selectedIds.size === 0}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {importing ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Adding Transactions...</span>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span className="text-white font-semibold">Adding Transactions...</span>
                   </>
                 ) : (
                   <>
-                    <Check className="w-4 h-4" />
-                    <span>Confirm & Add {selectedIds.size} Transactions</span>
+                    <Check className="w-4 h-4 text-white" />
+                    <span className="text-white font-semibold">Confirm & Add {selectedIds.size} Transactions</span>
                   </>
                 )}
               </button>
@@ -553,7 +571,7 @@ export default function CsvImportModal({
                   handleReset();
                   onClose();
                 }}
-                className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 text-xs font-semibold transition-colors cursor-pointer"
+                className="btn-secondary px-4 py-2 rounded-2xl text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
@@ -562,7 +580,7 @@ export default function CsvImportModal({
                 type="button"
                 onClick={handleVerify}
                 disabled={!file || verifying}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {verifying ? (
                   <>
@@ -585,14 +603,15 @@ export default function CsvImportModal({
                   handleReset();
                   onClose();
                 }}
-                className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+                className="btn-primary px-6 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer"
               >
-                Close
+                <span className="text-white font-semibold">Done</span>
               </button>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/lib/api";
 import { DebtLentRecord, RepaymentInstallment, Transaction } from "@/types";
 import { formatCurrency } from "@/lib/utils";
@@ -48,6 +49,25 @@ export default function InstallmentChecklistDrawer({
   onRecordUpdated,
   onDeleteRecord,
 }: InstallmentChecklistDrawerProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (record) {
+      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    };
+  }, [record]);
   // Smart Repayment & Transaction Mapping Dialog Session
   const [mappingSession, setMappingSession] = useState<MappingSession | null>(null);
   const [txnSearch, setTxnSearch] = useState("");
@@ -246,8 +266,10 @@ export default function InstallmentChecklistDrawer({
       ? "bg-rose-50 text-rose-700 border-rose-200"
       : "bg-slate-100 text-slate-700 border-slate-200";
 
-  return (
-    <div className="fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
+  if (!record || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
       <div
         className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-4xl lg:max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
@@ -468,10 +490,10 @@ export default function InstallmentChecklistDrawer({
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={handleOpenGeneralRepayMapping}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-indigo-600/20 active:scale-95"
+                    className="btn-primary inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
                   >
-                    <Coins className="w-3.5 h-3.5" />
-                    <span>Record Repayment</span>
+                    <Coins className="w-3.5 h-3.5 text-white" />
+                    <span className="text-white font-semibold">Record Repayment</span>
                   </button>
                 </div>
               </div>
@@ -494,10 +516,10 @@ export default function InstallmentChecklistDrawer({
                   </div>
                   <button
                     onClick={handleOpenGeneralRepayMapping}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95"
+                    className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer"
                   >
-                    <Coins className="w-4 h-4" />
-                    <span>Record Repayment</span>
+                    <Coins className="w-4 h-4 text-white" />
+                    <span className="text-white font-semibold">Record Repayment</span>
                   </button>
                 </div>
               ) : (
@@ -869,7 +891,7 @@ export default function InstallmentChecklistDrawer({
                 <button
                   type="button"
                   onClick={() => setMappingSession(null)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
+                  className="btn-secondary px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -877,7 +899,7 @@ export default function InstallmentChecklistDrawer({
                   type="button"
                   disabled={busy || !selectedTxn || activeAppliedNum <= 0}
                   onClick={handleConfirmMapping}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary px-5 py-2.5 rounded-2xl text-white text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {busy
                     ? "Applying Payment..."
@@ -888,6 +910,7 @@ export default function InstallmentChecklistDrawer({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

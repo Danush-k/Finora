@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/lib/api";
 import {
   DebtLentRecord,
@@ -142,7 +143,27 @@ export default function DebtLentModal({
     }
   }, [showTxnPicker, txnSearch]);
 
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
 
   // Real-time calculation of interest & expected total
   const principal = parseFloat(principalAmount) || 0;
@@ -285,8 +306,8 @@ export default function DebtLentModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
       <div
         className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
@@ -1012,20 +1033,21 @@ export default function DebtLentModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-2xl text-slate-600 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer"
+              className="btn-secondary px-5 py-2.5 rounded-2xl text-xs font-semibold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer disabled:opacity-50"
+              className="btn-primary px-6 py-2.5 rounded-2xl text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
             >
               {submitting ? "Saving..." : initialData ? "Save Changes" : `Save ${type === "LENT" ? "Lent" : "Debt"} Record`}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
