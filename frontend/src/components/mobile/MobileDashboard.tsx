@@ -134,6 +134,19 @@ export default function MobileDashboard({
     setInspectedPoint(null);
   }, [chartPeriod]);
 
+  // Set theme-color and document background to deep purple on mobile overview
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.setAttribute("content", "#1F0238");
+    document.documentElement.style.backgroundColor = "#1F0238";
+    document.body.style.backgroundColor = "#1F0238";
+    return () => {
+      document.documentElement.style.backgroundColor = "";
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
+
   // Determine active year and month
   const activeYear = useMemo(() => {
     if (selectedMonthKey) {
@@ -384,33 +397,43 @@ export default function MobileDashboard({
 
   return (
     <div className="md:hidden pb-32 select-none bg-[#F6F4FA] min-h-screen">
+      {/* Full-width fixed overscroll guard for iOS bounce: preserves deep purple #1F0238 */}
+      <div className="fixed -top-96 left-0 right-0 h-96 bg-[#1F0238] -z-10 pointer-events-none" />
+
       {/* ========================================================================= */}
       {/* 1. EXACT REFERENCE HERO SECTION: DEEP PURPLE + SHINING GOLD CURVY WAVES   */}
       {/* ========================================================================= */}
       <div
-        className="relative overflow-hidden text-white pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 shadow-lg bg-[#20023B] bg-[url('/images/hero-clean-wave-bg.png')] bg-cover bg-bottom bg-no-repeat"
+        className="relative overflow-hidden text-white pt-[calc(env(safe-area-inset-top)+14px)] pb-14 px-5 shadow-[0_16px_40px_rgba(26,4,54,0.18)] bg-[#1F0238] rounded-b-[40px]"
       >
         {/* Ambient Top Glows */}
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute top-12 left-0 w-60 h-60 rounded-full bg-indigo-500/15 blur-2xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-purple-500/25 blur-3xl pointer-events-none" />
+        <div className="absolute top-12 left-0 w-60 h-60 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
 
-        {/* Subtle moving light shimmer along golden curved area */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/10 to-transparent pointer-events-none mix-blend-overlay animate-pulse" />
+        {/* Ambient Warm Golden Flare behind wave crest */}
+        <div className="absolute bottom-4 right-4 w-44 h-28 bg-gradient-to-r from-amber-400/35 via-yellow-400/25 to-transparent blur-2xl rounded-full pointer-events-none z-10" />
 
         {/* TOP BRAND BAR */}
         <div className="flex items-center justify-between gap-3 relative z-20">
           {/* Logo: Original Finora Logo Asset (Purple ribbon F + Finora wordmark + BY PAYTRACE) */}
-          <Link href="/" className="flex items-center shrink-0 group">
-            <div className="relative flex items-center" style={{ width: "128px", height: "34px" }}>
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="relative w-8 h-8 shrink-0">
               <Image
-                src="/images/finora-logo-white.png"
-                alt="Finora BY PAYTRACE"
-                width={128}
-                height={34}
+                src="/finora-icon-transparent.png"
+                alt="Finora"
+                width={32}
+                height={32}
                 priority
-                style={{ width: "128px", height: "34px", objectFit: "contain" }}
-                className="select-none transition-transform duration-200 group-hover:scale-[1.02]"
+                className="w-8 h-8 object-contain select-none transition-transform duration-200 group-hover:scale-105"
               />
+            </div>
+            <div className="flex flex-col justify-center">
+              <span className="text-[20px] font-black text-white tracking-tight leading-none">
+                Finora
+              </span>
+              <span className="text-[8px] font-bold text-purple-200/90 tracking-[0.24em] uppercase leading-none mt-1">
+                BY PAYTRACE
+              </span>
             </div>
           </Link>
 
@@ -474,6 +497,64 @@ export default function MobileDashboard({
             <span className="text-purple-400 font-black">•</span>
             <span>Grow</span>
           </p>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* MANDATORY SHINING GOLD CONTOUR LINES ON CURVED ORGANIC PURPLE HERO BASE    */}
+        {/* ========================================================================= */}
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none w-full overflow-hidden leading-none z-10">
+          <svg
+            viewBox="0 0 400 135"
+            fill="none"
+            preserveAspectRatio="none"
+            className="w-full h-32 -mb-0.5"
+          >
+            <defs>
+              <linearGradient id="finoraGoldCurveGradRef" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#FFF2B8" />
+                <stop offset="20%" stopColor="#FFD700" />
+                <stop offset="50%" stopColor="#FFA000" />
+                <stop offset="80%" stopColor="#FFD700" />
+                <stop offset="100%" stopColor="#FFF7D6" />
+              </linearGradient>
+              <filter id="finoraGoldCurveGlowRef" x="-20%" y="-40%" width="140%" height="180%">
+                <feDropShadow dx="0" dy="0" stdDeviation="3.2" floodColor="#FFB300" floodOpacity="0.95" />
+                <feDropShadow dx="0" dy="0" stdDeviation="6.5" floodColor="#FF8F00" floodOpacity="0.65" />
+              </filter>
+              <linearGradient id="purpleWaveLayer1Ref" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#4A0E7E" stopOpacity="0.95" />
+                <stop offset="100%" stopColor="#250346" stopOpacity="0.98" />
+              </linearGradient>
+              <linearGradient id="purpleWaveLayer2Ref" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#6D1E9E" stopOpacity="0.95" />
+                <stop offset="100%" stopColor="#2F0555" stopOpacity="1.0" />
+              </linearGradient>
+            </defs>
+            {/* Back Wave */}
+            <path
+              d="M-10,50 C110,88 230,12 410,48 L410,135 L-10,135 Z"
+              fill="url(#purpleWaveLayer1Ref)"
+            />
+            <path
+              d="M-10,50 C110,88 230,12 410,48"
+              stroke="url(#finoraGoldCurveGradRef)"
+              strokeWidth="2.8"
+              fill="none"
+              filter="url(#finoraGoldCurveGlowRef)"
+            />
+            {/* Front Wave */}
+            <path
+              d="M-10,88 C120,50 255,108 410,64 L410,135 L-10,135 Z"
+              fill="url(#purpleWaveLayer2Ref)"
+            />
+            <path
+              d="M-10,88 C120,50 255,108 410,64"
+              stroke="url(#finoraGoldCurveGradRef)"
+              strokeWidth="2.4"
+              fill="none"
+              filter="url(#finoraGoldCurveGlowRef)"
+            />
+          </svg>
         </div>
       </div>
 
@@ -565,23 +646,24 @@ export default function MobileDashboard({
         {/* ========================================================= */}
         <div className="grid grid-cols-2 gap-3.5">
           {/* Expenses Card */}
-          <div className="rounded-[24px] bg-white border border-rose-100/70 p-4 shadow-[0_8px_24px_rgba(225,29,72,0.04)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
+          <div className="rounded-[26px] bg-[#FFF9FA] border border-rose-100/80 p-4 shadow-[0_8px_24px_rgba(225,29,72,0.05)] relative overflow-hidden flex flex-col justify-between min-h-[122px]">
             {/* Ambient soft wave in corner */}
             <svg
               viewBox="0 0 100 60"
               fill="none"
-              className="absolute bottom-0 right-0 w-28 h-16 pointer-events-none opacity-95"
+              className="absolute bottom-0 right-0 w-28 h-18 pointer-events-none opacity-95"
             >
-              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#FEECEF" />
+              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#FED7DD" />
+              <path d="M20,60 C50,45 80,56 100,32 L100,60 Z" fill="#FBC3CB" opacity="0.6" />
             </svg>
 
             {/* Header */}
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-1.5">
-                <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center text-[#E11D48] shrink-0">
-                  <Receipt className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-full bg-[#FCE8EB] text-[#E0001B] border border-rose-200/50 flex items-center justify-center shrink-0">
+                  <Wallet className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">
+                <span className="text-[13px] font-bold text-slate-800">
                   {chartPeriod === "WEEKLY"
                     ? "Weekly Exp."
                     : chartPeriod === "YEARLY"
@@ -589,40 +671,41 @@ export default function MobileDashboard({
                     : "Expenses"}
                 </span>
               </div>
-              <div className="w-6 h-6 rounded-full bg-[#FEECEF] flex items-center justify-center text-[#E11D48]">
-                <ArrowDownRight className="w-3.5 h-3.5" />
+              <div className="w-8 h-8 rounded-full bg-[#FCE8EB] border border-rose-200/60 flex items-center justify-center text-[#E0001B]">
+                <ArrowDownRight className="w-4 h-4" />
               </div>
             </div>
 
             {/* Figures */}
             <div className="relative z-10 mt-2">
-              <div className="text-[22px] font-black text-[#E11D48] tracking-tight tabular-nums">
+              <div className="text-[22px] font-black text-[#DF0015] tracking-tight tabular-nums">
                 {formatExactCurrency(periodMetrics.expenses)}
               </div>
-              <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
+              <span className="text-xs text-slate-400 font-medium block mt-0.5">
                 {periodMetrics.expensesLabel}
               </span>
             </div>
           </div>
 
           {/* Income Card */}
-          <div className="rounded-[24px] bg-white border border-emerald-100/70 p-4 shadow-[0_8px_24px_rgba(16,185,129,0.04)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
+          <div className="rounded-[26px] bg-[#F8FDF9] border border-emerald-100/80 p-4 shadow-[0_8px_24px_rgba(16,185,129,0.05)] relative overflow-hidden flex flex-col justify-between min-h-[122px]">
             {/* Ambient soft wave in corner */}
             <svg
               viewBox="0 0 100 60"
               fill="none"
-              className="absolute bottom-0 right-0 w-28 h-16 pointer-events-none opacity-95"
+              className="absolute bottom-0 right-0 w-28 h-18 pointer-events-none opacity-95"
             >
-              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#EAF8F1" />
+              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#D8F3E5" />
+              <path d="M20,60 C50,45 80,56 100,32 L100,60 Z" fill="#BAEAD0" opacity="0.6" />
             </svg>
 
             {/* Header */}
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-1.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-[#059669] shrink-0">
-                  <Banknote className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-full bg-[#E3F7EA] text-[#009643] border border-emerald-200/50 flex items-center justify-center shrink-0">
+                  <Coins className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">
+                <span className="text-[13px] font-bold text-slate-800">
                   {chartPeriod === "WEEKLY"
                     ? "Weekly Inc."
                     : chartPeriod === "YEARLY"
@@ -630,17 +713,17 @@ export default function MobileDashboard({
                     : "Income"}
                 </span>
               </div>
-              <div className="w-6 h-6 rounded-full bg-[#EAF8F1] flex items-center justify-center text-[#059669]">
-                <ArrowUpRight className="w-3.5 h-3.5" />
+              <div className="w-8 h-8 rounded-full bg-[#E3F7EA] border border-emerald-200/60 flex items-center justify-center text-[#009643]">
+                <ArrowUpRight className="w-4 h-4" />
               </div>
             </div>
 
             {/* Figures */}
             <div className="relative z-10 mt-2">
-              <div className="text-[22px] font-black text-[#059669] tracking-tight tabular-nums">
+              <div className="text-[22px] font-black text-[#009744] tracking-tight tabular-nums">
                 {formatExactCurrency(periodMetrics.income)}
               </div>
-              <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
+              <span className="text-xs text-slate-400 font-medium block mt-0.5">
                 {periodMetrics.incomeLabel}
               </span>
             </div>

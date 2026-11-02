@@ -1,6 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
+
+export const viewport: Viewport = {
+  themeColor: "#1F0238",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Finora by PayTrace - Automated Personal Expense Tracker",
