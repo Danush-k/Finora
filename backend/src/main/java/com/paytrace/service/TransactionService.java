@@ -85,12 +85,37 @@ public class TransactionService {
         }
 
         if (search != null && !search.trim().isEmpty()) {
-            Pattern regex = Pattern.compile(Pattern.quote(search.trim()), Pattern.CASE_INSENSITIVE);
-            criteriaList.add(new Criteria().orOperator(
-                Criteria.where("merchant").regex(regex),
-                Criteria.where("description").regex(regex),
-                Criteria.where("referenceNumber").regex(regex)
-            ));
+            String raw = search.trim();
+            String[] tokens = raw.split("\\s+");
+            List<Criteria> tokenCriteriaList = new ArrayList<>();
+
+            for (String token : tokens) {
+                if (token.isEmpty()) continue;
+                Pattern tokenRegex = Pattern.compile(Pattern.quote(token), Pattern.CASE_INSENSITIVE);
+                List<Criteria> tokenMatches = new ArrayList<>();
+                tokenMatches.add(Criteria.where("merchant").regex(tokenRegex));
+                tokenMatches.add(Criteria.where("description").regex(tokenRegex));
+                tokenMatches.add(Criteria.where("referenceNumber").regex(tokenRegex));
+                tokenMatches.add(Criteria.where("category").regex(tokenRegex));
+                tokenMatches.add(Criteria.where("paymentMethod").regex(tokenRegex));
+                tokenMatches.add(Criteria.where("bank").regex(tokenRegex));
+                tokenMatches.add(Criteria.where("accountNumber").regex(tokenRegex));
+
+                // Optional exact amount match if token is numeric
+                try {
+                    String cleanNum = token.replaceAll("[^0-9.]", "");
+                    if (!cleanNum.isEmpty() && cleanNum.matches("\\d+(\\.\\d+)?")) {
+                        double amt = Double.parseDouble(cleanNum);
+                        tokenMatches.add(Criteria.where("amount").gte(amt - 0.01).lte(amt + 0.01));
+                    }
+                } catch (Exception ignored) {}
+
+                tokenCriteriaList.add(new Criteria().orOperator(tokenMatches.toArray(new Criteria[0])));
+            }
+
+            if (!tokenCriteriaList.isEmpty()) {
+                criteriaList.add(new Criteria().andOperator(tokenCriteriaList.toArray(new Criteria[0])));
+            }
         }
 
         Query query = new Query();

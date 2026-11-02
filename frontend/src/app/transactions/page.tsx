@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { CATEGORIES as ALL_CATEGORIES } from "@/lib/constants";
 import { TransactionsSkeleton } from "@/components/common/LoadingSkeletons";
 import { useToast } from "@/lib/toast-context";
+import IntelligentSearchBar from "@/components/transactions/IntelligentSearchBar";
 
 const CATEGORIES = ["ALL", ...ALL_CATEGORIES];
 
@@ -33,23 +34,39 @@ function TransactionsContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
+  const [suggestionPool, setSuggestionPool] = useState<Transaction[]>([]);
 
   // Filters
   const [search, setSearch] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Dynamic live suggestions from merchants
-  const suggestions = useMemo(() => {
-    if (!search.trim()) return [];
-    const q = search.toLowerCase();
-    const names = Array.from(new Set(transactions.map((t) => t.merchant).filter(Boolean)));
-    return names.filter((n) => n.toLowerCase().includes(q)).slice(0, 5);
-  }, [search, transactions]);
+  // Preload a broad pool for instant client-side predictive suggestions
+  useEffect(() => {
+    api
+      .getTransactions({ size: 150 })
+      .then((res) => {
+        if (res && res.content) {
+          setSuggestionPool(res.content);
+        }
+      })
+      .catch((e) => console.error("Failed to preload suggestions pool", e));
+  }, []);
+
+  // Sync loaded transactions into suggestions pool
+  useEffect(() => {
+    if (transactions.length > 0) {
+      setSuggestionPool((prev) => {
+        const map = new Map<string, Transaction>();
+        prev.forEach((t) => map.set(t.id, t));
+        transactions.forEach((t) => map.set(t.id, t));
+        return Array.from(map.values());
+      });
+    }
+  }, [transactions]);
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -117,11 +134,9 @@ function TransactionsContent() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowSuggestions(false);
+  const handleSearchSubmit = (val: string = search) => {
     setPage(0);
-    loadTransactions(search, typeFilter, categoryFilter, 0);
+    loadTransactions(val, typeFilter, categoryFilter, 0);
   };
 
   const handleCreateOrUpdate = async (data: TransactionRequest) => {
@@ -189,73 +204,35 @@ function TransactionsContent() {
         </div>
       </div>
 
-      {/* Filter and Search Bar with Dynamic Suggestions & Sliding Type Selector */}
+      {/* Filter and Search Bar with Intelligent Predictive Search & Sliding Type Selector */}
       <div className="rounded-2xl liquid-glass p-4 border border-slate-200/80 space-y-3 shadow-xs relative">
-        <form onSubmit={handleSearchSubmit} className="flex gap-2 relative">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by merchant, description, reference number..."
-              value={search}
-              onFocus={() => setShowSuggestions(true)}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setShowSuggestions(true);
-              }}
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 transition-colors shadow-2xs font-medium"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setShowSuggestions(false);
-                }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-
-            {/* Dynamic Suggestions Dropdown */}
-            <AnimatePresence>
-              {showSuggestions && suggestions.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 2, scale: 0.98 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute left-0 right-0 top-full mt-1.5 z-30 rounded-2xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-xl overflow-hidden py-1.5"
-                >
-                  <div className="px-3.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Recent Merchants & Payees
-                  </div>
-                  {suggestions.map((name) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onMouseDown={() => {
-                        setSearch(name);
-                        setShowSuggestions(false);
-                      }}
-                      className="w-full px-3.5 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 flex items-center justify-between cursor-pointer"
-                    >
-                      <span>{name}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Click to filter</span>
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        <div className="flex flex-col sm:flex-row gap-2 relative z-20">
+          <IntelligentSearchBar
+            value={search}
+            onChange={setSearch}
+            onSearchSubmit={(val) => {
+              setSearch(val);
+              handleSearchSubmit(val);
+            }}
+            onSelectMerchant={(merchantName) => {
+              setSearch(merchantName);
+              handleSearchSubmit(merchantName);
+            }}
+            onSelectTransaction={(txn) => {
+              setEditingTxn(txn);
+              setModalOpen(true);
+            }}
+            allTransactions={suggestionPool}
+            placeholder="Search by merchant, description, category, ₹amount, UPI ref..."
+          />
           <button
-            type="submit"
-            className="btn-secondary px-5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+            type="button"
+            onClick={() => handleSearchSubmit(search)}
+            className="btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
           >
             Search
           </button>
-        </form>
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
           {/* Type Filter Pills with Color-Coded Sliding Indicator (Orange for Expense, Green for Income, Purple for All) */}

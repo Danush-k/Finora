@@ -31,15 +31,22 @@ export function GlassNavigation({
   layoutId = "finora-nav-active-pill",
   className,
 }: GlassNavigationProps) {
+  // Normalize path to ignore trailing slashes so /settings/ matches /settings
+  const normalizePath = (p: string) => (p || "").replace(/\/+$/, "") || "/";
+  const activeNormalized = normalizePath(activeHref);
+
   return (
     <GlassSurface
       variant="dock"
       as="nav"
       aria-label="Main application navigation"
-      className={cn("p-1 sm:p-1.5 flex items-center gap-0.5 sm:gap-1.5 max-w-[94vw] sm:max-w-none shadow-[0_16px_36px_rgba(108,59,255,0.18),0_4px_12px_rgba(0,0,0,0.06)]", className)}
+      className={cn(
+        "p-1 sm:p-1.5 flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 w-full sm:w-auto shadow-[0_16px_36px_rgba(108,59,255,0.18),0_4px_12px_rgba(0,0,0,0.06)]",
+        className
+      )}
     >
       {items.map((item) => {
-        const isActive = activeHref === item.href;
+        const isActive = activeNormalized === normalizePath(item.href);
         const Icon = item.icon;
 
         return (
@@ -47,9 +54,10 @@ export function GlassNavigation({
             key={item.href}
             href={item.href}
             className={cn(
-              "relative px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-full text-xs font-semibold",
-              "flex items-center gap-1.5 sm:gap-2 select-none outline-none",
-              "transition-colors duration-200 cursor-pointer shrink-0",
+              "relative px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-semibold",
+              "flex items-center justify-center gap-1.5 sm:gap-2 select-none outline-none",
+              "transition-colors duration-200 cursor-pointer flex-1 sm:flex-initial",
+              "min-h-[42px] sm:min-h-0",
               "focus-visible:ring-2 focus-visible:ring-[#6C3BFF] focus-visible:ring-offset-2",
               !isActive && "text-[#475569] hover:text-[#0F172A] hover:bg-slate-900/[0.035]"
             )}

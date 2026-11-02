@@ -677,9 +677,9 @@ export default function MonthlyCalendarView() {
               className="overflow-hidden"
             >
               <div className="p-3 sm:p-4 rounded-2xl liquid-glass border border-purple-200/90 bg-gradient-to-r from-purple-50/90 via-white to-indigo-50/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 select-none">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-[#6C3BFF] text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
-                    {panelDaysCount}d
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 text-[#6C3BFF] border border-purple-200/90 flex items-center justify-center shrink-0 shadow-2xs">
+                    <CalendarIcon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -687,7 +687,7 @@ export default function MonthlyCalendarView() {
                         {panelTitle}
                       </h5>
                       <span className="text-[10px] font-bold text-[#5228E0] bg-purple-100/80 border border-purple-200/70 px-2 py-0.5 rounded-full shrink-0">
-                        Combined Report
+                        Combined Report · {panelDaysCount} {panelDaysCount === 1 ? "date" : "dates"}
                       </span>
                     </div>
                     <p className="text-[10px] text-slate-500">
