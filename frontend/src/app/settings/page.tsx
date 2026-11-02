@@ -36,6 +36,7 @@ import {
 import { SettingsSkeleton } from "@/components/common/LoadingSkeletons";
 import { useToast } from "@/lib/toast-context";
 import { motion, AnimatePresence } from "framer-motion";
+import MobileSettingsView from "@/components/mobile/MobileSettingsView";
 
 type SettingsTab =
   | "general"
@@ -399,8 +400,42 @@ export default function SettingsPage() {
   }, [searchQuery, sidebarItems]);
 
   return (
-    <div className="space-y-4 pb-28 max-w-6xl mx-auto select-none">
-      {/* Top Breadcrumb & Page Title */}
+    <>
+      {/* ========================================================= */}
+      {/* 1. DEDICATED MOBILE SETTINGS (< md)                       */}
+      {/* ========================================================= */}
+      <MobileSettingsView
+        status={status}
+        loading={loading}
+        syncing={syncing}
+        syncFeedback={syncFeedback}
+        onSyncNow={handleSyncNow}
+        rules={rules}
+        loadingRules={loadingRules}
+        onSaveRule={handleSaveRule}
+        onDeleteRule={handleDeleteRule}
+        onApplyAllRules={handleApplyAllRules}
+        applyingAllRules={applyingAllRules}
+        ruleFeedback={ruleFeedback}
+        currency={currency}
+        dateFormat={dateFormat}
+        defaultTab={defaultTab}
+        reducedMotion={reducedMotion}
+        compactDensity={compactDensity}
+        onUpdatePreference={handleUpdatePreference}
+        onTogglePreference={handleTogglePreference}
+        onExport={handleExportData}
+        onClearCache={handleClearCache}
+        ruleForm={ruleForm}
+        setRuleForm={setRuleForm}
+        savingRule={savingRule}
+      />
+
+      {/* ========================================================= */}
+      {/* 2. DESKTOP SYSTEM SETTINGS (md+) - 100% PRESERVED         */}
+      {/* ========================================================= */}
+      <div className="hidden md:block space-y-4 pb-28 max-w-6xl mx-auto select-none">
+        {/* Top Breadcrumb & Page Title */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2.5">
@@ -1301,5 +1336,6 @@ export default function SettingsPage() {
         </main>
       </div>
     </div>
+    </>
   );
 }
