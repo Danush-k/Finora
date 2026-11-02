@@ -35,8 +35,8 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Header />
-      {/* Generous, Apple-standard top padding so content never touches the sticky header */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-7 sm:pt-9 pb-28 sm:pb-28 w-full flex-1">
+      {/* Mobile-first comfortable padding: compact on phone, expansive on desktop */}
+      <main className="max-w-7xl mx-auto px-3.5 sm:px-8 pt-4 sm:pt-9 pb-28 sm:pb-28 w-full flex-1">
         <PageTransition key={pathname}>
           {children}
         </PageTransition>

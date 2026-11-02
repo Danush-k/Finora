@@ -35,6 +35,7 @@ import {
   TopProgressBar,
 } from "@/components/common/LoadingSkeletons";
 import { getCategoryTheme } from "@/lib/category-theme";
+import MobileDashboard from "@/components/mobile/MobileDashboard";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(() => api.getCachedDashboardSummary() || null);
@@ -197,9 +198,40 @@ export default function DashboardPage() {
   const visibleCategories = showAllCategories ? categoryEntries : categoryEntries.slice(0, 4);
 
   return (
-    <div className="space-y-5 sm:space-y-6 pb-32 sm:pb-24">
+    <>
       {/* Top Hairline Progress Bar during Background Refreshes & Filtering */}
       {isFiltering && <TopProgressBar />}
+
+      {/* ========================================================= */}
+      {/* 1. DEDICATED MOBILE DASHBOARD (< md)                      */}
+      {/* ========================================================= */}
+      <MobileDashboard
+        summary={summary}
+        monthlyChart={monthlyChart}
+        categoryBudgets={categoryBudgets}
+        overallBudget={overallBudget}
+        selectedMonthKey={selectedMonthKey}
+        selectedMonthName={selectedMonthName}
+        chartPeriod={chartPeriod}
+        onPeriodChange={handlePeriodChange}
+        onSelectMonth={handleSelectMonth}
+        onResetMonth={handleResetMonth}
+        onOpenBudgetModal={() => setBudgetModalOpen(true)}
+        onOpenCsvModal={() => setCsvModalOpen(true)}
+        onDeleteTransaction={async (id) => {
+          try {
+            await api.deleteTransaction(id);
+            loadData();
+          } catch (e) {
+            console.error("Failed to delete transaction", e);
+          }
+        }}
+      />
+
+      {/* ========================================================= */}
+      {/* 2. DESKTOP DASHBOARD (md+) - 100% UNTOUCHED AND PRESERVED */}
+      {/* ========================================================= */}
+      <div className="hidden md:block space-y-5 sm:space-y-6 pb-32 sm:pb-24">
 
       {/* ========================================================= */}
       {/* 1. TOP HEADER: Clean Title & Compact Action Buttons       */}
@@ -584,40 +616,41 @@ export default function DashboardPage() {
           <RecentTransactionsSkeleton />
         )}
       </div>
-
-      {/* CSV Import & Verification Modal */}
-      <CsvImportModal
-        isOpen={csvModalOpen}
-        onClose={() => setCsvModalOpen(false)}
-        onSuccess={() => {
-          loadData();
-        }}
-      />
-
-      {/* Category Budgets & Spending Limits Modal */}
-      <CategoryBudgetModal
-        isOpen={budgetModalOpen}
-        onClose={() => setBudgetModalOpen(false)}
-        onUpdated={() => {
-          loadData();
-        }}
-        year={
-          selectedMonthKey
-            ? parseInt(selectedMonthKey.split("-")[0], 10)
-            : summary?.activeMonthKey
-            ? parseInt(summary.activeMonthKey.split("-")[0], 10)
-            : undefined
-        }
-        month={
-          selectedMonthKey
-            ? parseInt(selectedMonthKey.split("-")[1], 10)
-            : summary?.activeMonthKey
-            ? parseInt(summary.activeMonthKey.split("-")[1], 10)
-            : undefined
-        }
-        monthName={summary?.activeMonthName}
-        totalExpenses={summary?.totalExpensesThisMonth || 0}
-      />
     </div>
-  );
+
+    {/* CSV Import & Verification Modal */}
+    <CsvImportModal
+      isOpen={csvModalOpen}
+      onClose={() => setCsvModalOpen(false)}
+      onSuccess={() => {
+        loadData();
+      }}
+    />
+
+    {/* Category Budgets & Spending Limits Modal */}
+    <CategoryBudgetModal
+      isOpen={budgetModalOpen}
+      onClose={() => setBudgetModalOpen(false)}
+      onUpdated={() => {
+        loadData();
+      }}
+      year={
+        selectedMonthKey
+          ? parseInt(selectedMonthKey.split("-")[0], 10)
+          : summary?.activeMonthKey
+          ? parseInt(summary.activeMonthKey.split("-")[0], 10)
+          : undefined
+      }
+      month={
+        selectedMonthKey
+          ? parseInt(selectedMonthKey.split("-")[1], 10)
+          : summary?.activeMonthKey
+          ? parseInt(summary.activeMonthKey.split("-")[1], 10)
+          : undefined
+      }
+      monthName={summary?.activeMonthName}
+      totalExpenses={summary?.totalExpensesThisMonth || 0}
+    />
+  </>
+);
 }

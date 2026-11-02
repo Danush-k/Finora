@@ -25,6 +25,7 @@ import { CATEGORIES as ALL_CATEGORIES } from "@/lib/constants";
 import { TransactionsSkeleton } from "@/components/common/LoadingSkeletons";
 import { useToast } from "@/lib/toast-context";
 import IntelligentSearchBar from "@/components/transactions/IntelligentSearchBar";
+import MobileTransactionsView from "@/components/mobile/MobileTransactionsView";
 
 const CATEGORIES = ["ALL", ...ALL_CATEGORIES];
 
@@ -181,13 +182,50 @@ function TransactionsContent() {
 
 
   return (
-    <div className="space-y-6 pb-28">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Transactions
-          </h1>
+    <>
+      {/* 1. Mobile-Specific Transaction View (< md) */}
+      <MobileTransactionsView
+        transactions={transactions}
+        isFetching={isFetching}
+        search={search}
+        onSearchChange={setSearch}
+        onSearchSubmit={handleSearchSubmit}
+        typeFilter={typeFilter}
+        onTypeFilterChange={(type) => {
+          setTypeFilter(type);
+          setPage(0);
+        }}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={(cat) => {
+          setCategoryFilter(cat);
+          setPage(0);
+        }}
+        categories={CATEGORIES}
+        page={page}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        onPageChange={handlePageChange}
+        onOpenNewModal={() => {
+          setEditingTxn(null);
+          setModalOpen(true);
+        }}
+        onOpenCsvModal={() => setCsvModalOpen(true)}
+        onEditTransaction={(txn) => {
+          setEditingTxn(txn);
+          setModalOpen(true);
+        }}
+        onDeleteTransaction={handleDelete}
+        suggestionPool={suggestionPool}
+      />
+
+      {/* 2. Desktop Transaction Table (md+) - 100% UNTOUCHED AND PRESERVED */}
+      <div className="hidden md:block space-y-6 pb-28">
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Transactions
+            </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Search, filter, and manage all your extracted bank activities
           </p>
@@ -356,6 +394,7 @@ function TransactionsContent() {
           </div>
         </div>
       )}
+      </div>
 
       {/* Add / Edit Modal */}
       <TransactionModal
@@ -376,7 +415,7 @@ function TransactionsContent() {
           loadTransactions();
         }}
       />
-    </div>
+    </>
   );
 }
 
