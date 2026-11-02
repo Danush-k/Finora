@@ -37,12 +37,11 @@ export default function NavigationDock() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+12px)] sm:bottom-6 left-1/2 -translate-x-1/2 z-30 select-none px-2 w-[calc(100%-24px)] max-w-[440px] sm:w-auto flex justify-center pointer-events-auto">
+    <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] sm:bottom-6 left-1/2 -translate-x-1/2 z-30 select-none px-2 max-w-full">
       <GlassNavigation
         items={NAV_ITEMS}
         activeHref={pathname}
         layoutId="finora-global-dock-pill"
-        className="w-full sm:w-auto"
       />
     </div>
   );
