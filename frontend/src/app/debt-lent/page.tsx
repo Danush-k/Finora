@@ -35,9 +35,14 @@ import { useToast } from "@/lib/toast-context";
 
 export default function DebtLentPage() {
   const { toast } = useToast();
-  const [records, setRecords] = useState<DebtLentRecord[]>(() => api.getCachedDebtLentRecords("LENT") || []);
+  const [recordsCache, setRecordsCache] = useState<{ LENT: DebtLentRecord[]; DEBT: DebtLentRecord[] }>(() => ({
+    LENT: api.getCachedDebtLentRecords("LENT") || [],
+    DEBT: api.getCachedDebtLentRecords("DEBT") || [],
+  }));
   const [summary, setSummary] = useState<DebtLentSummary | null>(() => api.getCachedDebtLentSummary() || null);
-  const [initialLoading, setInitialLoading] = useState(() => !api.getCachedDebtLentRecords("LENT"));
+  const [initialLoading, setInitialLoading] = useState(() => {
+    return !api.getCachedDebtLentRecords("LENT") && !api.getCachedDebtLentRecords("DEBT");
+  });
   const [isFetching, setIsFetching] = useState(false);
 
   // Active top-level mode: "LENT" (Receivables) vs "DEBT" (Payables)
@@ -46,70 +51,65 @@ export default function DebtLentPage() {
   const [search, setSearch] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // Active records computed in-memory for instant, zero-flicker tab switching
+  const activeRecords = useMemo(() => {
+    const raw = recordsCache[activeTab] || [];
+    return raw.filter((r) => {
+      if (statusFilter !== "ALL" && r.status !== statusFilter) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchName = r.counterpartyName?.toLowerCase().includes(q);
+        const matchDesc = r.description?.toLowerCase().includes(q);
+        const matchAmt = r.principalAmount?.toString().includes(q);
+        return matchName || matchDesc || matchAmt;
+      }
+      return true;
+    });
+  }, [recordsCache, activeTab, statusFilter, search]);
+
   // Dynamic live suggestions from counterparties
   const suggestions = useMemo(() => {
     if (!search.trim()) return [];
     const q = search.toLowerCase();
-    const names = Array.from(new Set(records.map((r) => r.counterpartyName).filter(Boolean)));
+    const raw = recordsCache[activeTab] || [];
+    const names = Array.from(new Set(raw.map((r) => r.counterpartyName).filter(Boolean)));
     return names.filter((n) => n.toLowerCase().includes(q)).slice(0, 5);
-  }, [search, records]);
+  }, [search, recordsCache, activeTab]);
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<DebtLentRecord | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<DebtLentRecord | null>(null);
 
-  const loadData = useCallback(
-    async (
-      tab = activeTab,
-      status = statusFilter,
-      currentSearch = search
-    ) => {
-      try {
-        setIsFetching(true);
-        const [recList, sum] = await Promise.all([
-          api.getDebtLentRecords(
-            tab,
-            status === "ALL" ? undefined : status,
-            currentSearch.trim() || undefined
-          ),
-          api.getDebtLentSummary(),
-        ]);
-        setRecords(recList);
-        setSummary(sum);
+  // Concurrently refresh both Lent and Debt datasets so switching between them is 100% instant
+  const refreshData = useCallback(async () => {
+    try {
+      setIsFetching(true);
+      const [lentList, debtList, sum] = await Promise.all([
+        api.getDebtLentRecords("LENT"),
+        api.getDebtLentRecords("DEBT"),
+        api.getDebtLentSummary(),
+      ]);
+      setRecordsCache({ LENT: lentList, DEBT: debtList });
+      setSummary(sum);
 
-        // Keep drawer updated if active
-        if (selectedRecord) {
-          const updated = recList.find((r) => r.id === selectedRecord.id);
-          if (updated) setSelectedRecord(updated);
-        }
-      } catch (e) {
-        console.error("Failed to load debt & lent records", e);
-      } finally {
-        setInitialLoading(false);
-        setIsFetching(false);
+      if (selectedRecord) {
+        const all = [...lentList, ...debtList];
+        const updated = all.find((r) => r.id === selectedRecord.id);
+        if (updated) setSelectedRecord(updated);
       }
-    },
-    [activeTab, statusFilter, search, selectedRecord]
-  );
-
-  // Primary loader on tab or status change
-  useEffect(() => {
-    loadData(activeTab, statusFilter, search);
-  }, [activeTab, statusFilter]);
-
-  // Debounced search when typing (skips initial mount to avoid double-load glitch)
-  const isInitialSearchMount = useRef(true);
-  useEffect(() => {
-    if (isInitialSearchMount.current) {
-      isInitialSearchMount.current = false;
-      return;
+    } catch (e) {
+      console.error("Failed to load debt & lent records", e);
+    } finally {
+      setInitialLoading(false);
+      setIsFetching(false);
     }
-    const timer = setTimeout(() => {
-      loadData(activeTab, statusFilter, search);
-    }, 280);
-    return () => clearTimeout(timer);
-  }, [search]);
+  }, [selectedRecord]);
+
+  // Primary loader on mount
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   // Support direct deep link: /debt-lent?tab=<type>&recordId=<id>
   useEffect(() => {
@@ -139,7 +139,6 @@ export default function DebtLentPage() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setShowSuggestions(false);
-    loadData(activeTab, statusFilter, search);
   };
 
   const handleCreateOrUpdate = async (data: DebtLentRequest) => {
@@ -151,7 +150,7 @@ export default function DebtLentPage() {
         await api.createDebtLentRecord(data);
         toast.success("Record Created", `${data.type === "LENT" ? "Money Lent to" : "Debt from"} ${data.counterpartyName}`);
       }
-      await loadData();
+      await refreshData();
     } catch (err: any) {
       toast.error("Operation Failed", err.message || "Failed to save record");
       throw err;
@@ -163,7 +162,7 @@ export default function DebtLentPage() {
       await api.deleteDebtLentRecord(id);
       setSelectedRecord(null);
       toast.info("Record Deleted", "Debt & Lent record removed successfully.");
-      await loadData();
+      await refreshData();
     } catch (e: any) {
       toast.error("Delete Failed", e.message || "Failed to delete record");
       console.error("Failed to delete record", e);
@@ -184,8 +183,6 @@ export default function DebtLentPage() {
             onClick={() => {
               setActiveTab("LENT");
               setStatusFilter("ALL");
-              const cached = api.getCachedDebtLentRecords("LENT");
-              if (cached) setRecords(cached);
             }}
             className={cn(
               "relative flex items-center justify-center gap-2 py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
@@ -232,8 +229,6 @@ export default function DebtLentPage() {
             onClick={() => {
               setActiveTab("DEBT");
               setStatusFilter("ALL");
-              const cached = api.getCachedDebtLentRecords("DEBT");
-              if (cached) setRecords(cached);
             }}
             className={cn(
               "relative flex items-center justify-center gap-2 py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
@@ -561,13 +556,13 @@ export default function DebtLentPage() {
           </div>
 
           <span className="text-[10px] sm:text-[11px] text-slate-400 shrink-0 self-end xs:self-center">
-            {records.length} {isLentTab ? "lent record(s)" : "debt record(s)"}
+            {activeRecords.length} {isLentTab ? "lent record(s)" : "debt record(s)"}
           </span>
         </div>
       </div>
 
       {/* Grid of Records with Smooth Apple State Transitions (Zero Layout Shift) */}
-      {initialLoading && records.length === 0 ? (
+      {initialLoading && activeRecords.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {[1, 2, 3].map((i) => (
             <div
@@ -587,7 +582,7 @@ export default function DebtLentPage() {
             </div>
           ))}
         </div>
-      ) : records.length === 0 ? (
+      ) : activeRecords.length === 0 ? (
         <div className="py-16 rounded-3xl liquid-glass border border-slate-200/80 flex flex-col items-center justify-center text-center space-y-3 p-6">
           <div
             className={cn(
@@ -627,31 +622,24 @@ export default function DebtLentPage() {
         </div>
       ) : (
         <div className="relative">
-          {/* Smooth non-destructive loading bar during search/filter fetch */}
+          {/* Smooth non-destructive loading bar during background sync */}
           {isFetching && (
             <div className="absolute -top-3 left-0 right-0 h-[2.5px] bg-gradient-to-r from-emerald-400 via-indigo-500 to-amber-500 animate-pulse z-10 rounded-full" />
           )}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className={cn(
-                "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 transition-opacity duration-200",
-                isFetching && "opacity-80"
-              )}
-            >
-              {records.map((record) => (
-                <DebtLentCard
-                  key={record.id}
-                  record={record}
-                  onClick={() => setSelectedRecord(record)}
-                />
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          <div
+            className={cn(
+              "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 transition-opacity duration-150",
+              isFetching ? "opacity-75" : "opacity-100"
+            )}
+          >
+            {activeRecords.map((record) => (
+              <DebtLentCard
+                key={record.id}
+                record={record}
+                onClick={() => setSelectedRecord(record)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -673,7 +661,7 @@ export default function DebtLentPage() {
         onClose={() => setSelectedRecord(null)}
         onRecordUpdated={(updated) => {
           setSelectedRecord(updated);
-          loadData();
+          refreshData();
         }}
         onDeleteRecord={handleDelete}
       />

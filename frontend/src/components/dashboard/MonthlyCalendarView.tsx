@@ -52,23 +52,23 @@ const CalendarDayCell = memo(function CalendarDayCell({
       onPointerEnter={() => onPointerEnter(day.dayOfMonth)}
       onPointerUp={() => onPointerUp(day.dayOfMonth)}
       className={cn(
-        "min-h-[58px] sm:min-h-[78px] p-1.5 sm:p-2 rounded-xl transition-all duration-200 cursor-pointer flex flex-col justify-between select-none relative outline-none",
+        "h-[74px] sm:h-[88px] min-h-[74px] sm:min-h-[88px] p-1.5 sm:p-2 rounded-xl border transition-[background-color,border-color,box-shadow,color] duration-200 ease-out cursor-pointer flex flex-col justify-between select-none relative outline-none",
         isSelected
-          ? "bg-[#F3EEFF]/90 border-[1.5px] border-[#6C3BFF]/80 shadow-[0_2px_12px_rgba(108,59,255,0.12)] z-10 scale-[1.01]"
+          ? "bg-[#F4EFFF] border-[#6C3BFF] shadow-[0_2px_10px_rgba(108,59,255,0.14)] z-10"
           : day.transactionCount > 0
           ? hasLent
             ? "bg-white border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/25 hover:shadow-2xs"
             : hasDebt
             ? "bg-white border-amber-300 hover:border-amber-500 hover:bg-amber-50/25 hover:shadow-2xs"
             : "bg-white border-slate-200/90 hover:border-purple-300/80 hover:bg-purple-50/20 hover:shadow-2xs"
-          : "bg-white/60 border-slate-100 hover:border-slate-200/90 hover:bg-slate-50/50"
+          : "bg-white/70 border-slate-100/90 hover:border-slate-200/90 hover:bg-slate-50/50"
       )}
     >
-      <div className="flex items-center justify-between pointer-events-none">
+      <div className="flex items-center justify-between pointer-events-none h-5 sm:h-5.5">
         <div className="flex items-center gap-1 sm:gap-1.5">
           <span
             className={cn(
-              "text-[11px] sm:text-xs font-black transition-colors duration-150",
+              "text-[11px] sm:text-xs font-black transition-colors duration-150 leading-none",
               isSelected ? "text-[#5228E0]" : "text-slate-800"
             )}
           >
@@ -97,7 +97,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
         {day.transactionCount > 0 && (
           <span
             className={cn(
-              "text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.2 rounded-full font-bold border transition-colors",
+              "text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.2 rounded-full font-bold border transition-colors leading-none",
               isSelected
                 ? "bg-[#6C3BFF]/15 text-[#5228E0] border-[#6C3BFF]/30"
                 : "bg-slate-100 text-slate-700 border-slate-200"
@@ -108,15 +108,15 @@ const CalendarDayCell = memo(function CalendarDayCell({
         )}
       </div>
 
-      {/* Day Cashflow Indicators */}
-      <div className="flex flex-col gap-0.5 mt-0.5 sm:mt-1 overflow-hidden pointer-events-none">
+      {/* Day Cashflow Indicators: always fixed height h-7 sm:h-8 so no date cell collapses */}
+      <div className="h-7 sm:h-8 flex flex-col justify-end gap-0.5 overflow-hidden pointer-events-none">
         {hasIncome && (
-          <span className="text-[9px] sm:text-[11px] font-bold text-emerald-600 truncate tabular-nums">
+          <span className="text-[9px] sm:text-[11px] font-bold text-emerald-600 truncate tabular-nums leading-none">
             +{formatCurrency(day.totalIncome)}
           </span>
         )}
         {hasExpense && (
-          <span className="text-[9px] sm:text-[11px] font-bold text-rose-600 truncate tabular-nums">
+          <span className="text-[9px] sm:text-[11px] font-bold text-rose-600 truncate tabular-nums leading-none">
             -{formatCurrency(day.totalExpense)}
           </span>
         )}
@@ -137,7 +137,6 @@ export default function MonthlyCalendarView() {
   });
   const [loading, setLoading] = useState(false);
   const [selectedDayNumbers, setSelectedDayNumbers] = useState<number[]>([]);
-  const [isMultiDayDrawerOpen, setIsMultiDayDrawerOpen] = useState(false);
   const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>(() => {
     return api.getCachedDebtLentRecords() || [];
   });
@@ -251,7 +250,6 @@ export default function MonthlyCalendarView() {
   useEffect(() => {
     fetchCalendar();
     setSelectedDayNumbers([]);
-    setIsMultiDayDrawerOpen(false);
 
     const handleSync = () => {
       fetchCalendar();
@@ -271,15 +269,6 @@ export default function MonthlyCalendarView() {
     window.addEventListener("pointerup", handleGlobalPointerUp);
     return () => window.removeEventListener("pointerup", handleGlobalPointerUp);
   }, []);
-
-  // Automatic revelation of transactions for single-date selection
-  useEffect(() => {
-    if (selectedDayNumbers.length === 1) {
-      setIsMultiDayDrawerOpen(true);
-    } else if (selectedDayNumbers.length === 0) {
-      setIsMultiDayDrawerOpen(false);
-    }
-  }, [selectedDayNumbers.length]);
 
   const handlePrevMonth = () => {
     setMonthDirection("prev");
@@ -302,6 +291,9 @@ export default function MonthlyCalendarView() {
   // Calculate first day of month offset for grid alignment (Mon = 0, Sun = 6)
   const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
   const startOffset = (firstDayOfMonth + 6) % 7; // Monday as first column
+  const totalDays = startOffset + calendarDays.length;
+  const totalWeeks = Math.max(5, Math.ceil(totalDays / 7));
+  const trailingSpaces = Math.max(0, totalWeeks * 7 - totalDays);
 
   const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -430,81 +422,69 @@ export default function MonthlyCalendarView() {
   }, [selectedDayNumbers, selectedDaysList, startOffset, dayNames, monthName]);
 
   // Column header click: toggle all dates in that column
-  const handleWeekdayClick = (colIdx: number) => {
+  const handleWeekdayClick = useCallback((colIdx: number) => {
     const matchingDays = calendarDays
       .filter((d) => (startOffset + (d.dayOfMonth - 1)) % 7 === colIdx)
       .map((d) => d.dayOfMonth);
 
     if (matchingDays.length === 0) return;
 
-    const allSelected = matchingDays.every((d) => selectedDayNumbers.includes(d));
-    if (allSelected) {
-      setSelectedDayNumbers((prev) => prev.filter((d) => !matchingDays.includes(d)));
-    } else {
-      setSelectedDayNumbers((prev) => Array.from(new Set([...prev, ...matchingDays])));
-    }
-  };
+    setSelectedDayNumbers((prev) => {
+      const allSelected = matchingDays.every((d) => prev.includes(d));
+      if (allSelected) {
+        return prev.filter((d) => !matchingDays.includes(d));
+      } else {
+        return Array.from(new Set([...prev, ...matchingDays]));
+      }
+    });
+  }, [calendarDays, startOffset]);
 
-  // Pointer interactions with movement threshold (>6px) to cleanly separate Click from Drag
-  const handleDayPointerDown = (dayNum: number, e: React.PointerEvent) => {
+  // Pointer interactions with clean single click vs dragging range selection
+  const handleDayPointerDown = useCallback((dayNum: number, e: React.PointerEvent) => {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
     isPointerDownRef.current = true;
     isDraggingRef.current = false;
     pointerOriginRef.current = { x: e.clientX, y: e.clientY, dayNum };
-  };
+  }, []);
 
-  const handleDayPointerEnter = (dayNum: number) => {
+  const handleDayPointerEnter = useCallback((dayNum: number) => {
     if (!isPointerDownRef.current || !pointerOriginRef.current) return;
+    const startDay = pointerOriginRef.current.dayNum;
+    if (dayNum === startDay && !isDraggingRef.current) return;
 
-    // Transition to dragging when moving between cells
-    if (!isDraggingRef.current) {
-      isDraggingRef.current = true;
-      const startDay = pointerOriginRef.current.dayNum;
-      setSelectedDayNumbers((prev) => {
-        const next = new Set(prev);
-        next.add(startDay);
-        next.add(dayNum);
-        return Array.from(next);
-      });
-      return;
+    isDraggingRef.current = true;
+    const minDay = Math.min(startDay, dayNum);
+    const maxDay = Math.max(startDay, dayNum);
+    const range: number[] = [];
+    for (let d = minDay; d <= maxDay; d++) {
+      range.push(d);
     }
+    setSelectedDayNumbers(range);
+  }, []);
 
-    // While dragging across cells, add each touched cell to the selection
-    setSelectedDayNumbers((prev) => {
-      if (prev.includes(dayNum)) return prev;
-      return [...prev, dayNum];
-    });
-  };
-
-  const handleDayPointerUp = (dayNum: number) => {
+  const handleDayPointerUp = useCallback((dayNum: number) => {
     if (!isPointerDownRef.current) return;
 
     // If no drag occurred, this was a clean single click!
     if (!isDraggingRef.current) {
       setSelectedDayNumbers((prev) => {
-        if (prev.includes(dayNum)) {
-          return prev.filter((d) => d !== dayNum);
-        } else {
-          return [...prev, dayNum];
+        // If clicking already selected single date, deselect it correctly
+        if (prev.length === 1 && prev[0] === dayNum) {
+          return [];
         }
+        // Otherwise, select ONLY that particular date
+        return [dayNum];
       });
     }
 
     isPointerDownRef.current = false;
     isDraggingRef.current = false;
     pointerOriginRef.current = null;
-  };
+  }, []);
 
-  const handleClearSelection = () => {
+  const handleClearSelection = useCallback(() => {
     setSelectedDayNumbers([]);
-    setIsMultiDayDrawerOpen(false);
-  };
-
-  const handleScrollToTransactions = () => {
-    setIsMultiDayDrawerOpen(true);
-    setTimeout(() => {
-      transactionsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 60);
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -616,129 +596,10 @@ export default function MonthlyCalendarView() {
         {/* ========================================================================= */}
         {/* SECTION 1 & 5: REFINED SELECTED DATE SUMMARY (Apple Unfolding Animation)  */}
         {/* ========================================================================= */}
-        <AnimatePresence>
-          {selectedDayNumbers.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, y: 10, scale: 0.99 }}
-              animate={{ opacity: 1, height: "auto", y: 0, scale: 1 }}
-              exit={{ opacity: 0, height: 0, y: 8, scale: 0.99 }}
-              transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden mb-5 select-none"
-            >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.08, ease: "easeOut" }}
-                className="rounded-2xl bg-white/95 backdrop-blur-md border border-purple-200/70 p-4 sm:p-5 shadow-[0_4px_24px_rgba(108,59,255,0.06)]"
-              >
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                  {/* LEFT: Clean Typographic Hierarchy (Selected dates, title, count) */}
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#6C3BFF]">
-                        Selected Dates
-                      </span>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-[11px] font-semibold text-slate-500">
-                        {selectedDayNumbers.length}{" "}
-                        {selectedDayNumbers.length === 1 ? "date selected" : "dates selected"}
-                      </span>
-                    </div>
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight mt-0.5 truncate">
-                      {selectionTitle}
-                    </h3>
-                  </div>
-
-                  {/* RIGHT: Financial Metrics with subtle middle separators */}
-                  <div className="flex items-center gap-3 sm:gap-6 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
-                    <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Total Spent
-                        </span>
-                        <span className="text-xs sm:text-sm font-black text-rose-600 tabular-nums">
-                          {formatCurrency(selectedTotalExpense)}
-                        </span>
-                      </div>
-
-                      {/* Subtle Separator */}
-                      <div className="hidden sm:block h-6 w-[1.5px] bg-[#6C3BFF]/20 rounded-full" />
-
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Total Inflow
-                        </span>
-                        <span className="text-xs sm:text-sm font-black text-emerald-600 tabular-nums">
-                          {formatCurrency(selectedTotalIncome)}
-                        </span>
-                      </div>
-
-                      {/* Subtle Separator */}
-                      <div className="hidden sm:block h-6 w-[1.5px] bg-[#6C3BFF]/20 rounded-full" />
-
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Net Flow
-                        </span>
-                        <span
-                          className={cn(
-                            "text-xs sm:text-sm font-black tabular-nums",
-                            selectedNet >= 0 ? "text-emerald-700" : "text-rose-600"
-                          )}
-                        >
-                          {selectedNet >= 0 ? "+" : ""}
-                          {formatCurrency(selectedNet)}
-                        </span>
-                      </div>
-
-                      {/* Subtle Separator */}
-                      <div className="hidden sm:block h-6 w-[1.5px] bg-[#6C3BFF]/20 rounded-full" />
-
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Records
-                        </span>
-                        <span className="text-xs sm:text-sm font-black text-slate-800 tabular-nums">
-                          {selectedTxnCount} {selectedTxnCount === 1 ? "txn" : "txns"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* SECTION 6: Unobtrusive Action Affordance & Clear Selection */}
-                    <div className="flex items-center gap-2 ml-auto lg:ml-2">
-                      {/* For multiple selected dates: Unobtrusive "View transactions ↓" */}
-                      {selectedDayNumbers.length > 1 && selectedTxnCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleScrollToTransactions}
-                          className="group inline-flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-purple-50/80 text-[#6C3BFF] hover:text-[#5228E0] text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                        >
-                          <span>View transactions</span>
-                          <ChevronDown className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
-                        </button>
-                      )}
-
-                      {/* Dismiss / Clear Selection */}
-                      <button
-                        type="button"
-                        onClick={handleClearSelection}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                        title="Clear Date Selection"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* ========================================================================= */}
         {/* SECTION 7: SMOOTH HORIZONTAL MONTH SLIDE TRANSITION                       */}
         {/* ========================================================================= */}
-        <div className="relative min-h-[440px]">
+        <div className="relative min-h-[460px] sm:min-h-[540px]">
           <AnimatePresence mode="wait" custom={monthDirection}>
             <motion.div
               key={`${year}-${month}`}
@@ -794,13 +655,13 @@ export default function MonthlyCalendarView() {
                 })}
               </div>
 
-              {/* Days Grid with Memoized Cells */}
-              <div className="grid grid-cols-7 gap-1 sm:gap-2 select-none touch-none">
+              {/* Days Grid with Memoized Cells and Fixed Dimension Completeness */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 auto-rows-fr select-none touch-none">
                 {/* Leading empty spaces */}
                 {Array.from({ length: startOffset }).map((_, i) => (
                   <div
-                    key={`empty-${i}`}
-                    className="min-h-[58px] sm:min-h-[76px] rounded-xl bg-slate-50/40"
+                    key={`leading-${i}`}
+                    className="h-[74px] sm:h-[88px] min-h-[74px] sm:min-h-[88px] rounded-xl bg-slate-50/40 border border-transparent"
                   />
                 ))}
 
@@ -830,27 +691,35 @@ export default function MonthlyCalendarView() {
                     />
                   );
                 })}
+
+                {/* Trailing empty spaces so all rows maintain 7 columns */}
+                {Array.from({ length: trailingSpaces }).map((_, i) => (
+                  <div
+                    key={`trailing-${i}`}
+                    className="h-[74px] sm:h-[88px] min-h-[74px] sm:min-h-[88px] rounded-xl bg-slate-50/40 border border-transparent"
+                  />
+                ))}
               </div>
             </motion.div>
           </AnimatePresence>
         </div>
 
         {/* ========================================================================= */}
-        {/* SECTION 3 & 4: TRANSACTION DETAILS (Automatic Single / Refined Multi)      */}
+        {/* UNIFIED SELECTED DATE SUMMARY & TRANSACTIONS (Stable Layout Below Grid)   */}
         {/* ========================================================================= */}
         <AnimatePresence>
-          {isMultiDayDrawerOpen && selectedDayNumbers.length > 0 && (
+          {selectedDayNumbers.length > 0 && (
             <motion.div
               id="calendar-transactions-section"
               ref={transactionsSectionRef}
-              initial={{ opacity: 0, height: 0, y: 12 }}
-              animate={{ opacity: 1, height: "auto", y: 0 }}
-              exit={{ opacity: 0, height: 0, y: 8 }}
-              transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden mt-6"
             >
               <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-purple-200/80 shadow-md p-4 sm:p-5">
-                {/* Header of details panel */}
+                {/* Header of details panel with title, metrics and clear button */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
                   <div>
                     <div className="flex items-center gap-2">
@@ -884,9 +753,9 @@ export default function MonthlyCalendarView() {
 
                   <button
                     type="button"
-                    onClick={() => setIsMultiDayDrawerOpen(false)}
+                    onClick={handleClearSelection}
                     className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer self-end sm:self-center"
-                    title="Hide transactions panel"
+                    title="Clear date selection"
                   >
                     <X className="w-4 h-4" />
                   </button>
