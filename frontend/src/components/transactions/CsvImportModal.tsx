@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Tag,
 } from "lucide-react";
+import { useToast } from "@/lib/toast-context";
 
 interface CsvImportModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export default function CsvImportModal({
   onClose,
   onSuccess,
 }: CsvImportModalProps) {
+  const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -170,9 +172,12 @@ export default function CsvImportModal({
       const count = await api.confirmCsvImport(toImport);
 
       setImportSuccessCount(count);
+      toast.success("Transactions Imported", `Successfully imported ${count} transactions to your ledger.`);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || "Failed to import transactions");
+      const errMsg = err.message || "Failed to import transactions";
+      setError(errMsg);
+      toast.error("Import Failed", errMsg);
     } finally {
       setImporting(false);
     }

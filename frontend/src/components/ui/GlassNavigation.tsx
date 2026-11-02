@@ -61,9 +61,9 @@ export function GlassNavigation({
                 layoutId={layoutId}
                 transition={{
                   type: "spring",
-                  stiffness: 380,
-                  damping: 32,
-                  mass: 0.8,
+                  stiffness: 190,
+                  damping: 24,
+                  mass: 0.9,
                 }}
               />
             )}

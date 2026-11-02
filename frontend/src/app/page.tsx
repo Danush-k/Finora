@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { DashboardSummary, MonthlyChartData, MonthlyChartPoint } from "@/types";
 import MetricCard from "@/components/dashboard/MetricCard";
+import HorizontalMetricsBar from "@/components/dashboard/HorizontalMetricsBar";
 import ExpenseChart, { ChartPeriod, ChartPeriodStats } from "@/components/dashboard/ExpenseChart";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import {
@@ -223,65 +224,37 @@ export default function DashboardPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* 2. METRIC CARDS: 2x2 Bento on Mobile, 4-col on Desktop    */}
+      {/* 2. STATS OVERVIEW: HORIZONTAL FINANCIAL SUMMARY RIBBON     */}
       {/* ========================================================= */}
       <div
-        className={`grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 transition-opacity duration-200 ${
+        className={`transition-opacity duration-200 ${
           isFiltering ? "opacity-60" : "opacity-100"
         }`}
       >
-        <MetricCard
-          title={
+        <HorizontalMetricsBar
+          totalExpenses={activeToggleStats ? activeToggleStats.expenses : summary?.totalExpensesThisMonth || 0}
+          totalIncome={activeToggleStats ? activeToggleStats.income : summary?.totalIncomeThisMonth || 0}
+          netSavings={activeToggleStats ? activeToggleStats.savings : summary?.netSavingsThisMonth || 0}
+          totalRecords={
+            chartPeriod === "YEARLY" && activeToggleStats?.count !== undefined
+              ? activeToggleStats.count
+              : summary?.totalTransactionsCount || 0
+          }
+          expensesTitle={
             chartPeriod === "YEARLY"
               ? "Annual Expenses"
               : chartPeriod === "WEEKLY"
               ? "Weekly Expenses"
               : "Total Expenses"
           }
-          amount={activeToggleStats ? activeToggleStats.expenses : summary?.totalExpensesThisMonth || 0}
-          icon={TrendingDown}
-          variant="expense"
-          count={activeToggleStats?.count ?? summary?.expensesCountThisMonth}
-          subtitle={activeToggleStats?.subtitle || summary?.activeMonthName || "This Month"}
-        />
-        <MetricCard
-          title={
+          incomeTitle={
             chartPeriod === "YEARLY"
               ? "Annual Income"
               : chartPeriod === "WEEKLY"
               ? "Weekly Income"
               : "Total Income"
           }
-          amount={activeToggleStats ? activeToggleStats.income : summary?.totalIncomeThisMonth || 0}
-          icon={TrendingUp}
-          variant="income"
-          count={summary?.incomeCountThisMonth}
-          subtitle={activeToggleStats?.subtitle || summary?.activeMonthName || "This Month"}
-        />
-        <MetricCard
-          title="Net Savings"
-          amount={activeToggleStats ? activeToggleStats.savings : summary?.netSavingsThisMonth || 0}
-          icon={Wallet}
-          variant="savings"
-          subtitle={
-            activeToggleStats
-              ? `${activeToggleStats.subtitle} Net`
-              : summary?.activeMonthName
-              ? `${summary.activeMonthName} Net`
-              : "Inflow - Outflow"
-          }
-        />
-        <MetricCard
-          title={chartPeriod === "YEARLY" ? "Annual Records" : "Total Records"}
-          amount={
-            chartPeriod === "YEARLY" && activeToggleStats?.count !== undefined
-              ? activeToggleStats.count
-              : summary?.totalTransactionsCount || 0
-          }
-          icon={ReceiptText}
-          variant="neutral"
-          isCurrency={false}
-          subtitle={chartPeriod === "YEARLY" ? "Annual Transactions" : "All Time Records"}
+          recordsTitle={chartPeriod === "YEARLY" ? "Annual Records" : "Total Records"}
         />
       </div>
 
@@ -338,25 +311,6 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Continuous Proportional Bar Strip across Categories */}
-            {categoryEntries.length > 0 && (
-              <div className="mb-3.5">
-                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden flex shadow-inner">
-                  {categoryEntries.map(([cat, amt]) => {
-                    const pct = Math.max(2, Math.round((amt / totalCategoryExpenses) * 100));
-                    const theme = getCategoryTheme(cat);
-                    return (
-                      <div
-                        key={cat}
-                        style={{ width: `${pct}%`, backgroundColor: theme.hexColor }}
-                        className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full hover:opacity-85 cursor-pointer"
-                        title={`${cat}: ${formatCurrency(amt)} (${pct}%)`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* Overall Monthly Budget Indicator */}
             {overallBudget && overallBudget.hasLimit && overallBudget.limitValue > 0 && (

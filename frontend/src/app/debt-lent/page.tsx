@@ -30,8 +30,10 @@ import {
   ShieldCheck,
   RotateCcw,
 } from "lucide-react";
+import { useToast } from "@/lib/toast-context";
 
 export default function DebtLentPage() {
+  const { toast } = useToast();
   const [records, setRecords] = useState<DebtLentRecord[]>([]);
   const [summary, setSummary] = useState<DebtLentSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,20 +109,29 @@ export default function DebtLentPage() {
   };
 
   const handleCreateOrUpdate = async (data: DebtLentRequest) => {
-    if (editingRecord) {
-      await api.updateDebtLentRecord(editingRecord.id, data);
-    } else {
-      await api.createDebtLentRecord(data);
+    try {
+      if (editingRecord) {
+        await api.updateDebtLentRecord(editingRecord.id, data);
+        toast.success("Record Updated", `${data.counterpartyName} (${formatCurrency(data.principalAmount)})`);
+      } else {
+        await api.createDebtLentRecord(data);
+        toast.success("Record Created", `${data.type === "LENT" ? "Money Lent to" : "Debt from"} ${data.counterpartyName}`);
+      }
+      await loadData();
+    } catch (err: any) {
+      toast.error("Operation Failed", err.message || "Failed to save record");
+      throw err;
     }
-    await loadData();
   };
 
   const handleDelete = async (id: string) => {
     try {
       await api.deleteDebtLentRecord(id);
       setSelectedRecord(null);
+      toast.info("Record Deleted", "Debt & Lent record removed successfully.");
       await loadData();
-    } catch (e) {
+    } catch (e: any) {
+      toast.error("Delete Failed", e.message || "Failed to delete record");
       console.error("Failed to delete record", e);
     }
   };

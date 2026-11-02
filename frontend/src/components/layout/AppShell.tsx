@@ -7,7 +7,9 @@ import NavigationDock from "./NavigationDock";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import LoginPage from "@/app/login/page";
 import FinoraFoxCompanion from "@/components/common/FinoraFoxCompanion";
-import { TopProgressBar } from "@/components/common/LoadingSkeletons";
+import AppLoader from "@/components/ui/AppLoader";
+import PageTransition from "@/components/ui/PageTransition";
+import { ToastProvider } from "@/lib/toast-context";
 
 function AuthenticatedApp({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,21 +17,9 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
 
   const isAuthRoute = pathname === "/login" || pathname === "/register";
 
-  // During initial session check
+  // During initial session check: Apple-inspired elegant loader with F logo glow
   if (isLoading) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F5F6FF]">
-        <TopProgressBar />
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[#6C3BFF]/10 border border-[#6C3BFF]/20 flex items-center justify-center animate-pulse">
-            <span className="w-4 h-4 rounded-full bg-[#6C3BFF]" />
-          </div>
-          <span className="text-xs font-bold text-slate-500 tracking-tight">
-            Finora Secure Session...
-          </span>
-        </div>
-      </div>
-    );
+    return <AppLoader />;
   }
 
   // If user is not authenticated or the app is locked, present the Login / Face ID Lockscreen
@@ -45,8 +35,11 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-6 w-full flex-1 pb-28 sm:pb-24 pt-[env(safe-area-inset-top)]">
-        {children}
+      {/* Generous, Apple-standard top padding so content never touches the sticky header */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-7 sm:pt-9 pb-28 sm:pb-28 w-full flex-1">
+        <PageTransition key={pathname}>
+          {children}
+        </PageTransition>
       </main>
       <NavigationDock />
       <FinoraFoxCompanion />
@@ -57,7 +50,10 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <AuthenticatedApp>{children}</AuthenticatedApp>
+      <ToastProvider>
+        <AuthenticatedApp>{children}</AuthenticatedApp>
+      </ToastProvider>
     </AuthProvider>
   );
 }
+

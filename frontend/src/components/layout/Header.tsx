@@ -8,9 +8,11 @@ import Link from "next/link";
 import Image from "next/image";
 import GlassSurface from "@/components/ui/GlassSurface";
 import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/lib/toast-context";
 
 export default function Header() {
   const { user, lock, logout } = useAuth();
+  const { success, error: toastError } = useToast();
   const [status, setStatus] = useState<GmailStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -37,8 +39,10 @@ export default function Header() {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("finora-sync-completed"));
       }
+      success("Transactions Synchronized", "HDFC bank alerts parsed and up to date.");
     } catch (e) {
       console.error(e);
+      toastError("Sync Failed", "Could not synchronize with Gmail. Please check your connection.");
     } finally {
       setTimeout(() => setSyncing(false), 800);
     }

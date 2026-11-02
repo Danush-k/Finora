@@ -31,12 +31,12 @@ export default function FinoraFoxCompanion({
   const [hasInteracted, setHasInteracted] = useState(false);
   const [bubbleText, setBubbleText] = useState("Need to seek a section? Tap me! 🦊");
 
-  // Cycle playful advice tips
+  // Cycle helpful financial advice tips
   const tips = [
     "Need to seek a section? Tap me! 🦊",
-    "Want to check your monthly budget? 🎯",
-    "Track Swiggy & Amazon in 1 click! 🛍️",
-    "I'm keeping watch over your expenses! 🐾",
+    "Inspect your monthly budget limits 🎯",
+    "Monitor real-time cashflow & insights 📊",
+    "Keeping your finances balanced & clear 🐾",
   ];
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function FinoraFoxCompanion({
       {/* ========================================================= */}
       {/* FLOATING FOX TRIGGER MASCOT (Bottom-Right Floating Dock)  */}
       {/* ========================================================= */}
-      <div className="fixed bottom-24 sm:bottom-8 right-3 sm:right-6 z-40 select-none">
+      <div className="fixed bottom-5 sm:bottom-8 right-3 sm:right-6 z-40 select-none">
         {/* Playful Floating Speech Bubble */}
         <AnimatePresence>
           {!isOpen && (
@@ -103,7 +103,7 @@ export default function FinoraFoxCompanion({
             setIsOpen(!isOpen);
             setHasInteracted(true);
           }}
-          className="relative group w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-white/90 via-white/80 to-[#F5F3FF]/90 backdrop-blur-xl border border-white/90 p-1 shadow-[0_12px_28px_rgba(108,59,255,0.22),0_4px_10px_rgba(0,0,0,0.06)] cursor-pointer flex items-center justify-center transition-all duration-200 hover:shadow-[0_16px_36px_rgba(108,59,255,0.32)]"
+          className="relative group w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-white/90 via-white/80 to-[#F5F3FF]/90 backdrop-blur-xl border border-white/90 p-1 shadow-[0_12px_28px_rgba(108,59,255,0.22),0_4px_10px_rgba(0,0,0,0.06)] cursor-pointer flex items-center justify-center transition-all duration-200 hover:shadow-[0_16px_36px_rgba(108,59,255,0.32)]"
           title="Finora Fox Navigator - Click to seek sections"
           aria-label="Finora Fox Assistant"
         >

@@ -22,10 +22,12 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CATEGORIES as ALL_CATEGORIES } from "@/lib/constants";
 import { TransactionsSkeleton } from "@/components/common/LoadingSkeletons";
+import { useToast } from "@/lib/toast-context";
 
 const CATEGORIES = ["ALL", ...ALL_CATEGORIES];
 
 function TransactionsContent() {
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,21 +89,29 @@ function TransactionsContent() {
   };
 
   const handleCreateOrUpdate = async (data: TransactionRequest) => {
-    if (editingTxn) {
-      await api.updateTransaction(editingTxn.id, data);
-    } else {
-      await api.createTransaction(data);
+    try {
+      if (editingTxn) {
+        await api.updateTransaction(editingTxn.id, data);
+        toast.success("Transaction Updated", `${data.merchant} (${data.transactionType === "EXPENSE" ? "-" : "+"}₹${data.amount})`);
+      } else {
+        await api.createTransaction(data);
+        toast.success("Transaction Added", `${data.merchant} (${data.transactionType === "EXPENSE" ? "-" : "+"}₹${data.amount})`);
+      }
+      await loadTransactions();
+    } catch (err: any) {
+      toast.error("Operation Failed", err.message || "Failed to save transaction");
+      throw err;
     }
-    await loadTransactions();
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this transaction record?")) {
       try {
         await api.deleteTransaction(id);
+        toast.info("Transaction Deleted", "Record removed from ledger.");
         await loadTransactions();
-      } catch (e) {
-        alert("Failed to delete transaction");
+      } catch (e: any) {
+        toast.error("Delete Failed", e.message || "Failed to delete transaction");
       }
     }
   };

@@ -4,6 +4,8 @@ import { Transaction, TransactionRequest, TransactionType, PaymentMethod } from 
 import { CATEGORIES } from "@/lib/constants";
 import { api } from "@/lib/api";
 import { X, Check, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { useToast } from "@/lib/toast-context";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -18,6 +20,7 @@ export default function TransactionModal({
   onSubmit,
   initialData,
 }: TransactionModalProps) {
+  const { success, error: toastError } = useToast();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -207,7 +210,7 @@ export default function TransactionModal({
             <label className="block text-slate-600 font-semibold mb-1">Merchant / Recipient</label>
             <input
               type="text"
-              placeholder="e.g. Swiggy, Amazon, Infosys"
+              placeholder="e.g. Supermarket, Salary, Coffee Shop"
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
               required
