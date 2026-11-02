@@ -100,27 +100,27 @@ export default function Header() {
             onClick={handleQuickSync}
             disabled={syncing}
             title="Trigger Instant Gmail Synchronisation"
-            className="btn-secondary flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer disabled:opacity-50"
+            className="btn-secondary flex items-center justify-center w-8.5 h-8.5 sm:w-auto p-0 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-semibold cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[#5228E0] ${syncing ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Sync Now</span>
+            <span className="hidden sm:inline sm:ml-1.5">Sync Now</span>
           </button>
 
           {/* Profile & Lock Screen Toggle */}
-          <div className="flex items-center gap-1 pl-1 border-l border-slate-200/80">
+          <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200/80">
             <button
               type="button"
               onClick={lock}
               title="Lock Screen with Face ID"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/80 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold cursor-pointer transition-all active:scale-95 shadow-2xs"
+              className="flex items-center justify-center w-8.5 h-8.5 sm:w-auto p-0 sm:px-2.5 sm:py-1.5 rounded-full bg-white/80 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold cursor-pointer transition-all active:scale-95 shadow-2xs"
             >
-              <Lock className="w-3 h-3 text-[#6C3BFF]" />
-              <span className="hidden sm:inline">Lock</span>
+              <Lock className="w-3.5 h-3.5 text-[#6C3BFF]" />
+              <span className="hidden sm:inline sm:ml-1.5">Lock</span>
             </button>
 
             {/* User Avatar */}
             <div
-              className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#6C3BFF] to-[#A78BFA] p-0.5 shadow-2xs cursor-pointer"
+              className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#6C3BFF] to-[#A78BFA] p-0.5 shadow-2xs cursor-pointer"
               title={`${user?.name || "Danush"} (${user?.role || "Owner"}) - Click to sign out`}
               onClick={logout}
             >

@@ -77,7 +77,7 @@ export default function FinoraFoxCompanion({
       {/* ========================================================= */}
       {/* FLOATING FOX TRIGGER MASCOT (Bottom-Right Floating Dock)  */}
       {/* ========================================================= */}
-      <div className="fixed bottom-5 sm:bottom-8 right-3 sm:right-6 z-40 select-none">
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+72px)] sm:bottom-8 right-3 sm:right-6 z-40 select-none">
         {/* Playful Floating Speech Bubble */}
         <AnimatePresence>
           {!isOpen && (
@@ -103,12 +103,12 @@ export default function FinoraFoxCompanion({
             setIsOpen(!isOpen);
             setHasInteracted(true);
           }}
-          className="relative group w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-white/90 via-white/80 to-[#F5F3FF]/90 backdrop-blur-xl border border-white/90 p-1 shadow-[0_12px_28px_rgba(108,59,255,0.22),0_4px_10px_rgba(0,0,0,0.06)] cursor-pointer flex items-center justify-center transition-all duration-200 hover:shadow-[0_16px_36px_rgba(108,59,255,0.32)]"
+          className="relative group w-11 h-11 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/90 via-white/80 to-[#F5F3FF]/90 backdrop-blur-xl border border-white/90 p-1 shadow-[0_12px_28px_rgba(108,59,255,0.22),0_4px_10px_rgba(0,0,0,0.06)] cursor-pointer flex items-center justify-center transition-all duration-200 hover:shadow-[0_16px_36px_rgba(108,59,255,0.32)]"
           title="Finora Fox Navigator - Click to seek sections"
           aria-label="Finora Fox Assistant"
         >
           {/* Animated pulse halo */}
-          <span className="absolute -inset-1 rounded-2xl bg-[#6C3BFF]/20 blur-md group-hover:bg-[#6C3BFF]/35 transition-colors -z-10" />
+          <span className="absolute -inset-1 rounded-xl sm:rounded-2xl bg-[#6C3BFF]/20 blur-md group-hover:bg-[#6C3BFF]/35 transition-colors -z-10" />
 
           {/* Fox Body with Waving Paw */}
           <div className="relative w-full h-full">

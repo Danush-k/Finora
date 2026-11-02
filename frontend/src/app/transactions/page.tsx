@@ -261,21 +261,9 @@ function TransactionsContent() {
                       <div
                         className="w-full h-full rounded-xl overflow-hidden"
                         style={{
-                          background:
-                            t === "EXPENSE"
-                              ? "linear-gradient(135deg, #FB923C 0%, #F97316 50%, #EA580C 100%)"
-                              : t === "INCOME"
-                              ? "linear-gradient(135deg, #34D399 0%, #10B981 50%, #059669 100%)"
-                              : t === "ALL"
-                              ? "linear-gradient(135deg, #8F6BFF 0%, #7547F5 45%, #5228E0 100%)"
-                              : "linear-gradient(135deg, #60A5FA 0%, #3B82F6 50%, #1D4ED8 100%)",
-                          boxShadow:
-                            t === "EXPENSE"
-                              ? "0 3px 10px rgba(249,115,22,0.35), inset 0 1px 0 rgba(255,255,255,0.35)"
-                              : t === "INCOME"
-                              ? "0 3px 10px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.35)"
-                              : "0 3px 10px rgba(108,59,255,0.25), inset 0 1px 0 rgba(255,255,255,0.35)",
-                          border: "1px solid rgba(255,255,255,0.28)",
+                          background: "linear-gradient(135deg, #8F6BFF 0%, #7547F5 45%, #5228E0 100%)",
+                          boxShadow: "0 3px 10px rgba(108, 59, 255, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35)",
+                          border: "1px solid rgba(255, 255, 255, 0.28)",
                         }}
                       />
                     </motion.div>

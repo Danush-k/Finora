@@ -169,7 +169,7 @@ export default function DashboardPage() {
   const visibleCategories = showAllCategories ? categoryEntries : categoryEntries.slice(0, 4);
 
   return (
-    <div className="space-y-5 sm:space-y-6 pb-28">
+    <div className="space-y-5 sm:space-y-6 pb-32 sm:pb-24">
       {/* ========================================================= */}
       {/* 1. TOP HEADER: Clean Title & Compact Action Buttons       */}
       {/* ========================================================= */}
@@ -197,27 +197,27 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Compact, refined action buttons (not oversized) */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Compact, refined action buttons (Responsive 3-col grid on mobile, flex on desktop) */}
+        <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setCsvModalOpen(true)}
-            className="btn-secondary h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="btn-secondary h-8.5 sm:h-9 px-2 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
           >
-            <UploadCloud className="w-3.5 h-3.5 text-[#5228E0]" />
+            <UploadCloud className="w-3.5 h-3.5 text-[#5228E0] shrink-0" />
             <span>Import CSV</span>
           </button>
           <Link
             href="/calendar"
-            className="btn-secondary h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="btn-secondary h-8.5 sm:h-9 px-2 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
           >
-            <Calendar className="w-3.5 h-3.5 text-[#5228E0]" />
+            <Calendar className="w-3.5 h-3.5 text-[#5228E0] shrink-0" />
             <span>Calendar</span>
           </Link>
           <Link
             href="/transactions?action=new"
-            className="btn-primary h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="btn-primary h-8.5 sm:h-9 px-2.5 sm:px-4 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
           >
-            <PlusCircle className="w-3.5 h-3.5 text-white" />
+            <PlusCircle className="w-3.5 h-3.5 text-white shrink-0" />
             <span className="text-white font-semibold">New Entry</span>
           </Link>
         </div>

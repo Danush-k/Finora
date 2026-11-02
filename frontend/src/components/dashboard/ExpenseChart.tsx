@@ -591,7 +591,7 @@ export default function ExpenseChart({
       {/* ========================================================= */}
       {/* 2. CHART CANVAS: Physical Horizontal Slide Animation      */}
       {/* ========================================================= */}
-      <div className="w-full h-72 outline-none focus:outline-none relative overflow-hidden">
+      <div className="w-full h-64 sm:h-72 outline-none focus:outline-none relative overflow-hidden">
         {weeklyLoading ? (
           <div className="w-full h-full flex flex-col items-center justify-center space-y-2 text-slate-400 text-xs">
             <div className="w-6 h-6 border-2 border-[#6C3BFF] border-t-transparent rounded-full animate-spin" />
@@ -694,7 +694,7 @@ export default function ExpenseChart({
                           e.stopPropagation();
                           handleItemClick(pt);
                         }}
-                        className="rounded-2xl bg-white/95 backdrop-blur-xl p-3.5 border border-slate-200/90 text-xs shadow-[0_16px_36px_rgba(15,23,42,0.12),0_4px_12px_rgba(15,23,42,0.06)] min-w-[220px] select-none cursor-pointer hover:border-[#6C3BFF]/40 transition-all duration-150 pointer-events-auto"
+                        className="rounded-2xl bg-white/95 backdrop-blur-xl p-3 sm:p-3.5 border border-slate-200/90 text-xs shadow-[0_16px_36px_rgba(15,23,42,0.12),0_4px_12px_rgba(15,23,42,0.06)] min-w-[200px] sm:min-w-[220px] max-w-[calc(100vw-40px)] select-none cursor-pointer hover:border-[#6C3BFF]/40 transition-all duration-150 pointer-events-auto"
                       >
                         {/* Tooltip Header */}
                         <div className="flex items-center justify-between gap-3 mb-2.5 pb-2 border-b border-slate-100">
@@ -855,8 +855,8 @@ export default function ExpenseChart({
             )}
             title={canGoEarlier ? "Shift 1 month earlier (to left)" : "Reached earliest month"}
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Earlier (-1 Mo)</span>
+            <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[11px] whitespace-nowrap">Earlier <span className="hidden sm:inline">(-1 Mo)</span></span>
           </button>
 
           {/* Center Timeline Label */}
@@ -875,15 +875,15 @@ export default function ExpenseChart({
             onClick={handleSlideRight}
             disabled={!canGoLater}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer outline-none",
+              "flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer outline-none",
               canGoLater
                 ? "bg-white hover:bg-indigo-50/80 active:scale-95 text-slate-700 hover:text-indigo-600 border-slate-200/90 shadow-2xs"
                 : "opacity-35 text-slate-400 border-transparent cursor-not-allowed"
             )}
             title={canGoLater ? "Shift 1 month later (to right)" : "Reached latest month"}
           >
-            <span className="text-[11px]">Later (+1 Mo)</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-[11px] whitespace-nowrap">Later <span className="hidden sm:inline">(+1 Mo)</span></span>
+            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
           </button>
         </div>
       )}
