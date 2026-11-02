@@ -148,16 +148,6 @@ function TransactionsContent() {
   const handlePageChange = (newPage: number) => {
     if (newPage === page || isFetching) return;
     setPage(newPage);
-    const anchor = document.getElementById("transactions-table-anchor");
-    if (anchor) {
-      const rect = anchor.getBoundingClientRect();
-      if (rect.top < 80) {
-        window.scrollTo({
-          top: window.scrollY + rect.top - 80,
-          behavior: "smooth",
-        });
-      }
-    }
   };
 
   const handleCreateOrUpdate = async (data: TransactionRequest) => {

@@ -431,6 +431,23 @@ body {
   animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Google & Stripe Style Indeterminate Hairline Progress Bar */
+@keyframes indeterminateProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(40%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-indeterminate-bar {
+  animation: indeterminateProgress 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 /* Custom sleek scrollbar for light theme */
 ::-webkit-scrollbar {
   width: 6px;

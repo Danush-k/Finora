@@ -5,7 +5,6 @@ import { Transaction } from "@/types";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { ArrowDownRight, ArrowUpRight, Edit2, Trash2, Search } from "lucide-react";
 import CategoryBadge from "@/components/common/CategoryBadge";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -22,10 +21,10 @@ export default function TransactionTable({
   loading = false,
   isFetching = false,
 }: TransactionTableProps) {
-  // Skeleton loader for initial load when no data exists yet
+  // Skeleton loader for initial cold load when no data has ever been loaded
   if (loading && (!transactions || transactions.length === 0)) {
     return (
-      <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs min-h-[420px]">
+      <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs min-h-[500px]">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
@@ -40,7 +39,7 @@ export default function TransactionTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800">
-              {[...Array(6)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   <td className="py-3.5 px-4"><div className="h-3.5 w-20 bg-slate-200/70 rounded-md" /></td>
                   <td className="py-3.5 px-4"><div className="h-4 w-36 bg-slate-200/80 rounded-md" /></td>
@@ -58,12 +57,15 @@ export default function TransactionTable({
     );
   }
 
-  // Stable empty state that doesn't collapse page height
+  // Stable empty state that preserves container height and never collapses the page
   if (!transactions || transactions.length === 0) {
     return (
-      <div className="w-full min-h-[380px] flex flex-col items-center justify-center py-16 text-center liquid-glass rounded-2xl border border-slate-200/80 shadow-xs relative">
+      <div className="w-full min-h-[460px] flex flex-col items-center justify-center py-16 text-center liquid-glass rounded-2xl border border-slate-200/80 shadow-xs relative">
+        {/* Hairline progress bar if search is actively running */}
         {isFetching && (
-          <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] animate-pulse z-20 pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden z-20 pointer-events-none bg-purple-50/50">
+            <div className="w-1/2 h-full bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] rounded-full animate-indeterminate-bar" />
+          </div>
         )}
         <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#6C3BFF] border border-purple-100 flex items-center justify-center mb-3 shadow-2xs">
           <Search className="w-5 h-5" />
@@ -77,32 +79,22 @@ export default function TransactionTable({
   }
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs relative min-h-[420px] transition-all duration-200">
-      {/* 1. Subtle top progress beam during page transitions or search queries */}
+    <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs relative min-h-[460px] transition-all duration-200">
+      {/* 1. Google/Stripe Style Hairline Top Progress Bar during page changes or search */}
       {isFetching && (
-        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] animate-pulse z-20 pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] overflow-hidden z-20 pointer-events-none bg-purple-50/60">
+          <div className="w-1/2 h-full bg-gradient-to-r from-[#8F6BFF] via-[#7547F5] to-[#5228E0] rounded-full animate-indeterminate-bar shadow-[0_0_8px_rgba(117,71,245,0.5)]" />
+        </div>
       )}
 
-      {/* 2. Frosted loading indicator overlay (non-blocking, keeps layout intact) */}
-      <AnimatePresence>
-        {isFetching && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="absolute inset-0 bg-white/35 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none"
-          >
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 border border-purple-100 shadow-[0_4px_16px_rgba(108,59,255,0.12)] text-xs font-semibold text-[#5228E0]">
-              <div className="w-3.5 h-3.5 border-2 border-[#6C3BFF] border-t-transparent rounded-full animate-spin shrink-0" />
-              <span>Updating transactions...</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      {/* 2. Table with In-Place Smooth Crossfade (No jarring jump, no center popup, no staggered delay) */}
       <div className="overflow-x-auto">
-        <table className={cn("w-full text-left text-xs transition-opacity duration-200", isFetching && "opacity-75")}>
+        <table
+          className={cn(
+            "w-full text-left text-xs transition-opacity duration-200 ease-out",
+            isFetching ? "opacity-55" : "opacity-100"
+          )}
+        >
           <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
             <tr>
               <th className="py-3 px-4">Date</th>
@@ -115,19 +107,12 @@ export default function TransactionTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
-            {transactions.map((txn, index) => {
+            {transactions.map((txn) => {
               const isExpense = txn.transactionType === "EXPENSE";
 
               return (
-                <motion.tr
+                <tr
                   key={txn.id}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.18,
-                    delay: Math.min(index * 0.015, 0.15),
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
                   className="hover:bg-slate-50/70 transition-colors group"
                 >
                   {/* Date */}
@@ -222,7 +207,7 @@ export default function TransactionTable({
                       </button>
                     </div>
                   </td>
-                </motion.tr>
+                </tr>
               );
             })}
           </tbody>
