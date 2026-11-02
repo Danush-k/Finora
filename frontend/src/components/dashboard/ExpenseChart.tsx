@@ -542,9 +542,9 @@ export default function ExpenseChart({
         {/* ========================================================================= */}
         {/* RIGHT SIDE: 100% STATIC ANCHORED PERIOD TOGGLE (Never jumps or shifts!)   */}
         {/* ========================================================================= */}
-        <div className="shrink-0 self-start sm:self-center w-[234px]">
+        <div className="shrink-0 self-start sm:self-center w-[188px]">
           <LayoutGroup id="finora-chart-periods-static">
-            <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100/90 border border-slate-200/80 shadow-2xs relative w-full h-10 items-center">
+            <div className="grid grid-cols-3 p-0.5 rounded-xl bg-slate-100/90 border border-slate-200/80 shadow-2xs relative w-full h-8 items-center">
               {(["MONTHLY", "WEEKLY", "YEARLY"] as const).map((p) => {
                 const isSelected = period === p;
                 return (
@@ -557,7 +557,7 @@ export default function ExpenseChart({
                       onPeriodChange?.(p);
                     }}
                     className={cn(
-                      "relative h-8 rounded-xl text-xs font-bold transition-colors cursor-pointer select-none outline-none flex items-center justify-center",
+                      "relative h-7 rounded-lg text-[11px] font-bold transition-colors cursor-pointer select-none outline-none flex items-center justify-center",
                       isSelected ? "text-white" : "text-slate-600 hover:text-slate-900"
                     )}
                   >
@@ -565,14 +565,14 @@ export default function ExpenseChart({
                       <motion.div
                         layoutId="finora-chart-period-pill-static"
                         transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
-                        className="absolute inset-0 rounded-xl z-0 pointer-events-none"
+                        className="absolute inset-0 rounded-lg z-0 pointer-events-none"
                       >
                         <div
-                          className="w-full h-full rounded-xl overflow-hidden"
+                          className="w-full h-full rounded-lg overflow-hidden"
                           style={{
                             background: "linear-gradient(135deg, #8F6BFF 0%, #7547F5 45%, #5228E0 100%)",
-                            boxShadow: "0 4px 12px rgba(108,59,255,0.25), inset 0 1px 0 rgba(255,255,255,0.40)",
-                            border: "1px solid rgba(255,255,255,0.32)",
+                            boxShadow: "0 2px 8px rgba(108,59,255,0.22), inset 0 1px 0 rgba(255,255,255,0.35)",
+                            border: "1px solid rgba(255,255,255,0.28)",
                           }}
                         />
                       </motion.div>

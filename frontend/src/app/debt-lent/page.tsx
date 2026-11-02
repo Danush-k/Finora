@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import {
   DebtLentRecord,
@@ -13,7 +13,7 @@ import DebtLentCard from "@/components/debt-lent/DebtLentCard";
 import DebtLentModal from "@/components/debt-lent/DebtLentModal";
 import InstallmentChecklistDrawer from "@/components/debt-lent/InstallmentChecklistDrawer";
 import { formatCurrency, cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { DebtLentSkeleton } from "@/components/common/LoadingSkeletons";
 import {
   PlusCircle,
@@ -23,6 +23,7 @@ import {
   Scale,
   AlertTriangle,
   Search,
+  X,
   CheckCircle2,
   Clock,
   Wallet,
@@ -42,6 +43,15 @@ export default function DebtLentPage() {
   const [activeTab, setActiveTab] = useState<"LENT" | "DEBT">("LENT");
   const [statusFilter, setStatusFilter] = useState<DebtLentStatus | "ALL">("ALL");
   const [search, setSearch] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Dynamic live suggestions from counterparties
+  const suggestions = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    const names = Array.from(new Set(records.map((r) => r.counterpartyName).filter(Boolean)));
+    return names.filter((n) => n.toLowerCase().includes(q)).slice(0, 5);
+  }, [search, records]);
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -73,6 +83,14 @@ export default function DebtLentPage() {
       setLoading(false);
     }
   };
+
+  // Debounced search when typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadData();
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     loadData();
@@ -450,9 +468,9 @@ export default function DebtLentPage() {
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="rounded-2xl liquid-glass p-3 sm:p-4 border border-slate-200/80 space-y-2.5 sm:space-y-3 shadow-xs">
-        <form onSubmit={handleSearchSubmit} className="flex gap-2">
+      {/* Filter and Search Bar with Dynamic Autocomplete & Sliding Indicator */}
+      <div className="rounded-2xl liquid-glass p-3 sm:p-4 border border-slate-200/80 space-y-2.5 sm:space-y-3 shadow-xs relative">
+        <form onSubmit={handleSearchSubmit} className="flex gap-2 relative">
           <div className="relative flex-1">
             <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -463,9 +481,56 @@ export default function DebtLentPage() {
                   : "Search lender, note, or amount..."
               }
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 shadow-2xs"
+              onFocus={() => setShowSuggestions(true)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setShowSuggestions(true);
+              }}
+              className="w-full pl-8 sm:pl-9 pr-8 py-1.5 sm:py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 shadow-2xs font-medium"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setShowSuggestions(false);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Dynamic Suggestions Dropdown */}
+            <AnimatePresence>
+              {showSuggestions && suggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 2, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 right-0 top-full mt-1.5 z-30 rounded-2xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-xl overflow-hidden py-1.5"
+                >
+                  <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Suggested Counterparties
+                  </div>
+                  {suggestions.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onMouseDown={() => {
+                        setSearch(name);
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full px-3.5 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 flex items-center justify-between cursor-pointer"
+                    >
+                      <span>{name}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Click to filter</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           <button
             type="submit"
@@ -476,24 +541,42 @@ export default function DebtLentPage() {
         </form>
 
         <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2 pt-2 border-t border-slate-100">
-          {/* Status Sub-filter pills (horizontal scrollable on mobile) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full xs:w-auto py-0.5">
+          {/* Status Sub-filter pills with Smooth Sliding Indicator (Green for Lent, Orange for Debt) */}
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full xs:w-auto py-0.5 p-1 rounded-xl bg-slate-100/90 border border-slate-200/70 relative">
             {(["ALL", "ACTIVE", "PARTIALLY_SETTLED", "SETTLED", "OVERDUE"] as const).map(
-              (s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`px-2.5 sm:px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                    statusFilter === s
-                      ? isLentTab
-                        ? "bg-emerald-600 text-white shadow-2xs"
-                        : "bg-amber-600 text-white shadow-2xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
-                  }`}
-                >
-                  {s === "PARTIALLY_SETTLED" ? "Partial" : s.replace("_", " ")}
-                </button>
-              )
+              (s) => {
+                const isSelected = statusFilter === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={cn(
+                      "relative px-2.5 sm:px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 outline-none select-none z-10",
+                      isSelected ? "text-white" : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="debt-lent-status-slider-pill"
+                        transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
+                        className="absolute inset-0 rounded-lg pointer-events-none -z-10"
+                        style={{
+                          background: isLentTab
+                            ? "linear-gradient(135deg, #34D399 0%, #10B981 50%, #059669 100%)"
+                            : "linear-gradient(135deg, #FB923C 0%, #F97316 50%, #EA580C 100%)",
+                          boxShadow: isLentTab
+                            ? "0 2px 8px rgba(16,185,129,0.35)"
+                            : "0 2px 8px rgba(249,115,22,0.35)",
+                        }}
+                      />
+                    )}
+                    <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.12)]">
+                      {s === "PARTIALLY_SETTLED" ? "Partial" : s.replace("_", " ")}
+                    </span>
+                  </button>
+                );
+              }
             )}
           </div>
 

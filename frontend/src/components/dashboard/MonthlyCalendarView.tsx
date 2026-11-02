@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { api } from "@/lib/api";
 import { CalendarDaySummary, DebtLentRecord, Transaction } from "@/types";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -20,6 +20,111 @@ import CategoryBadge from "@/components/common/CategoryBadge";
 import CategoryBudgetModal from "@/components/dashboard/CategoryBudgetModal";
 import { motion, AnimatePresence } from "framer-motion";
 
+// ============================================================================
+// MEMOIZED CALENDAR DAY CELL
+// Uses performant CSS transitions so ONLY changed cells re-render/animate!
+// ============================================================================
+interface CalendarDayCellProps {
+  day: CalendarDaySummary;
+  isSelected: boolean;
+  hasLent: boolean;
+  hasDebt: boolean;
+  onPointerDown: (dayNum: number, e: React.PointerEvent) => void;
+  onPointerEnter: (dayNum: number) => void;
+  onPointerUp: (dayNum: number) => void;
+}
+
+const CalendarDayCell = memo(function CalendarDayCell({
+  day,
+  isSelected,
+  hasLent,
+  hasDebt,
+  onPointerDown,
+  onPointerEnter,
+  onPointerUp,
+}: CalendarDayCellProps) {
+  const hasExpense = day.totalExpense > 0;
+  const hasIncome = day.totalIncome > 0;
+
+  return (
+    <div
+      onPointerDown={(e) => onPointerDown(day.dayOfMonth, e)}
+      onPointerEnter={() => onPointerEnter(day.dayOfMonth)}
+      onPointerUp={() => onPointerUp(day.dayOfMonth)}
+      className={cn(
+        "min-h-[58px] sm:min-h-[78px] p-1.5 sm:p-2 rounded-xl transition-all duration-200 cursor-pointer flex flex-col justify-between select-none relative outline-none",
+        isSelected
+          ? "bg-[#F3EEFF]/90 border-[1.5px] border-[#6C3BFF]/80 shadow-[0_2px_12px_rgba(108,59,255,0.12)] z-10 scale-[1.01]"
+          : day.transactionCount > 0
+          ? hasLent
+            ? "bg-white border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/25 hover:shadow-2xs"
+            : hasDebt
+            ? "bg-white border-amber-300 hover:border-amber-500 hover:bg-amber-50/25 hover:shadow-2xs"
+            : "bg-white border-slate-200/90 hover:border-purple-300/80 hover:bg-purple-50/20 hover:shadow-2xs"
+          : "bg-white/60 border-slate-100 hover:border-slate-200/90 hover:bg-slate-50/50"
+      )}
+    >
+      <div className="flex items-center justify-between pointer-events-none">
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <span
+            className={cn(
+              "text-[11px] sm:text-xs font-black transition-colors duration-150",
+              isSelected ? "text-[#5228E0]" : "text-slate-800"
+            )}
+          >
+            {day.dayOfMonth}
+          </span>
+          {(hasLent || hasDebt) && (
+            <span
+              className={cn(
+                "text-[8px] sm:text-[9px] font-extrabold px-1 sm:px-1.5 py-0.2 rounded leading-tight border",
+                hasLent
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-amber-50 text-amber-700 border-amber-200"
+              )}
+              title={
+                hasLent && hasDebt
+                  ? "Contains mapped Lent & Debt entries"
+                  : hasLent
+                  ? "Contains mapped Lent transaction"
+                  : "Contains mapped Debt transaction"
+              }
+            >
+              {hasLent && hasDebt ? "L·D" : hasLent ? "Lent" : "Debt"}
+            </span>
+          )}
+        </div>
+        {day.transactionCount > 0 && (
+          <span
+            className={cn(
+              "text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.2 rounded-full font-bold border transition-colors",
+              isSelected
+                ? "bg-[#6C3BFF]/15 text-[#5228E0] border-[#6C3BFF]/30"
+                : "bg-slate-100 text-slate-700 border-slate-200"
+            )}
+          >
+            {day.transactionCount}
+          </span>
+        )}
+      </div>
+
+      {/* Day Cashflow Indicators */}
+      <div className="flex flex-col gap-0.5 mt-0.5 sm:mt-1 overflow-hidden pointer-events-none">
+        {hasIncome && (
+          <span className="text-[9px] sm:text-[11px] font-bold text-emerald-600 truncate tabular-nums">
+            +{formatCurrency(day.totalIncome)}
+          </span>
+        )}
+        {hasExpense && (
+          <span className="text-[9px] sm:text-[11px] font-bold text-rose-600 truncate tabular-nums">
+            -{formatCurrency(day.totalExpense)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+});
+
 export default function MonthlyCalendarView() {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 10, 1));
@@ -31,12 +136,14 @@ export default function MonthlyCalendarView() {
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [todayYear, setTodayYear] = useState<number>(2026);
   const [todayMonth, setTodayMonth] = useState<number>(11);
+  const [monthDirection, setMonthDirection] = useState<"next" | "prev">("next");
+
+  const transactionsSectionRef = useRef<HTMLDivElement>(null);
 
   // Pointer & Drag selection tracking
   const pointerOriginRef = useRef<{ x: number; y: number; dayNum: number } | null>(null);
   const isPointerDownRef = useRef<boolean>(false);
   const isDraggingRef = useRef<boolean>(false);
-  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -44,7 +151,8 @@ export default function MonthlyCalendarView() {
     setTodayMonth(now.getMonth() + 1);
     setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
 
-    api.getDebtLentRecords()
+    api
+      .getDebtLentRecords()
       .then((records) => setDebtLentRecords(records))
       .catch((e) => console.error("Failed to load debt & lent records for calendar", e));
   }, []);
@@ -155,23 +263,34 @@ export default function MonthlyCalendarView() {
     const handleGlobalPointerUp = () => {
       isPointerDownRef.current = false;
       isDraggingRef.current = false;
-      setIsDragging(false);
       pointerOriginRef.current = null;
     };
     window.addEventListener("pointerup", handleGlobalPointerUp);
     return () => window.removeEventListener("pointerup", handleGlobalPointerUp);
   }, []);
 
+  // Automatic revelation of transactions for single-date selection
+  useEffect(() => {
+    if (selectedDayNumbers.length === 1) {
+      setIsMultiDayDrawerOpen(true);
+    } else if (selectedDayNumbers.length === 0) {
+      setIsMultiDayDrawerOpen(false);
+    }
+  }, [selectedDayNumbers.length]);
+
   const handlePrevMonth = () => {
+    setMonthDirection("prev");
     setCurrentDate(new Date(year, month - 2, 1));
   };
 
   const handleNextMonth = () => {
+    setMonthDirection("next");
     setCurrentDate(new Date(year, month, 1));
   };
 
   const handleCurrentMonth = () => {
     const now = new Date();
+    setMonthDirection(now.getTime() > currentDate.getTime() ? "next" : "prev");
     setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
   };
 
@@ -215,6 +334,60 @@ export default function MonthlyCalendarView() {
 
   const selectedTxnCount = selectedTransactions.length;
 
+  // Group transactions chronologically by date for multiple selected dates
+  const groupedTransactionsByDate = useMemo(() => {
+    if (selectedDayNumbers.length <= 1) return [];
+
+    const map = new Map<string, Transaction[]>();
+    const sorted = [...selectedTransactions].sort((a, b) => {
+      return new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime();
+    });
+
+    sorted.forEach((txn) => {
+      const dKey = txn.transactionDate ? txn.transactionDate.split("T")[0] : "Other";
+      if (!map.has(dKey)) {
+        map.set(dKey, []);
+      }
+      map.get(dKey)!.push(txn);
+    });
+
+    const groups: {
+      dateKey: string;
+      dateLabel: string;
+      txns: Transaction[];
+      dayExpense: number;
+      dayIncome: number;
+    }[] = [];
+
+    map.forEach((txns, dKey) => {
+      const dObj = new Date(dKey);
+      const dateLabel = isNaN(dObj.getTime())
+        ? dKey
+        : dObj.toLocaleDateString("en-IN", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+      const dayExpense = txns
+        .filter((t) => t.transactionType === "EXPENSE")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const dayIncome = txns
+        .filter((t) => t.transactionType === "INCOME")
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      groups.push({
+        dateKey: dKey,
+        dateLabel,
+        txns,
+        dayExpense,
+        dayIncome,
+      });
+    });
+
+    return groups;
+  }, [selectedTransactions, selectedDayNumbers.length]);
+
   // Title formatting: clean, minimal Apple style
   const selectionTitle = useMemo(() => {
     if (selectedDayNumbers.length === 0) return "";
@@ -224,7 +397,7 @@ export default function MonthlyCalendarView() {
     }
 
     // Check if column match (e.g. all Sundays)
-    const cols = selectedDaysList.map((d) => ((startOffset + (d.dayOfMonth - 1)) % 7));
+    const cols = selectedDaysList.map((d) => (startOffset + (d.dayOfMonth - 1)) % 7);
     const uniqueCols = Array.from(new Set(cols));
     if (uniqueCols.length === 1) {
       const colName = dayNames[uniqueCols[0]];
@@ -256,7 +429,7 @@ export default function MonthlyCalendarView() {
   // Column header click: toggle all dates in that column
   const handleWeekdayClick = (colIdx: number) => {
     const matchingDays = calendarDays
-      .filter((d) => ((startOffset + (d.dayOfMonth - 1)) % 7) === colIdx)
+      .filter((d) => (startOffset + (d.dayOfMonth - 1)) % 7 === colIdx)
       .map((d) => d.dayOfMonth);
 
     if (matchingDays.length === 0) return;
@@ -282,8 +455,6 @@ export default function MonthlyCalendarView() {
     // Transition to dragging when moving between cells
     if (!isDraggingRef.current) {
       isDraggingRef.current = true;
-      setIsDragging(true);
-      // Ensure start day is in selection
       const startDay = pointerOriginRef.current.dayNum;
       setSelectedDayNumbers((prev) => {
         const next = new Set(prev);
@@ -294,7 +465,7 @@ export default function MonthlyCalendarView() {
       return;
     }
 
-    // While dragging across cells, add each touched cell to the selection (supports horizontal, vertical, diagonal)
+    // While dragging across cells, add each touched cell to the selection
     setSelectedDayNumbers((prev) => {
       if (prev.includes(dayNum)) return prev;
       return [...prev, dayNum];
@@ -307,7 +478,6 @@ export default function MonthlyCalendarView() {
     // If no drag occurred, this was a clean single click!
     if (!isDraggingRef.current) {
       setSelectedDayNumbers((prev) => {
-        // Toggle the clicked date
         if (prev.includes(dayNum)) {
           return prev.filter((d) => d !== dayNum);
         } else {
@@ -318,13 +488,19 @@ export default function MonthlyCalendarView() {
 
     isPointerDownRef.current = false;
     isDraggingRef.current = false;
-    setIsDragging(false);
     pointerOriginRef.current = null;
   };
 
   const handleClearSelection = () => {
     setSelectedDayNumbers([]);
     setIsMultiDayDrawerOpen(false);
+  };
+
+  const handleScrollToTransactions = () => {
+    setIsMultiDayDrawerOpen(true);
+    setTimeout(() => {
+      transactionsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 60);
   };
 
   return (
@@ -336,7 +512,7 @@ export default function MonthlyCalendarView() {
             <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Total Spent
             </span>
-            <h4 className="text-base sm:text-xl font-black text-rose-600 mt-0.5 sm:mt-1">
+            <h4 className="text-base sm:text-xl font-black text-rose-600 mt-0.5 sm:mt-1 tabular-nums">
               {formatCurrency(totalMonthExpense)}
             </h4>
           </div>
@@ -350,7 +526,7 @@ export default function MonthlyCalendarView() {
             <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Total Inflow
             </span>
-            <h4 className="text-base sm:text-xl font-black text-emerald-600 mt-0.5 sm:mt-1">
+            <h4 className="text-base sm:text-xl font-black text-emerald-600 mt-0.5 sm:mt-1 tabular-nums">
               {formatCurrency(totalMonthIncome)}
             </h4>
           </div>
@@ -364,7 +540,7 @@ export default function MonthlyCalendarView() {
             <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Active Days
             </span>
-            <h4 className="text-base sm:text-xl font-black text-indigo-700 mt-0.5 sm:mt-1">
+            <h4 className="text-base sm:text-xl font-black text-indigo-700 mt-0.5 sm:mt-1 tabular-nums">
               {activeDays} <span className="text-xs font-semibold text-slate-400">/ {calendarDays.length}</span>
             </h4>
           </div>
@@ -380,10 +556,10 @@ export default function MonthlyCalendarView() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
           <div>
             <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>{monthName} {year}</span>
-              {loading && (
-                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
-              )}
+              <span>
+                {monthName} {year}
+              </span>
+              {loading && <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />}
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
               Click individual dates or drag horizontally/vertically. Click column headers to toggle weekdays.
@@ -395,14 +571,14 @@ export default function MonthlyCalendarView() {
             <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80">
               <button
                 onClick={handlePrevMonth}
-                className="p-1 sm:p-1.5 rounded-lg hover:bg-white text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                className="p-1 sm:p-1.5 rounded-lg hover:bg-white text-slate-700 transition-all active:scale-95 cursor-pointer shadow-2xs"
                 title="Previous Month"
               >
                 <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
               <button
                 onClick={handleNextMonth}
-                className="p-1 sm:p-1.5 rounded-lg hover:bg-white text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                className="p-1 sm:p-1.5 rounded-lg hover:bg-white text-slate-700 transition-all active:scale-95 cursor-pointer shadow-2xs"
                 title="Next Month"
               >
                 <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -413,7 +589,7 @@ export default function MonthlyCalendarView() {
               <button
                 type="button"
                 onClick={handleCurrentMonth}
-                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] sm:text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] sm:text-xs font-semibold hover:bg-indigo-100 transition-all active:scale-95 cursor-pointer"
                 title="Return to Current Month"
               >
                 Today
@@ -424,7 +600,7 @@ export default function MonthlyCalendarView() {
             <button
               type="button"
               onClick={() => setBudgetModalOpen(true)}
-              className="btn-secondary flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-semibold cursor-pointer"
+              className="btn-secondary flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-semibold active:scale-98 cursor-pointer"
               title={`Configure monthly overall budget and category limits for ${monthName} ${year}`}
             >
               <Sliders className="w-3.5 h-3.5 text-[#5228E0]" />
@@ -435,356 +611,496 @@ export default function MonthlyCalendarView() {
         </div>
 
         {/* ========================================================================= */}
-        {/* APPLE-INSPIRED SELECTION SUMMARY PANEL (No artificial 9d/5d badge!)      */}
+        {/* SECTION 1 & 5: REFINED SELECTED DATE SUMMARY (Apple Unfolding Animation)  */}
         {/* ========================================================================= */}
         <AnimatePresence>
           {selectedDayNumbers.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.99 }}
-              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-4 rounded-2xl bg-gradient-to-r from-purple-50/90 via-white to-indigo-50/70 border border-purple-200/90 p-3.5 sm:p-4 shadow-sm select-none"
+              initial={{ opacity: 0, height: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, height: "auto", y: 0, scale: 1 }}
+              exit={{ opacity: 0, height: 0, y: 8, scale: 0.99 }}
+              transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden mb-5 select-none"
             >
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                {/* Left: Clean Date Range & Count Indicator */}
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600">
-                      Selected Dates
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[11px] font-bold border border-purple-200">
-                      {selectedDayNumbers.length} {selectedDayNumbers.length === 1 ? "date selected" : "dates selected"}
-                    </span>
-                  </div>
-                  <h5 className="text-sm sm:text-base font-black text-slate-900 tracking-tight mt-0.5 truncate">
-                    {selectionTitle}
-                  </h5>
-                </div>
-
-                {/* Right: Metrics & Inline Expand Action */}
-                <div className="flex items-center gap-3 sm:gap-5 flex-wrap w-full md:w-auto justify-between md:justify-end">
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Spent</span>
-                    <span className="text-xs sm:text-sm font-black text-rose-600 tabular-nums">
-                      {formatCurrency(selectedTotalExpense)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Inflow</span>
-                    <span className="text-xs sm:text-sm font-black text-emerald-600 tabular-nums">
-                      {formatCurrency(selectedTotalIncome)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Net Flow</span>
-                    <span className={cn("text-xs sm:text-sm font-black tabular-nums", selectedNet >= 0 ? "text-emerald-700" : "text-rose-600")}>
-                      {selectedNet >= 0 ? "+" : ""}{formatCurrency(selectedNet)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Records</span>
-                    <span className="text-xs sm:text-sm font-black text-slate-800 tabular-nums">
-                      {selectedTxnCount} {selectedTxnCount === 1 ? "txn" : "txns"}
-                    </span>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.08, ease: "easeOut" }}
+                className="rounded-2xl bg-white/95 backdrop-blur-md border border-purple-200/70 p-4 sm:p-5 shadow-[0_4px_24px_rgba(108,59,255,0.06)]"
+              >
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                  {/* LEFT: Clean Typographic Hierarchy (Selected dates, title, count) */}
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#6C3BFF]">
+                        Selected Dates
+                      </span>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        {selectedDayNumbers.length}{" "}
+                        {selectedDayNumbers.length === 1 ? "date selected" : "dates selected"}
+                      </span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight mt-0.5 truncate">
+                      {selectionTitle}
+                    </h3>
                   </div>
 
-                  {/* Lightweight Apple Inline Action */}
-                  <div className="flex items-center gap-1.5 ml-auto md:ml-2">
-                    {selectedTxnCount > 0 && (
+                  {/* RIGHT: Financial Metrics with subtle middle separators */}
+                  <div className="flex items-center gap-3 sm:gap-6 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
+                    <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Total Spent
+                        </span>
+                        <span className="text-xs sm:text-sm font-black text-rose-600 tabular-nums">
+                          {formatCurrency(selectedTotalExpense)}
+                        </span>
+                      </div>
+
+                      {/* Subtle Separator */}
+                      <div className="hidden sm:block h-6 w-[1.5px] bg-[#6C3BFF]/20 rounded-full" />
+
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Total Inflow
+                        </span>
+                        <span className="text-xs sm:text-sm font-black text-emerald-600 tabular-nums">
+                          {formatCurrency(selectedTotalIncome)}
+                        </span>
+                      </div>
+
+                      {/* Subtle Separator */}
+                      <div className="hidden sm:block h-6 w-[1.5px] bg-[#6C3BFF]/20 rounded-full" />
+
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Net Flow
+                        </span>
+                        <span
+                          className={cn(
+                            "text-xs sm:text-sm font-black tabular-nums",
+                            selectedNet >= 0 ? "text-emerald-700" : "text-rose-600"
+                          )}
+                        >
+                          {selectedNet >= 0 ? "+" : ""}
+                          {formatCurrency(selectedNet)}
+                        </span>
+                      </div>
+
+                      {/* Subtle Separator */}
+                      <div className="hidden sm:block h-6 w-[1.5px] bg-[#6C3BFF]/20 rounded-full" />
+
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Records
+                        </span>
+                        <span className="text-xs sm:text-sm font-black text-slate-800 tabular-nums">
+                          {selectedTxnCount} {selectedTxnCount === 1 ? "txn" : "txns"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* SECTION 6: Unobtrusive Action Affordance & Clear Selection */}
+                    <div className="flex items-center gap-2 ml-auto lg:ml-2">
+                      {/* For multiple selected dates: Unobtrusive "View transactions ↓" */}
+                      {selectedDayNumbers.length > 1 && selectedTxnCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleScrollToTransactions}
+                          className="group inline-flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-purple-50/80 text-[#6C3BFF] hover:text-[#5228E0] text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                        >
+                          <span>View transactions</span>
+                          <ChevronDown className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
+                        </button>
+                      )}
+
+                      {/* Dismiss / Clear Selection */}
                       <button
                         type="button"
-                        onClick={() => setIsMultiDayDrawerOpen(!isMultiDayDrawerOpen)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                        onClick={handleClearSelection}
+                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                        title="Clear Date Selection"
                       >
-                        <span>{isMultiDayDrawerOpen ? "Hide" : "View"} transactions ({selectedTxnCount})</span>
-                        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isMultiDayDrawerOpen && "rotate-180")} />
+                        <X className="w-4 h-4" />
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleClearSelection}
-                      className="p-1.5 rounded-xl hover:bg-slate-200/80 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                      title="Clear Selection"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Weekday Column Headers */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 text-center select-none">
-          {dayNames.map((d, colIdx) => {
-            const matchingDays = calendarDays
-              .filter((day) => ((startOffset + (day.dayOfMonth - 1)) % 7) === colIdx)
-              .map((day) => day.dayOfMonth);
+        {/* ========================================================================= */}
+        {/* SECTION 7: SMOOTH HORIZONTAL MONTH SLIDE TRANSITION                       */}
+        {/* ========================================================================= */}
+        <div className="relative min-h-[440px]">
+          <AnimatePresence mode="wait" custom={monthDirection}>
+            <motion.div
+              key={`${year}-${month}`}
+              custom={monthDirection}
+              variants={{
+                enter: (dir: "next" | "prev") => ({
+                  x: dir === "next" ? 18 : -18,
+                  opacity: 0,
+                }),
+                center: {
+                  x: 0,
+                  opacity: 1,
+                },
+                exit: (dir: "next" | "prev") => ({
+                  x: dir === "next" ? -18 : 18,
+                  opacity: 0,
+                }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Weekday Column Headers */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 text-center select-none">
+                {dayNames.map((d, colIdx) => {
+                  const matchingDays = calendarDays
+                    .filter((day) => (startOffset + (day.dayOfMonth - 1)) % 7 === colIdx)
+                    .map((day) => day.dayOfMonth);
 
-            const isColSelected =
-              matchingDays.length > 0 && matchingDays.every((dayNum) => selectedDayNumbers.includes(dayNum));
+                  const isColSelected =
+                    matchingDays.length > 0 &&
+                    matchingDays.every((dayNum) => selectedDayNumbers.includes(dayNum));
 
-            return (
-              <button
-                key={d}
-                type="button"
-                onClick={() => handleWeekdayClick(colIdx)}
-                title={`Click to toggle all ${d === "Sun" ? "Sundays" : d === "Sat" ? "Saturdays" : d + "s"}`}
-                className={cn(
-                  "py-1.5 rounded-lg transition-all cursor-pointer select-none text-[10px] sm:text-[11px] font-black uppercase tracking-wider",
-                  isColSelected
-                    ? "bg-purple-600 text-white shadow-xs"
-                    : d === "Sun"
-                    ? "text-rose-500 hover:bg-rose-50 hover:text-rose-700"
-                    : "text-slate-400 hover:bg-purple-50 hover:text-purple-600"
-                )}
-              >
-                {d}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Days Grid with Smooth Transitions */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2 select-none touch-none">
-          {/* Leading empty spaces */}
-          {Array.from({ length: startOffset }).map((_, i) => (
-            <div key={`empty-${i}`} className="min-h-[58px] sm:min-h-[76px] rounded-xl bg-slate-50/40" />
-          ))}
-
-          {/* Calendar Day Cells */}
-          {calendarDays.map((day) => {
-            const hasExpense = day.totalExpense > 0;
-            const hasIncome = day.totalIncome > 0;
-            const isSelected = selectedDayNumbers.includes(day.dayOfMonth);
-
-            const mappedDayItems = day.transactions
-              ? day.transactions
-                  .map((t) => mappedTxnMap.get(t.id))
-                  .filter((m): m is NonNullable<typeof m> => Boolean(m))
-              : [];
-
-            const hasLent = mappedDayItems.some((m) => m.type === "LENT");
-            const hasDebt = mappedDayItems.some((m) => m.type === "DEBT");
-
-            return (
-              <motion.div
-                key={day.dayOfMonth}
-                onPointerDown={(e) => handleDayPointerDown(day.dayOfMonth, e)}
-                onPointerEnter={() => handleDayPointerEnter(day.dayOfMonth)}
-                onPointerUp={() => handleDayPointerUp(day.dayOfMonth)}
-                animate={{
-                  scale: isSelected ? 1.02 : 1,
-                  backgroundColor: isSelected ? "rgba(243, 238, 255, 0.95)" : undefined,
-                }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                className={cn(
-                  "min-h-[58px] sm:min-h-[78px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between select-none relative",
-                  isSelected
-                    ? "border-purple-600 shadow-md ring-2 ring-purple-400/80 z-10"
-                    : day.transactionCount > 0
-                    ? hasLent
-                      ? "bg-white border-emerald-300 hover:border-emerald-500 hover:shadow-xs"
-                      : hasDebt
-                      ? "bg-white border-amber-300 hover:border-amber-500 hover:shadow-xs"
-                      : "bg-white border-slate-200 hover:border-purple-300 hover:shadow-xs"
-                    : "bg-white/60 border-slate-100 hover:border-slate-200"
-                )}
-              >
-                <div className="flex items-center justify-between pointer-events-none">
-                  <div className="flex items-center gap-1 sm:gap-1.5">
-                    <span
-                      className={`text-[11px] sm:text-xs font-black transition-colors ${
-                        isSelected ? "text-purple-700" : "text-slate-800"
-                      }`}
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => handleWeekdayClick(colIdx)}
+                      title={`Click to toggle all ${d === "Sun" ? "Sundays" : d === "Sat" ? "Saturdays" : d + "s"}`}
+                      className={cn(
+                        "py-1.5 rounded-lg transition-all cursor-pointer select-none text-[10px] sm:text-[11px] font-black uppercase tracking-wider",
+                        isColSelected
+                          ? "bg-[#6C3BFF] text-white shadow-xs"
+                          : d === "Sun"
+                          ? "text-rose-500 hover:bg-rose-50 hover:text-rose-700"
+                          : "text-slate-400 hover:bg-purple-50 hover:text-[#6C3BFF]"
+                      )}
                     >
-                      {day.dayOfMonth}
-                    </span>
-                    {(hasLent || hasDebt) && (
-                      <span
-                        className={`text-[8px] sm:text-[9px] font-extrabold px-1 sm:px-1.5 py-0.2 rounded leading-tight border ${
-                          hasLent
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}
-                        title={
-                          hasLent && hasDebt
-                            ? "Contains mapped Lent & Debt entries"
-                            : hasLent
-                            ? "Contains mapped Lent transaction"
-                            : "Contains mapped Debt transaction"
-                        }
-                      >
-                        {hasLent && hasDebt ? "L·D" : hasLent ? "Lent" : "Debt"}
-                      </span>
-                    )}
-                  </div>
-                  {day.transactionCount > 0 && (
-                    <span className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
-                      {day.transactionCount}
-                    </span>
-                  )}
-                </div>
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
 
-                {/* Day Cashflow Indicators */}
-                <div className="flex flex-col gap-0.5 mt-0.5 sm:mt-1 overflow-hidden pointer-events-none">
-                  {hasIncome && (
-                    <span className="text-[9px] sm:text-[11px] font-bold text-emerald-600 truncate">
-                      +{formatCurrency(day.totalIncome)}
-                    </span>
-                  )}
-                  {hasExpense && (
-                    <span className="text-[9px] sm:text-[11px] font-bold text-rose-600 truncate">
-                      -{formatCurrency(day.totalExpense)}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
+              {/* Days Grid with Memoized Cells */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 select-none touch-none">
+                {/* Leading empty spaces */}
+                {Array.from({ length: startOffset }).map((_, i) => (
+                  <div
+                    key={`empty-${i}`}
+                    className="min-h-[58px] sm:min-h-[76px] rounded-xl bg-slate-50/40"
+                  />
+                ))}
+
+                {/* Calendar Day Cells */}
+                {calendarDays.map((day) => {
+                  const isSelected = selectedDayNumbers.includes(day.dayOfMonth);
+
+                  const mappedDayItems = day.transactions
+                    ? day.transactions
+                        .map((t) => mappedTxnMap.get(t.id))
+                        .filter((m): m is NonNullable<typeof m> => Boolean(m))
+                    : [];
+
+                  const hasLent = mappedDayItems.some((m) => m.type === "LENT");
+                  const hasDebt = mappedDayItems.some((m) => m.type === "DEBT");
+
+                  return (
+                    <CalendarDayCell
+                      key={day.dayOfMonth}
+                      day={day}
+                      isSelected={isSelected}
+                      hasLent={hasLent}
+                      hasDebt={hasDebt}
+                      onPointerDown={handleDayPointerDown}
+                      onPointerEnter={handleDayPointerEnter}
+                      onPointerUp={handleDayPointerUp}
+                    />
+                  );
+                })}
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* ========================================================================= */}
-        {/* EXPANDABLE TRANSACTION DETAILS PANEL (Apple connected card layout)        */}
+        {/* SECTION 3 & 4: TRANSACTION DETAILS (Automatic Single / Refined Multi)      */}
         {/* ========================================================================= */}
         <AnimatePresence>
           {isMultiDayDrawerOpen && selectedDayNumbers.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, height: 0, y: 10 }}
+              id="calendar-transactions-section"
+              ref={transactionsSectionRef}
+              initial={{ opacity: 0, height: 0, y: 12 }}
               animate={{ opacity: 1, height: "auto", y: 0 }}
-              exit={{ opacity: 0, height: 0, y: 6 }}
-              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-6 rounded-2xl bg-white/95 backdrop-blur-md border border-purple-200/90 shadow-lg p-4 sm:p-5 overflow-hidden"
+              exit={{ opacity: 0, height: 0, y: 8 }}
+              transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden mt-6"
             >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs sm:text-sm font-black text-slate-900">
-                      Transactions for {selectionTitle}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-200">
-                      {selectedTxnCount} {selectedTxnCount === 1 ? "record" : "records"}
-                    </span>
+              <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-purple-200/80 shadow-md p-4 sm:p-5">
+                {/* Header of details panel */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-black text-slate-900">
+                        {selectedDayNumbers.length === 1
+                          ? `Transactions on ${selectionTitle}`
+                          : `Consolidated Transactions (${selectionTitle})`}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-200">
+                        {selectedTxnCount} {selectedTxnCount === 1 ? "record" : "records"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2.5 mt-0.5 text-[11px] text-slate-500 font-medium">
+                      <span>
+                        Spent: <strong className="text-rose-600">{formatCurrency(selectedTotalExpense)}</strong>
+                      </span>
+                      <span>·</span>
+                      <span>
+                        Inflow: <strong className="text-emerald-600">{formatCurrency(selectedTotalIncome)}</strong>
+                      </span>
+                      <span>·</span>
+                      <span>
+                        Net:{" "}
+                        <strong className={selectedNet >= 0 ? "text-emerald-700" : "text-rose-600"}>
+                          {selectedNet >= 0 ? "+" : ""}
+                          {formatCurrency(selectedNet)}
+                        </strong>
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-[10px] text-slate-500 font-medium">
-                    <span>Spent: <strong className="text-rose-600">{formatCurrency(selectedTotalExpense)}</strong></span>
-                    <span>·</span>
-                    <span>Inflow: <strong className="text-emerald-600">{formatCurrency(selectedTotalIncome)}</strong></span>
-                    <span>·</span>
-                    <span>Net: <strong className={selectedNet >= 0 ? "text-emerald-700" : "text-rose-600"}>{selectedNet >= 0 ? "+" : ""}{formatCurrency(selectedNet)}</strong></span>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsMultiDayDrawerOpen(false)}
+                    className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer self-end sm:self-center"
+                    title="Hide transactions panel"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsMultiDayDrawerOpen(false)}
-                  className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer self-end sm:self-center"
-                  title="Close transactions panel"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {selectedTransactions.length > 0 ? (
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {selectedTransactions.map((txn: Transaction) => {
-                    const mappedInfo = mappedTxnMap.get(txn.id);
-
-                    return (
-                      <div
-                        key={txn.id}
-                        onClick={() => {
-                          if (mappedInfo) {
-                            handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
-                          }
-                        }}
-                        className={`flex items-center justify-between p-3 rounded-xl border transition-all text-xs ${
-                          mappedInfo
-                            ? mappedInfo.type === "LENT"
-                              ? "bg-emerald-50/60 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 shadow-2xs cursor-pointer group"
-                              : "bg-amber-50/60 border-amber-200 hover:border-amber-300 hover:bg-amber-50 shadow-2xs cursor-pointer group"
-                            : "bg-slate-50/80 border-slate-200/80 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`p-2 rounded-xl shrink-0 ${
-                              txn.transactionType === "EXPENSE"
-                                ? "bg-rose-100/80 text-rose-600 border border-rose-200/60"
-                                : "bg-emerald-100/80 text-emerald-600 border border-emerald-200/60"
-                            }`}
-                          >
-                            {txn.transactionType === "EXPENSE" ? (
-                              <ArrowDownRight className="w-4 h-4" />
-                            ) : (
-                              <ArrowUpRight className="w-4 h-4" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-200/70 text-slate-700">
-                                {txn.transactionDate
-                                  ? new Date(txn.transactionDate).toLocaleDateString("en-IN", {
-                                      day: "numeric",
-                                      month: "short",
-                                    })
-                                  : ""}
-                              </span>
-                              <p className="font-bold text-slate-900 group-hover:text-purple-900 transition-colors truncate">
-                                {txn.merchant}
-                              </p>
-                              {mappedInfo && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
-                                  }}
-                                  title={`Open ${mappedInfo.counterpartyName}'s ${mappedInfo.type === "LENT" ? "Money Lent" : "Debt"} page`}
-                                  className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-2xs ${
-                                    mappedInfo.type === "LENT"
-                                      ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300"
-                                      : "bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300"
-                                  }`}
-                                >
-                                  <Link2 className="w-3 h-3" />
-                                  <span>
-                                    {mappedInfo.isInstallment
-                                      ? `Repayment · ${mappedInfo.counterpartyName}`
-                                      : `${mappedInfo.type === "LENT" ? "Lent" : "Debt"} · ${mappedInfo.counterpartyName}`}
-                                  </span>
-                                </button>
+                {selectedTransactions.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center">
+                    <CalendarIcon className="w-6 h-6 text-slate-300 mb-1.5" />
+                    <p className="font-medium">
+                      No transactions recorded for {selectedDayNumbers.length === 1 ? "this date" : "these selected dates"}.
+                    </p>
+                  </div>
+                ) : selectedDayNumbers.length === 1 ? (
+                  /* Single Day: Direct Clean List */
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {selectedTransactions.map((txn: Transaction) => {
+                      const mappedInfo = mappedTxnMap.get(txn.id);
+                      return (
+                        <div
+                          key={txn.id}
+                          onClick={() => {
+                            if (mappedInfo) {
+                              handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center justify-between p-3 rounded-xl border transition-all text-xs",
+                            mappedInfo
+                              ? mappedInfo.type === "LENT"
+                                ? "bg-emerald-50/60 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 shadow-2xs cursor-pointer group"
+                                : "bg-amber-50/60 border-amber-200 hover:border-amber-300 hover:bg-amber-50 shadow-2xs cursor-pointer group"
+                              : "bg-slate-50/80 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50"
+                          )}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={cn(
+                                "p-2 rounded-xl shrink-0",
+                                txn.transactionType === "EXPENSE"
+                                  ? "bg-rose-100/80 text-rose-600 border border-rose-200/60"
+                                  : "bg-emerald-100/80 text-emerald-600 border border-emerald-200/60"
+                              )}
+                            >
+                              {txn.transactionType === "EXPENSE" ? (
+                                <ArrowDownRight className="w-4 h-4" />
+                              ) : (
+                                <ArrowUpRight className="w-4 h-4" />
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 flex-wrap">
-                              <CategoryBadge category={txn.category} className="scale-90 origin-left" />
-                              <span>·</span>
-                              <span>{txn.paymentMethod}</span>
-                              {txn.referenceNumber && <span>· Ref: {txn.referenceNumber}</span>}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold text-slate-900 group-hover:text-purple-900 transition-colors truncate">
+                                  {txn.merchant}
+                                </p>
+                                {mappedInfo && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
+                                    }}
+                                    title={`Open ${mappedInfo.counterpartyName}'s ${
+                                      mappedInfo.type === "LENT" ? "Money Lent" : "Debt"
+                                    } page`}
+                                    className={cn(
+                                      "inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-2xs",
+                                      mappedInfo.type === "LENT"
+                                        ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300"
+                                        : "bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300"
+                                    )}
+                                  >
+                                    <Link2 className="w-3 h-3" />
+                                    <span>
+                                      {mappedInfo.isInstallment
+                                        ? `Repayment · ${mappedInfo.counterpartyName}`
+                                        : `${mappedInfo.type === "LENT" ? "Lent" : "Debt"} · ${mappedInfo.counterpartyName}`}
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 flex-wrap">
+                                <CategoryBadge category={txn.category} className="scale-90 origin-left" />
+                                <span>·</span>
+                                <span>{txn.paymentMethod}</span>
+                                {txn.referenceNumber && <span>· Ref: {txn.referenceNumber}</span>}
+                              </div>
                             </div>
                           </div>
+                          <div className="text-right shrink-0 ml-2">
+                            <span
+                              className={cn(
+                                "font-black tabular-nums",
+                                txn.transactionType === "EXPENSE" ? "text-rose-600" : "text-emerald-600"
+                              )}
+                            >
+                              {txn.transactionType === "EXPENSE" ? "-" : "+"}
+                              {formatCurrency(txn.amount)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right shrink-0 ml-2">
-                          <span
-                            className={`font-black ${
-                              txn.transactionType === "EXPENSE" ? "text-rose-600" : "text-emerald-600"
-                            }`}
-                          >
-                            {txn.transactionType === "EXPENSE" ? "-" : "+"}
-                            {formatCurrency(txn.amount)}
-                          </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Multiple Dates: Grouped by Date in Chronological Order */
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                    {groupedTransactionsByDate.map((group) => (
+                      <div key={group.dateKey} className="space-y-1.5">
+                        <div className="flex items-center justify-between px-1 py-1 text-[11px] font-bold text-slate-600 bg-slate-50 rounded-lg border border-slate-100">
+                          <span>{group.dateLabel}</span>
+                          <div className="flex items-center gap-2 text-[10px]">
+                            {group.dayExpense > 0 && (
+                              <span className="text-rose-600 font-extrabold tabular-nums">
+                                -{formatCurrency(group.dayExpense)}
+                              </span>
+                            )}
+                            {group.dayIncome > 0 && (
+                              <span className="text-emerald-600 font-extrabold tabular-nums">
+                                +{formatCurrency(group.dayIncome)}
+                              </span>
+                            )}
+                            <span className="text-slate-400 font-medium">({group.txns.length})</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 pl-2">
+                          {group.txns.map((txn) => {
+                            const mappedInfo = mappedTxnMap.get(txn.id);
+                            return (
+                              <div
+                                key={txn.id}
+                                onClick={() => {
+                                  if (mappedInfo) {
+                                    handleNavigateToMappedRecord(mappedInfo.recordId, mappedInfo.type);
+                                  }
+                                }}
+                                className={cn(
+                                  "flex items-center justify-between p-2.5 rounded-xl border transition-all text-xs",
+                                  mappedInfo
+                                    ? mappedInfo.type === "LENT"
+                                      ? "bg-emerald-50/60 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 shadow-2xs cursor-pointer group"
+                                      : "bg-amber-50/60 border-amber-200 hover:border-amber-300 hover:bg-amber-50 shadow-2xs cursor-pointer group"
+                                    : "bg-slate-50/80 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50"
+                                )}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    className={cn(
+                                      "p-1.5 rounded-lg shrink-0",
+                                      txn.transactionType === "EXPENSE"
+                                        ? "bg-rose-100/80 text-rose-600 border border-rose-200/60"
+                                        : "bg-emerald-100/80 text-emerald-600 border border-emerald-200/60"
+                                    )}
+                                  >
+                                    {txn.transactionType === "EXPENSE" ? (
+                                      <ArrowDownRight className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <ArrowUpRight className="w-3.5 h-3.5" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="font-bold text-slate-900 truncate">{txn.merchant}</p>
+                                      {mappedInfo && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleNavigateToMappedRecord(
+                                              mappedInfo.recordId,
+                                              mappedInfo.type
+                                            );
+                                          }}
+                                          className={cn(
+                                            "inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border shadow-2xs",
+                                            mappedInfo.type === "LENT"
+                                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                              : "bg-amber-100 text-amber-800 border-amber-300"
+                                          )}
+                                        >
+                                          <Link2 className="w-2.5 h-2.5" />
+                                          <span>{mappedInfo.counterpartyName}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-[9px] text-slate-500 mt-0.5">
+                                      <CategoryBadge
+                                        category={txn.category}
+                                        className="scale-75 origin-left"
+                                      />
+                                      <span>·</span>
+                                      <span>{txn.paymentMethod}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0 ml-2">
+                                  <span
+                                    className={cn(
+                                      "font-black text-xs tabular-nums",
+                                      txn.transactionType === "EXPENSE"
+                                        ? "text-rose-600"
+                                        : "text-emerald-600"
+                                    )}
+                                  >
+                                    {txn.transactionType === "EXPENSE" ? "-" : "+"}
+                                    {formatCurrency(txn.amount)}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500 py-4 text-center">
-                  No transactions recorded across these selected dates.
-                </p>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

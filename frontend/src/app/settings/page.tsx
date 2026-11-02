@@ -361,6 +361,34 @@ export default function SettingsPage() {
     { id: "about", label: "About Finora", icon: Info },
   ];
 
+  // All searchable settings preferences for dynamic live autocomplete
+  const searchKeywords = [
+    { title: "Default Currency", tab: "general" as SettingsTab, desc: "INR (₹), USD ($), EUR (€), GBP (£)" },
+    { title: "Date Display Format", tab: "general" as SettingsTab, desc: "DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD" },
+    { title: "Default Startup View", tab: "general" as SettingsTab, desc: "Dashboard, Calendar, Transactions" },
+    { title: "Reduced Motion", tab: "appearance" as SettingsTab, desc: "Fluid physics vs instant cuts" },
+    { title: "Compact Table Density", tab: "appearance" as SettingsTab, desc: "Tighter spacing for ledger rows" },
+    { title: "Gmail Mailbox Sync", tab: "gmail" as SettingsTab, desc: "Automated HDFC alert polling & sync" },
+    { title: "Google OAuth Redirect URI", tab: "gmail" as SettingsTab, desc: "Callback configuration for Google Cloud" },
+    { title: "Merchant Classification Rules", tab: "rules" as SettingsTab, desc: "Clean merchant titles & auto-category" },
+    { title: "Email Ingestion Simulator", tab: "simulator" as SettingsTab, desc: "Test raw HDFC alert email parsing" },
+    { title: "Biometric & PIN Lock", tab: "security" as SettingsTab, desc: "Session security & inactivity timeout" },
+    { title: "Export CSV Ledger", tab: "data" as SettingsTab, desc: "Download all transaction records" },
+    { title: "Export JSON Technical Dump", tab: "data" as SettingsTab, desc: "Structured data export" },
+    { title: "Clear Application Cache", tab: "data" as SettingsTab, desc: "Reset local storage preferences" },
+    { title: "Finora Engine Architecture", tab: "about" as SettingsTab, desc: "Spring Boot 3.3 + MongoDB engine" },
+  ];
+
+  const searchSuggestions = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return searchKeywords.filter(
+      (k) => k.title.toLowerCase().includes(q) || k.desc.toLowerCase().includes(q)
+    ).slice(0, 5);
+  }, [searchQuery]);
+
+  const [showSettingsSuggestions, setShowSettingsSuggestions] = useState(false);
+
   // Filtered sidebar items when user searches
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return sidebarItems;
@@ -405,34 +433,73 @@ export default function SettingsPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* TWO-PANEL MACOS SYSTEM SETTINGS CONTAINER                                 */}
+      {/* TWO-PANEL MACOS SYSTEM SETTINGS CONTAINER WITH PREMIUM GLASS EFFECT        */}
       {/* ========================================================================= */}
-      <div className="rounded-3xl bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-[270px_1fr] min-h-[620px]">
+      <div className="rounded-3xl bg-white/80 backdrop-blur-2xl border border-white/90 shadow-[0_20px_50px_rgba(108,59,255,0.08),0_4px_16px_rgba(15,23,42,0.04)] overflow-hidden grid grid-cols-1 md:grid-cols-[280px_1fr] min-h-[620px]">
         
         {/* ======================================================================= */}
-        {/* LEFT PANEL: SETTINGS SIDEBAR                                            */}
+        {/* LEFT PANEL: SETTINGS SIDEBAR (In Light Purple with High Contrast)        */}
         {/* ======================================================================= */}
-        <aside className="border-b md:border-b-0 md:border-r border-slate-200/80 bg-slate-50/60 p-3 sm:p-4 flex flex-col justify-between">
+        <aside className="border-b md:border-b-0 md:border-r border-purple-200/70 bg-[#F6F2FF]/95 backdrop-blur-xl p-3.5 sm:p-5 flex flex-col justify-between">
           <div className="space-y-3">
-            {/* Search Input */}
+            {/* Search Input with Dynamic Autocomplete */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search settings..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/90 border border-slate-200/90 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-400 transition-all"
+                onFocus={() => setShowSettingsSuggestions(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSettingsSuggestions(true);
+                }}
+                className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-white/95 border border-purple-200/90 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all shadow-2xs"
               />
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setShowSettingsSuggestions(false);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
+
+              {/* Dynamic Suggestions Dropdown */}
+              <AnimatePresence>
+                {showSettingsSuggestions && searchSuggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 2, scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-2xl bg-white/95 backdrop-blur-2xl border border-purple-200 shadow-xl overflow-hidden py-1.5"
+                  >
+                    <div className="px-3.5 py-1 text-[10px] font-bold text-purple-600 uppercase tracking-wider">
+                      Matching Settings
+                    </div>
+                    {searchSuggestions.map((item) => (
+                      <button
+                        key={item.title}
+                        type="button"
+                        onMouseDown={() => {
+                          setActiveTab(item.tab);
+                          setSearchQuery("");
+                          setShowSettingsSuggestions(false);
+                        }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-purple-50/80 transition-colors flex flex-col cursor-pointer border-b border-slate-50 last:border-b-0"
+                      >
+                        <span className="text-xs font-bold text-slate-900">{item.title}</span>
+                        <span className="text-[10px] text-slate-500 truncate">{item.desc}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Navigation List */}
@@ -446,17 +513,17 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => setActiveTab(item.id)}
                     className={cn(
-                      "flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 md:shrink md:w-full group",
+                      "flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 md:shrink md:w-full group select-none",
                       isActive
-                        ? "bg-purple-600 text-white shadow-xs font-bold"
-                        : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                        ? "bg-[#6C3BFF] text-white shadow-[0_4px_14px_rgba(108,59,255,0.30)] font-bold"
+                        : "text-slate-600 hover:bg-purple-100/60 hover:text-purple-950"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon
                         className={cn(
                           "w-4 h-4 shrink-0 transition-colors",
-                          isActive ? "text-white" : "text-slate-500 group-hover:text-purple-600"
+                          isActive ? "text-white" : "text-purple-600/70 group-hover:text-purple-700"
                         )}
                       />
                       <span className="truncate">{item.label}</span>
@@ -467,10 +534,10 @@ export default function SettingsPage() {
                         className={cn(
                           "ml-2 text-[10px] font-bold px-1.5 py-0.2 rounded-full",
                           isActive
-                            ? "bg-white/20 text-white"
+                            ? "bg-white/25 text-white"
                             : item.badge === "Active"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-slate-200 text-slate-700"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-purple-200/80 text-purple-900"
                         )}
                       >
                         {item.badge}
@@ -487,9 +554,9 @@ export default function SettingsPage() {
           </div>
 
           {/* Quick User Identity Footer */}
-          <div className="pt-3 border-t border-slate-200/80 hidden md:flex items-center justify-between text-[11px] text-slate-500">
+          <div className="pt-3 border-t border-purple-200/60 hidden md:flex items-center justify-between text-[11px] text-purple-800/70">
             <span className="font-semibold truncate">Finora macOS Engine</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-bold">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-200/60 text-purple-900 font-bold">
               v2.4
             </span>
           </div>
