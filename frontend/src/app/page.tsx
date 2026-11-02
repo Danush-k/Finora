@@ -214,6 +214,7 @@ export default function DashboardPage() {
         selectedMonthName={selectedMonthName}
         chartPeriod={chartPeriod}
         onPeriodChange={handlePeriodChange}
+        onPeriodStatsChange={setActiveToggleStats}
         onSelectMonth={handleSelectMonth}
         onResetMonth={handleResetMonth}
         onOpenBudgetModal={() => setBudgetModalOpen(true)}
