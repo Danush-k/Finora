@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: finora-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore
+    envVars:
+      - key: SPRING_DATA_MONGODB_URI
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: FRONTEND_REDIRECT_URL
+        sync: false
+      - key: GMAIL_SYNC_ENABLED
+        value: "true"
+      - key: GMAIL_SYNC_DELAY_MS
+        value: "120000"

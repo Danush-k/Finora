@@ -1,9 +1,25 @@
 import type { NextConfig } from "next";
 
+const isExport = process.env.NEXT_EXPORT === "true";
+
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  ...(isExport
+    ? {
+        output: "export",
+        images: { unoptimized: true },
+      }
+    : {
+        cacheComponents: true,
+        partialPrefetching: true,
+        async rewrites() {
+          return [
+            {
+              source: "/api/:path*",
+              destination: "http://localhost:8080/api/:path*",
+            },
+          ];
+        },
+      }),
   turbopack: {
     rules: {
       "*.css": {
@@ -11,14 +27,6 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://localhost:8080/api/:path*",
-      },
-    ];
   },
 };
 

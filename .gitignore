@@ -39,6 +39,9 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Firebase
+.firebase/
 application-secrets.yml
 credentials.json
 tokens/
