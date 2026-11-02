@@ -648,8 +648,116 @@ export default function MonthlyCalendarView() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SECTION 1 & 5: REFINED SELECTED DATE SUMMARY (Apple Unfolding Animation)  */}
+        {/* TOP QUICK REPORT BANNER (Smooth Pop-up on Multi-Day Selection)            */}
         {/* ========================================================================= */}
+        <AnimatePresence>
+          {selectedDayNumbers.length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{
+                opacity: 1,
+                height: "auto",
+                marginBottom: 16,
+                transition: {
+                  height: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.22, ease: "easeOut" },
+                  marginBottom: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              exit={{
+                opacity: 0,
+                height: 0,
+                marginBottom: 0,
+                transition: {
+                  height: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.16, ease: "easeIn" },
+                  marginBottom: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              className="overflow-hidden"
+            >
+              <div className="p-3 sm:p-4 rounded-2xl liquid-glass border border-purple-200/90 bg-gradient-to-r from-purple-50/90 via-white to-indigo-50/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 select-none">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-[#6C3BFF] text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
+                    {panelDaysCount}d
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h5 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight truncate">
+                        {panelTitle}
+                      </h5>
+                      <span className="text-[10px] font-bold text-[#5228E0] bg-purple-100/80 border border-purple-200/70 px-2 py-0.5 rounded-full shrink-0">
+                        Combined Report
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Multi-day selection · {panelDaysCount} dates combined
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 sm:gap-5 flex-wrap w-full md:w-auto justify-between md:justify-end">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Spent</span>
+                    <span className="text-xs sm:text-sm font-black text-rose-600 tabular-nums">
+                      {formatCurrency(panelExpense)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Inflow</span>
+                    <span className="text-xs sm:text-sm font-black text-emerald-600 tabular-nums">
+                      {formatCurrency(panelIncome)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Net</span>
+                    <span
+                      className={cn(
+                        "text-xs sm:text-sm font-black tabular-nums",
+                        panelNet >= 0 ? "text-emerald-700" : "text-rose-600"
+                      )}
+                    >
+                      {panelNet >= 0 ? "+" : ""}
+                      {formatCurrency(panelNet)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Records</span>
+                    <span className="text-xs sm:text-sm font-black text-slate-800 tabular-nums">
+                      {panelTxnCount} {panelTxnCount === 1 ? "txn" : "txns"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 ml-auto md:ml-2">
+                    {panelTxnCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById("calendar-transactions-section");
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
+                        }}
+                        className="btn-primary h-7 sm:h-8 px-2.5 sm:px-3 rounded-xl text-white text-[10px] sm:text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs hover:scale-102 active:scale-98 transition-all"
+                      >
+                        Inspect {panelTxnCount} {panelTxnCount === 1 ? "Txn" : "Txns"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleClearSelection}
+                      className="p-1 sm:p-1.5 rounded-lg hover:bg-slate-200/80 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                      title="Clear selection"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ========================================================================= */}
         {/* SECTION 7: SMOOTH HORIZONTAL MONTH SLIDE TRANSITION                       */}
         {/* ========================================================================= */}
