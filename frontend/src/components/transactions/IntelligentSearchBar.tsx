@@ -194,9 +194,9 @@ export default function IntelligentSearchBar({
 
   return (
     <div ref={containerRef} className={cn("relative select-none", className)}>
-      {/* 1. Search Input Box - Clean, stable height (44px on mobile, 48px on desktop) */}
-      <div className="relative flex items-center h-11 sm:h-12 w-full">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none transition-colors group-focus-within:text-[#6C3BFF] shrink-0" />
+      {/* 1. Search Input Box - Matches debt-lent search bar exactly */}
+      <div className="relative w-full">
+        <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
 
         <input
           ref={inputRef}
@@ -209,14 +209,14 @@ export default function IntelligentSearchBar({
             setIsOpen(true);
           }}
           onKeyDown={handleKeyDown}
-          className="w-full h-full pl-10 pr-9 rounded-xl bg-white border border-slate-200/90 text-slate-900 placeholder:text-slate-400 text-xs sm:text-[13px] focus:outline-none focus:border-[#6C3BFF] focus:ring-2 focus:ring-[#6C3BFF]/15 transition-all shadow-2xs font-medium"
+          className="w-full pl-8 sm:pl-9 pr-8 py-1.5 sm:py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 shadow-2xs font-medium"
         />
 
         {value && (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
             title="Clear search"
           >
             <X className="w-3.5 h-3.5" />
@@ -232,7 +232,7 @@ export default function IntelligentSearchBar({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 2, scale: 0.995 }}
             transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl bg-white border border-slate-200/90 shadow-[0_16px_36px_rgba(15,23,42,0.09),0_4px_12px_rgba(15,23,42,0.04)] overflow-hidden max-h-[380px] sm:max-h-[430px] overflow-y-auto divide-y divide-slate-100"
+            className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-xl overflow-hidden max-h-[380px] sm:max-h-[430px] overflow-y-auto divide-y divide-slate-100"
           >
             {/* 1. RECENT SEARCHES */}
             {categorizedResults.recentSearches.length > 0 && (

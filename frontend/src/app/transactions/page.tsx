@@ -205,8 +205,14 @@ function TransactionsContent() {
       </div>
 
       {/* Filter and Search Bar with Intelligent Predictive Search & Sliding Type Selector */}
-      <div className="rounded-2xl liquid-glass p-4 border border-slate-200/80 space-y-3 shadow-xs relative">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 relative z-30">
+      <div className="rounded-2xl liquid-glass p-3 sm:p-4 border border-slate-200/80 space-y-2.5 sm:space-y-3 shadow-xs relative">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSearchSubmit(search);
+          }}
+          className="flex gap-2 relative z-30"
+        >
           <IntelligentSearchBar
             value={search}
             onChange={setSearch}
@@ -223,17 +229,16 @@ function TransactionsContent() {
               setModalOpen(true);
             }}
             allTransactions={suggestionPool}
-            placeholder="Search by merchant, description, category, ₹amount, UPI ref..."
-            className="w-full sm:max-w-xl md:max-w-2xl"
+            placeholder="Search by merchant, note, or amount..."
+            className="flex-1"
           />
           <button
-            type="button"
-            onClick={() => handleSearchSubmit(search)}
-            className="btn-primary h-11 sm:h-12 px-5 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
+            type="submit"
+            className="btn-secondary px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
           >
             Search
           </button>
-        </div>
+        </form>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
           {/* Type Filter Pills with Color-Coded Sliding Indicator (Orange for Expense, Green for Income, Purple for All) */}
