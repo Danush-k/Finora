@@ -14,7 +14,6 @@ import {
   Smartphone,
   ChevronDown,
   KeyRound,
-  Sparkles,
   Fingerprint,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -133,36 +132,44 @@ export default function LoginPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* HEADER: LOGO & STATUS                                     */}
+      {/* HEADER: PROMINENT LOGO & SECURITY STATUS                  */}
       {/* ========================================================= */}
-      <header className="relative z-10 w-full max-w-7xl mx-auto px-5 sm:px-10 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center" style={{ width: "128px", height: "33px" }}>
-            <Image
-              src="/finora-logo-transparent.png"
-              alt="Finora by PayTrace"
-              width={128}
-              height={33}
-              priority
-              style={{ width: "128px", height: "33px", objectFit: "contain" }}
-            />
-          </div>
-        </div>
+      <header className="relative z-10 w-full border-b border-slate-200/60 bg-white/40 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-5 sm:px-10 py-3.5 sm:py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative flex items-center" style={{ width: "140px", height: "36px" }}>
+              <Image
+                src="/finora-logo-transparent.png"
+                alt="Finora by PayTrace"
+                width={140}
+                height={36}
+                priority
+                style={{ width: "140px", height: "36px", objectFit: "contain" }}
+                className="select-none transition-transform duration-200 group-hover:scale-[1.02]"
+              />
+            </div>
+            <div className="hidden sm:block pl-3 border-l border-slate-200/80">
+              <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                Personal Financial Intelligence
+              </p>
+            </div>
+          </Link>
 
-        <div className="flex items-center gap-2">
-          {/* Biometric Face ID Button in Header */}
-          <button
-            type="button"
-            onClick={() => setFaceIdModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 hover:bg-white text-slate-800 border border-slate-200 shadow-2xs text-xs font-semibold cursor-pointer transition-all hover:border-[#6C3BFF]/40 active:scale-95"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-[#6C3BFF]" />
-            <span className="hidden sm:inline">Face ID Unlock</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Biometric Face ID Button in Header */}
+            <button
+              type="button"
+              onClick={() => setFaceIdModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 hover:bg-white text-slate-800 border border-slate-200 shadow-2xs text-xs font-semibold cursor-pointer transition-all hover:border-[#6C3BFF]/40 active:scale-95"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-[#6C3BFF]" />
+              <span className="hidden sm:inline">Face ID Unlock</span>
+            </button>
 
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-200/90 text-emerald-800 text-xs font-semibold shadow-2xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden sm:inline">256-Bit Bank Encryption</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-200/90 text-emerald-800 text-xs font-semibold shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">256-Bit Bank Encryption</span>
+            </div>
           </div>
         </div>
       </header>
@@ -170,17 +177,13 @@ export default function LoginPage() {
       {/* ========================================================= */}
       {/* MAIN CONTAINER: 2-COLUMN LAYOUT / MOBILE GESTURE HERO     */}
       {/* ========================================================= */}
-      <main className="relative z-10 w-full max-w-7xl mx-auto px-5 sm:px-10 py-4 sm:py-8 flex-1 flex flex-col justify-center">
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-5 sm:px-10 py-6 sm:py-10 flex-1 flex flex-col justify-center">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* ======================================================= */}
           {/* LEFT SECTION (55%): 3D GLASS CARD & MOBILE GESTURE      */}
           {/* ======================================================= */}
           <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6">
-            <div className="space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#6C3BFF]/10 border border-[#6C3BFF]/20 text-[#5228E0] text-xs font-bold shadow-2xs">
-                <Sparkles className="w-3.5 h-3.5 text-[#6C3BFF]" />
-                <span>Apple Liquid Glass Financial Engine</span>
-              </div>
+            <div className="space-y-3 max-w-xl">
               <h1 className="text-3xl sm:text-5xl font-black text-[#0F172A] tracking-tight leading-tight">
                 Your money, tracked in real-time.
               </h1>
