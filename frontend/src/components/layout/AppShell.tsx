@@ -10,6 +10,7 @@ import FinoraFoxCompanion from "@/components/common/FinoraFoxCompanion";
 import AppLoader from "@/components/ui/AppLoader";
 import PageTransition from "@/components/ui/PageTransition";
 import { ToastProvider } from "@/lib/toast-context";
+import { cn } from "@/lib/utils";
 
 function AuthenticatedApp({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -35,8 +36,13 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Header />
-      {/* Mobile-first comfortable padding: compact on phone, expansive on desktop */}
-      <main className="max-w-7xl mx-auto px-3.5 sm:px-8 pt-4 sm:pt-9 pb-28 sm:pb-28 w-full flex-1">
+      {/* Mobile-first comfortable padding: full-bleed on mobile overview, expansive on desktop */}
+      <main
+        className={cn(
+          "max-w-7xl mx-auto pb-28 sm:pb-28 w-full flex-1",
+          pathname === "/" ? "px-0 pt-0 sm:px-8 sm:pt-9" : "px-3.5 sm:px-8 pt-4 sm:pt-9"
+        )}
+      >
         <PageTransition key={pathname}>
           {children}
         </PageTransition>

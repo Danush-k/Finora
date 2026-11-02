@@ -6,11 +6,14 @@ import { GmailStatus } from "@/types";
 import { RefreshCw, AlertCircle, ArrowUpRight, Lock, LogOut, Shield } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import GlassSurface from "@/components/ui/GlassSurface";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/lib/toast-context";
+import { cn } from "@/lib/utils";
 
 export default function Header() {
+  const pathname = usePathname();
   const { user, lock, logout } = useAuth();
   const { success, error: toastError } = useToast();
   const [status, setStatus] = useState<GmailStatus | null>(() => api.getCachedGmailStatus() || null);
@@ -52,7 +55,10 @@ export default function Header() {
     <GlassSurface
       as="header"
       variant="toolbar"
-      className="sticky top-0 z-40 w-full px-4 sm:px-8 py-[11px] pt-[calc(env(safe-area-inset-top)+11px)]"
+      className={cn(
+        "sticky top-0 z-40 w-full px-4 sm:px-8 py-[11px] pt-[calc(env(safe-area-inset-top)+11px)]",
+        pathname === "/" && "hidden md:block"
+      )}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         {/* Brand Logo - Fixed Dimensions: Height: 33px, Width: 128px */}

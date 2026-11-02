@@ -68,49 +68,26 @@ export default function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={cn(
-                "min-h-[48px] flex flex-col items-center justify-center relative rounded-xl transition-colors cursor-pointer group outline-none",
-                isActive ? "text-[#6C3BFF]" : "text-slate-500 hover:text-slate-800"
-              )}
+              className="flex flex-col items-center justify-center relative transition-colors cursor-pointer group outline-none py-1"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <motion.div
-                whileTap={{ scale: 0.9 }}
+                whileTap={{ scale: 0.92 }}
                 transition={{ duration: 0.12 }}
-                className="flex flex-col items-center justify-center"
+                className={cn(
+                  "flex flex-col items-center justify-center px-2.5 py-1 rounded-2xl transition-all",
+                  isActive ? "bg-[#EDE7FD] text-[#6C3BFF]" : "text-slate-500 hover:text-slate-800"
+                )}
               >
-                {/* Active Soft Glow Pill Behind Icon */}
-                <div
-                  className={cn(
-                    "p-1 rounded-xl transition-all duration-200 flex items-center justify-center relative",
-                    isActive
-                      ? "bg-purple-50 text-[#6C3BFF] shadow-2xs"
-                      : "text-slate-500 group-hover:text-slate-700"
-                  )}
-                >
-                  <Icon className="w-5 h-5 transition-transform duration-200" />
-                </div>
-
-                {/* Tab Label */}
+                <Icon className={cn("w-5 h-5", isActive && "stroke-[2.5px]")} />
                 <span
                   className={cn(
-                    "text-[10px] mt-0.5 tracking-tight font-medium transition-colors",
-                    isActive
-                      ? "text-[#6C3BFF] font-bold"
-                      : "text-slate-500 group-hover:text-slate-700"
+                    "text-[10px] mt-0.5 tracking-tight",
+                    isActive ? "font-black text-[#6C3BFF]" : "font-semibold text-slate-500"
                   )}
                 >
                   {item.name}
                 </span>
-
-                {/* Active Indicator Micro-Dot */}
-                {isActive && (
-                  <motion.div
-                    layoutId="mobile-nav-indicator-dot"
-                    className="w-1 h-1 rounded-full bg-[#6C3BFF] shadow-[0_0_6px_rgba(108,59,255,0.8)] mt-0.5"
-                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                  />
-                )}
               </motion.div>
             </Link>
           );
