@@ -24,9 +24,9 @@ export function SlidingTabIndicator({
   className,
   transition = {
     type: "spring",
-    stiffness: 380,
-    damping: 32,
-    mass: 0.8,
+    stiffness: 190, // Calibrated for smooth, visible gliding across tabs without snapping too fast
+    damping: 24,
+    mass: 0.9,
   },
 }: SlidingTabIndicatorProps) {
   return (

@@ -67,6 +67,29 @@ interface ExpenseChartProps {
   onResetMonth?: () => void;
 }
 
+const slideVariants: Variants = {
+  enter: (dir: string) => ({
+    x: dir === "earlier" ? -280 : dir === "later" ? 280 : 0,
+    opacity: 0.25,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      x: { type: "spring", stiffness: 220, damping: 24, mass: 0.8 },
+      opacity: { duration: 0.25 },
+    },
+  },
+  exit: (dir: string) => ({
+    x: dir === "earlier" ? 280 : dir === "later" ? -280 : 0,
+    opacity: 0,
+    transition: {
+      x: { type: "spring", stiffness: 220, damping: 24, mass: 0.8 },
+      opacity: { duration: 0.2 },
+    },
+  }),
+};
+
 export default function ExpenseChart({
   data,
   activeMonthKey,
@@ -566,7 +589,7 @@ export default function ExpenseChart({
       </div>
 
       {/* ========================================================= */}
-      {/* 2. CHART CANVAS: Smooth Bar Transition in Place           */}
+      {/* 2. CHART CANVAS: Physical Horizontal Slide Animation      */}
       {/* ========================================================= */}
       <div className="w-full h-72 outline-none focus:outline-none relative overflow-hidden">
         {weeklyLoading ? (
@@ -579,10 +602,26 @@ export default function ExpenseChart({
             No trend data available for this timeframe.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={activeDataset}
-              margin={{ top: 18, right: 10, left: -15, bottom: 12 }}
+          <AnimatePresence mode="popLayout" custom={slideDirection}>
+            <motion.div
+              key={
+                period === "MONTHLY"
+                  ? `month-slide-${startIndex}`
+                  : period === "WEEKLY"
+                  ? `week-slide-${activePoint?.fullMonth || "curr"}`
+                  : `year-slide`
+              }
+              custom={slideDirection}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="w-full h-full"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={activeDataset}
+                  margin={{ top: 18, right: 10, left: -15, bottom: 12 }}
               onMouseMove={(state: any) => {
                 if (state?.activeTooltipIndex !== undefined && activeDataset[state.activeTooltipIndex]) {
                   setHoveredPoint(activeDataset[state.activeTooltipIndex]);
@@ -751,9 +790,7 @@ export default function ExpenseChart({
                 fill="url(#finoraInflowGrad)"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={32}
-                isAnimationActive={true}
-                animationDuration={450}
-                animationEasing="ease-out"
+                isAnimationActive={false}
                 cursor="pointer"
                 onClick={(data: any) => handleItemClick(data)}
               >
@@ -778,9 +815,7 @@ export default function ExpenseChart({
                 fill="url(#finoraOutflowGrad)"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={32}
-                isAnimationActive={true}
-                animationDuration={450}
-                animationEasing="ease-out"
+                isAnimationActive={false}
                 cursor="pointer"
                 onClick={(data: any) => handleItemClick(data)}
               >
@@ -799,6 +834,8 @@ export default function ExpenseChart({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </motion.div>
+      </AnimatePresence>
         )}
       </div>
 

@@ -134,8 +134,8 @@ export default function DebtLentPage() {
   return (
     <div className="space-y-6 pb-28">
       {/* Top Main Segregation Selector */}
-      <div className="p-1.5 rounded-3xl bg-slate-100/90 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="grid grid-cols-2 gap-2 flex-1 sm:max-w-xl relative">
+      <div className="p-1 sm:p-1.5 rounded-2xl sm:rounded-3xl bg-slate-100/90 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 flex-1 sm:max-w-xl relative">
           {/* Lent Tab Button */}
           <button
             onClick={() => {
@@ -143,33 +143,35 @@ export default function DebtLentPage() {
               setStatusFilter("ALL");
             }}
             className={cn(
-              "relative flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
+              "relative flex items-center justify-center gap-2 py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
               isLentTab ? "text-emerald-900" : "text-slate-600 hover:text-slate-900"
             )}
           >
             {isLentTab && (
               <motion.div
                 layoutId="debt-lent-main-tab-pill"
-                transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
-                className="absolute inset-0 rounded-2xl bg-white shadow-sm border border-emerald-100 ring-2 ring-emerald-500/20 z-0"
+                transition={{ type: "spring", stiffness: 220, damping: 26, mass: 0.8 }}
+                className="absolute inset-0 rounded-xl sm:rounded-2xl bg-white shadow-sm border border-emerald-100 ring-2 ring-emerald-500/20 z-0"
               />
             )}
-            <div className="relative z-10 flex items-center gap-2.5 w-full">
-              <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                  isLentTab ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"
-                }`}
-              >
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </div>
-              <div className="text-left">
-                <span className="block leading-none">Money Lent</span>
-                <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
-                  Receivables • Owed to you
-                </span>
+            <div className="relative z-10 flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                    isLentTab ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"
+                  }`}
+                >
+                  <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                </div>
+                <div className="text-left">
+                  <span className="block leading-none text-xs sm:text-sm font-black">Money Lent</span>
+                  <span className="text-[9px] sm:text-[10px] font-medium text-slate-400 hidden xs:block mt-0.5">
+                    Receivables
+                  </span>
+                </div>
               </div>
               <span
-                className={`ml-auto text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
+                className={`text-[10px] sm:text-[11px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full ${
                   isLentTab
                     ? "bg-emerald-100 text-emerald-800"
                     : "bg-slate-200/80 text-slate-600"
@@ -187,33 +189,35 @@ export default function DebtLentPage() {
               setStatusFilter("ALL");
             }}
             className={cn(
-              "relative flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
+              "relative flex items-center justify-center gap-2 py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-colors duration-200 cursor-pointer select-none outline-none",
               !isLentTab ? "text-amber-900" : "text-slate-600 hover:text-slate-900"
             )}
           >
             {!isLentTab && (
               <motion.div
                 layoutId="debt-lent-main-tab-pill"
-                transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
-                className="absolute inset-0 rounded-2xl bg-white shadow-sm border border-amber-100 ring-2 ring-amber-500/20 z-0"
+                transition={{ type: "spring", stiffness: 220, damping: 26, mass: 0.8 }}
+                className="absolute inset-0 rounded-xl sm:rounded-2xl bg-white shadow-sm border border-amber-100 ring-2 ring-amber-500/20 z-0"
               />
             )}
-            <div className="relative z-10 flex items-center gap-2.5 w-full">
-              <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                  !isLentTab ? "bg-amber-600 text-white" : "bg-slate-200 text-slate-500"
-                }`}
-              >
-                <ArrowDownLeft className="w-3.5 h-3.5" />
-              </div>
-              <div className="text-left">
-                <span className="block leading-none">Debt</span>
-                <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
-                  Payables • You owe
-                </span>
+            <div className="relative z-10 flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                    !isLentTab ? "bg-amber-600 text-white" : "bg-slate-200 text-slate-500"
+                  }`}
+                >
+                  <ArrowDownLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                </div>
+                <div className="text-left">
+                  <span className="block leading-none text-xs sm:text-sm font-black">Debt</span>
+                  <span className="text-[9px] sm:text-[10px] font-medium text-slate-400 hidden xs:block mt-0.5">
+                    Payables
+                  </span>
+                </div>
               </div>
               <span
-                className={`ml-auto text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
+                className={`text-[10px] sm:text-[11px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full ${
                   !isLentTab
                     ? "bg-amber-100 text-amber-800"
                     : "bg-slate-200/80 text-slate-600"
@@ -226,9 +230,12 @@ export default function DebtLentPage() {
         </div>
 
         {/* Global Net Balance Snippet */}
-        <div className="flex items-center justify-end px-3 py-1 sm:border-l sm:border-slate-200 text-right">
+        <div className="flex items-center justify-between sm:justify-end px-3 py-1 sm:border-l sm:border-slate-200 text-right">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block sm:hidden">
+            Net Balance
+          </span>
           <div className="text-right">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
               Net Balance
             </span>
             <span
@@ -244,23 +251,23 @@ export default function DebtLentPage() {
       </div>
 
       {/* Mode Header with Dedicated Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              {isLentTab ? "Money Lent Tracker" : "Debt & Borrowing Tracker"}
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900">
+              {isLentTab ? "Money Lent" : "Debt & Borrowing"}
             </h1>
             <span
-              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+              className={`text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full border ${
                 isLentTab
                   ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                   : "bg-amber-50 text-amber-800 border-amber-200"
               }`}
             >
-              {isLentTab ? "Receivables (Inflow)" : "Payables (Outflow)"}
+              {isLentTab ? "Receivables" : "Payables"}
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 hidden sm:block mt-0.5">
             {isLentTab
               ? "Track loans given to friends & family, upcoming repayments, and interest checklists"
               : "Track personal borrowings, loans taken, repayment milestones, and interest schedules"}
@@ -272,63 +279,63 @@ export default function DebtLentPage() {
             setEditingRecord(null);
             setModalOpen(true);
           }}
-          className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white text-xs font-semibold cursor-pointer"
+          className="btn-primary flex items-center gap-1.5 h-8 sm:h-9 px-3 sm:px-4 rounded-xl text-white text-xs font-bold cursor-pointer shrink-0 shadow-sm"
         >
-          <PlusCircle className="w-4 h-4 text-white" />
-          <span className="text-white font-semibold">{isLentTab ? "Log Money Lent" : "Log New Debt"}</span>
+          <PlusCircle className="w-3.5 h-3.5 text-white" />
+          <span className="text-white font-bold">{isLentTab ? "+ Log Lent" : "+ Log Debt"}</span>
         </button>
       </div>
 
-      {/* DEDICATED METRIC CARDS FOR THE ACTIVE MODE */}
+      {/* DEDICATED METRIC CARDS: 2x2 BENTO ON MOBILE, 4-COL ON DESKTOP */}
       {isLentTab ? (
         /* LENT METRICS */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl liquid-glass border border-emerald-100 shadow-xs flex flex-col justify-between space-y-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-emerald-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 bg-gradient-to-br from-emerald-50/40 via-white to-transparent">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Remaining to Receive</span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-                <ArrowUpRight className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Remaining</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-emerald-700 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-emerald-700 tabular-nums">
                 {formatCurrency(summary?.totalLentRemaining || 0)}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Outstanding balance owed to you
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+                Owed to you
               </p>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Total Money Lent</span>
-              <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-                <Wallet className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Total Lent</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                <Wallet className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-slate-900 tabular-nums">
                 {formatCurrency(summary?.totalLentPrincipal || 0)}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Cumulative principal lent out
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+                Principal lent
               </p>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Recovered So Far</span>
-              <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
-                <CheckCircle2 className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Recovered</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
+                <CheckCircle2 className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-slate-900 tabular-nums">
                 {formatCurrency(summary?.totalLentRecovered || 0)}
               </p>
-              <p className="text-[11px] text-teal-600 font-semibold mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-teal-600 font-bold mt-0.5 truncate">
                 {summary && summary.totalLentPrincipal > 0
                   ? `${Math.round(
                       (summary.totalLentRecovered / summary.totalLentPrincipal) * 100
@@ -338,72 +345,72 @@ export default function DebtLentPage() {
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Active Borrowers</span>
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                <Users className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Borrowers</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Users className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-slate-900 tabular-nums">
                 {summary?.lentActiveCount || 0}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                People currently holding your money
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+                Active borrowers
               </p>
             </div>
           </div>
         </div>
       ) : (
         /* DEBT METRICS */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl liquid-glass border border-amber-100 shadow-xs flex flex-col justify-between space-y-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-amber-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 bg-gradient-to-br from-amber-50/40 via-white to-transparent">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Remaining to Repay</span>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
-                <ArrowDownLeft className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Remaining</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                <ArrowDownLeft className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-amber-700 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-amber-700 tabular-nums">
                 {formatCurrency(summary?.totalDebtRemaining || 0)}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Your outstanding liability to settle
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+                Liability to settle
               </p>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Total Borrowed</span>
-              <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-                <Wallet className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Total Borrowed</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                <Wallet className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-slate-900 tabular-nums">
                 {formatCurrency(summary?.totalDebtPrincipal || 0)}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Cumulative principal borrowed
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+                Principal borrowed
               </p>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Repaid So Far</span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                <CheckCircle2 className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Repaid</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                <CheckCircle2 className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-slate-900 tabular-nums">
                 {formatCurrency(summary?.totalDebtRepaid || 0)}
               </p>
-              <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-emerald-600 font-bold mt-0.5 truncate">
                 {summary && summary.totalDebtPrincipal > 0
                   ? `${Math.round(
                       (summary.totalDebtRepaid / summary.totalDebtPrincipal) * 100
@@ -413,19 +420,19 @@ export default function DebtLentPage() {
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
+          <div className="p-3 sm:p-5 rounded-2xl liquid-glass border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Active Lenders</span>
-              <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
-                <Users className="w-4 h-4" />
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Lenders</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+                <Users className="w-3.5 h-3.5" />
               </div>
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              <p className="text-base sm:text-2xl font-black text-slate-900 tabular-nums">
                 {summary?.debtActiveCount || 0}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Entities / lenders you owe money to
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+                Active lenders
               </p>
             </div>
           </div>
@@ -433,39 +440,39 @@ export default function DebtLentPage() {
       )}
 
       {/* Filter and Search Bar */}
-      <div className="rounded-2xl liquid-glass p-4 border border-slate-200/80 space-y-3 shadow-xs">
+      <div className="rounded-2xl liquid-glass p-3 sm:p-4 border border-slate-200/80 space-y-2.5 sm:space-y-3 shadow-xs">
         <form onSubmit={handleSearchSubmit} className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder={
                 isLentTab
-                  ? "Search borrower name, note, or amount..."
-                  : "Search lender name, note, or amount..."
+                  ? "Search borrower, note, or amount..."
+                  : "Search lender, note, or amount..."
               }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 shadow-2xs"
+              className="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:border-indigo-500 shadow-2xs"
             />
           </div>
           <button
             type="submit"
-            className="btn-secondary px-5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+            className="btn-secondary px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
           >
             Search
           </button>
         </form>
 
-        <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 overflow-x-auto">
-          {/* Status Sub-filter pills */}
-          <div className="flex items-center gap-1.5">
+        <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2 pt-2 border-t border-slate-100">
+          {/* Status Sub-filter pills (horizontal scrollable on mobile) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full xs:w-auto py-0.5">
             {(["ALL", "ACTIVE", "PARTIALLY_SETTLED", "SETTLED", "OVERDUE"] as const).map(
               (s) => (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`px-2.5 sm:px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                     statusFilter === s
                       ? isLentTab
                         ? "bg-emerald-600 text-white shadow-2xs"
@@ -473,14 +480,14 @@ export default function DebtLentPage() {
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
                   }`}
                 >
-                  {s.replace("_", " ")}
+                  {s === "PARTIALLY_SETTLED" ? "Partial" : s.replace("_", " ")}
                 </button>
               )
             )}
           </div>
 
-          <span className="text-[11px] text-slate-400 shrink-0">
-            Showing {records.length} {isLentTab ? "lent record(s)" : "debt record(s)"}
+          <span className="text-[10px] sm:text-[11px] text-slate-400 shrink-0 self-end xs:self-center">
+            {records.length} {isLentTab ? "lent record(s)" : "debt record(s)"}
           </span>
         </div>
       </div>

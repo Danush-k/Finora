@@ -9,6 +9,7 @@ interface MetricCardProps {
   icon: LucideIcon;
   variant: "expense" | "income" | "savings" | "neutral";
   count?: number;
+  isCurrency?: boolean;
 }
 
 export default function MetricCard({
@@ -18,7 +19,11 @@ export default function MetricCard({
   icon: Icon,
   variant,
   count,
+  isCurrency,
 }: MetricCardProps) {
+  // If variant is neutral (records count), do not show currency symbol
+  const showCurrency = isCurrency !== undefined ? isCurrency : variant !== "neutral";
+
   const variantStyles = {
     expense: {
       border: "border-rose-100/90 hover:border-rose-300",
@@ -48,29 +53,31 @@ export default function MetricCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl liquid-glass p-5 transition-all duration-300 hover:-translate-y-1 ${variantStyles.border}`}
+      className={`relative overflow-hidden rounded-2xl sm:rounded-3xl liquid-glass p-3.5 sm:p-5 transition-all duration-300 hover:-translate-y-0.5 ${variantStyles.border} shadow-2xs`}
     >
-      <div className={`absolute -right-6 -top-6 w-28 h-28 bg-gradient-to-br ${variantStyles.glow} rounded-full blur-2xl pointer-events-none`} />
+      <div
+        className={`absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br ${variantStyles.glow} rounded-full blur-2xl pointer-events-none`}
+      />
 
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate mr-2">
           {title}
         </span>
-        <div className={`p-2 rounded-xl ${variantStyles.iconBg}`}>
-          <Icon className="w-4 h-4" />
+        <div className={`p-1.5 sm:p-2 rounded-xl shrink-0 ${variantStyles.iconBg}`}>
+          <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </div>
       </div>
 
-      <div className="flex items-baseline gap-2 mb-1">
-        <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${variantStyles.amountColor}`}>
-          {formatCurrency(amount)}
+      <div className="flex items-baseline gap-1.5 mb-1">
+        <h3 className={`text-lg sm:text-2xl font-extrabold tracking-tight tabular-nums truncate ${variantStyles.amountColor}`}>
+          {showCurrency ? formatCurrency(amount) : `${amount.toLocaleString()} txns`}
         </h3>
       </div>
 
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-        <span>{subtitle || "Current Month"}</span>
+      <div className="flex items-center justify-between mt-1.5 pt-1.5 sm:mt-2 sm:pt-2 border-t border-slate-100 text-[10px] sm:text-[11px] text-slate-500">
+        <span className="truncate">{subtitle || "Current Month"}</span>
         {count !== undefined && (
-          <span className="px-2 py-0.5 rounded-full bg-slate-100/80 border border-slate-200 text-slate-600 font-semibold">
+          <span className="px-1.5 py-0.2 rounded-full bg-slate-100/80 border border-slate-200 text-slate-600 font-semibold text-[10px] shrink-0 ml-1">
             {count} {count === 1 ? "txn" : "txns"}
           </span>
         )}

@@ -51,7 +51,7 @@ export default function DebtLentCard({ record, onClick }: DebtLentCardProps) {
   return (
     <div
       onClick={onClick}
-      className="p-5 rounded-3xl liquid-glass border border-slate-200/90 shadow-xs hover:border-[#6C3BFF]/40 hover:shadow-lg hover:shadow-[#6C3BFF]/5 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3.5 group select-none"
+      className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl liquid-glass border border-slate-200/90 shadow-xs hover:border-[#6C3BFF]/40 hover:shadow-lg hover:shadow-[#6C3BFF]/5 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3 group select-none"
     >
       {/* 1. Header Row: Avatar, Counterparty, Unified Badge Cluster */}
       <div>
