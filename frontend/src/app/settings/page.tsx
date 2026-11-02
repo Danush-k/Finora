@@ -398,10 +398,6 @@ export default function SettingsPage() {
     );
   }, [searchQuery, sidebarItems]);
 
-  if (loading && !status) {
-    return <SettingsSkeleton />;
-  }
-
   return (
     <div className="space-y-4 pb-28 max-w-6xl mx-auto select-none">
       {/* Top Breadcrumb & Page Title */}

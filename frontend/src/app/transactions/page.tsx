@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, Suspense } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Transaction, TransactionRequest } from "@/types";
@@ -31,7 +31,8 @@ function TransactionsContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -50,15 +51,6 @@ function TransactionsContent() {
     return names.filter((n) => n.toLowerCase().includes(q)).slice(0, 5);
   }, [search, transactions]);
 
-  // Debounced live dynamic filtering
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(0);
-      loadTransactions();
-    }, 280);
-    return () => clearTimeout(timer);
-  }, [search]);
-
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -71,40 +63,65 @@ function TransactionsContent() {
     }
   }, [searchParams]);
 
-  const loadTransactions = async () => {
-    try {
-      setLoading(true);
-      const res = await api.getTransactions({
-        type: typeFilter,
-        category: categoryFilter,
-        search: search.trim() || undefined,
-        page,
-        size: 15,
-      });
-      setTransactions(res.content || []);
-      setTotalPages(res.totalPages || 0);
-      setTotalElements(res.totalElements || 0);
-    } catch (e) {
-      console.error("Failed to load transactions", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadTransactions = useCallback(
+    async (
+      currentSearch = search,
+      currentType = typeFilter,
+      currentCategory = categoryFilter,
+      currentPage = page
+    ) => {
+      try {
+        setIsFetching(true);
+        const res = await api.getTransactions({
+          type: currentType,
+          category: currentCategory,
+          search: currentSearch.trim() || undefined,
+          page: currentPage,
+          size: 15,
+        });
+        setTransactions(res.content || []);
+        setTotalPages(res.totalPages || 0);
+        setTotalElements(res.totalElements || 0);
+      } catch (e) {
+        console.error("Failed to load transactions", e);
+      } finally {
+        setInitialLoading(false);
+        setIsFetching(false);
+      }
+    },
+    [search, typeFilter, categoryFilter, page]
+  );
 
+  // Primary loader on type, category, or page change
   useEffect(() => {
-    loadTransactions();
+    loadTransactions(search, typeFilter, categoryFilter, page);
 
     const handleSync = () => {
-      loadTransactions();
+      loadTransactions(search, typeFilter, categoryFilter, page);
     };
     window.addEventListener("finora-sync-completed", handleSync);
     return () => window.removeEventListener("finora-sync-completed", handleSync);
   }, [typeFilter, categoryFilter, page]);
 
+  // Debounced live dynamic filtering (skips initial mount to prevent double-load glitch!)
+  const isInitialSearchMount = useRef(true);
+  useEffect(() => {
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      setPage(0);
+      loadTransactions(search, typeFilter, categoryFilter, 0);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSuggestions(false);
     setPage(0);
-    loadTransactions();
+    loadTransactions(search, typeFilter, categoryFilter, 0);
   };
 
   const handleCreateOrUpdate = async (data: TransactionRequest) => {
@@ -135,9 +152,7 @@ function TransactionsContent() {
     }
   };
 
-  if (loading && transactions.length === 0) {
-    return <TransactionsSkeleton />;
-  }
+
 
   return (
     <div className="space-y-6 pb-28">
@@ -320,7 +335,8 @@ function TransactionsContent() {
       {/* Transaction Table */}
       <TransactionTable
         transactions={transactions}
-        loading={loading}
+        loading={initialLoading}
+        isFetching={isFetching}
         onEdit={(txn) => {
           setEditingTxn(txn);
           setModalOpen(true);

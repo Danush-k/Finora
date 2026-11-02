@@ -127,15 +127,18 @@ const CalendarDayCell = memo(function CalendarDayCell({
 
 export default function MonthlyCalendarView() {
   const router = useRouter();
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 10, 1));
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [calendarDays, setCalendarDays] = useState<CalendarDaySummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDayNumbers, setSelectedDayNumbers] = useState<number[]>([]);
   const [isMultiDayDrawerOpen, setIsMultiDayDrawerOpen] = useState(false);
   const [debtLentRecords, setDebtLentRecords] = useState<DebtLentRecord[]>([]);
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
-  const [todayYear, setTodayYear] = useState<number>(2026);
-  const [todayMonth, setTodayMonth] = useState<number>(11);
+  const [todayYear, setTodayYear] = useState<number>(() => new Date().getFullYear());
+  const [todayMonth, setTodayMonth] = useState<number>(() => new Date().getMonth() + 1);
   const [monthDirection, setMonthDirection] = useState<"next" | "prev">("next");
 
   const transactionsSectionRef = useRef<HTMLDivElement>(null);
@@ -146,11 +149,6 @@ export default function MonthlyCalendarView() {
   const isDraggingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    const now = new Date();
-    setTodayYear(now.getFullYear());
-    setTodayMonth(now.getMonth() + 1);
-    setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
-
     api
       .getDebtLentRecords()
       .then((records) => setDebtLentRecords(records))

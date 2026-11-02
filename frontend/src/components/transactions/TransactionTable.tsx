@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Transaction } from "@/types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { ArrowDownRight, ArrowUpRight, Edit2, Trash2 } from "lucide-react";
 import CategoryBadge from "@/components/common/CategoryBadge";
 
@@ -11,6 +11,7 @@ interface TransactionTableProps {
   onEdit: (txn: Transaction) => void;
   onDelete: (id: string) => void;
   loading?: boolean;
+  isFetching?: boolean;
 }
 
 export default function TransactionTable({
@@ -18,8 +19,10 @@ export default function TransactionTable({
   onEdit,
   onDelete,
   loading = false,
+  isFetching = false,
 }: TransactionTableProps) {
-  if (loading) {
+  // Only display skeleton when initial load is underway and no transactions exist yet
+  if (loading && (!transactions || transactions.length === 0)) {
     return (
       <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs animate-fadeIn">
         <div className="overflow-x-auto">
@@ -62,11 +65,14 @@ export default function TransactionTable({
     );
   }
 
-
   return (
-    <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs">
+    <div className="w-full overflow-hidden rounded-2xl liquid-glass border border-slate-200/80 shadow-xs relative">
+      {/* Non-destructive Apple-style subtle progress line during background fetch */}
+      {isFetching && (
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-purple-500 via-indigo-400 to-purple-600 animate-pulse z-20 pointer-events-none" />
+      )}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className={cn("w-full text-left text-xs transition-opacity duration-200", isFetching && "opacity-75")}>
           <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
             <tr>
               <th className="py-3 px-4">Date</th>

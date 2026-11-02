@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { api } from "@/lib/api";
 import {
   DebtLentRecord,
@@ -37,7 +37,8 @@ export default function DebtLentPage() {
   const { toast } = useToast();
   const [records, setRecords] = useState<DebtLentRecord[]>([]);
   const [summary, setSummary] = useState<DebtLentSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
 
   // Active top-level mode: "LENT" (Receivables) vs "DEBT" (Payables)
   const [activeTab, setActiveTab] = useState<"LENT" | "DEBT">("LENT");
@@ -58,43 +59,57 @@ export default function DebtLentPage() {
   const [editingRecord, setEditingRecord] = useState<DebtLentRecord | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<DebtLentRecord | null>(null);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [recList, sum] = await Promise.all([
-        api.getDebtLentRecords(
-          activeTab,
-          statusFilter === "ALL" ? undefined : statusFilter,
-          search.trim() || undefined
-        ),
-        api.getDebtLentSummary(),
-      ]);
-      setRecords(recList);
-      setSummary(sum);
+  const loadData = useCallback(
+    async (
+      tab = activeTab,
+      status = statusFilter,
+      currentSearch = search
+    ) => {
+      try {
+        setIsFetching(true);
+        const [recList, sum] = await Promise.all([
+          api.getDebtLentRecords(
+            tab,
+            status === "ALL" ? undefined : status,
+            currentSearch.trim() || undefined
+          ),
+          api.getDebtLentSummary(),
+        ]);
+        setRecords(recList);
+        setSummary(sum);
 
-      // Keep drawer updated if active
-      if (selectedRecord) {
-        const updated = recList.find((r) => r.id === selectedRecord.id);
-        if (updated) setSelectedRecord(updated);
+        // Keep drawer updated if active
+        if (selectedRecord) {
+          const updated = recList.find((r) => r.id === selectedRecord.id);
+          if (updated) setSelectedRecord(updated);
+        }
+      } catch (e) {
+        console.error("Failed to load debt & lent records", e);
+      } finally {
+        setInitialLoading(false);
+        setIsFetching(false);
       }
-    } catch (e) {
-      console.error("Failed to load debt & lent records", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [activeTab, statusFilter, search, selectedRecord]
+  );
 
-  // Debounced search when typing
+  // Primary loader on tab or status change
   useEffect(() => {
+    loadData(activeTab, statusFilter, search);
+  }, [activeTab, statusFilter]);
+
+  // Debounced search when typing (skips initial mount to avoid double-load glitch)
+  const isInitialSearchMount = useRef(true);
+  useEffect(() => {
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
-      loadData();
+      loadData(activeTab, statusFilter, search);
     }, 280);
     return () => clearTimeout(timer);
   }, [search]);
-
-  useEffect(() => {
-    loadData();
-  }, [activeTab, statusFilter]);
 
   // Support direct deep link: /debt-lent?tab=<type>&recordId=<id>
   useEffect(() => {
@@ -123,7 +138,8 @@ export default function DebtLentPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    loadData();
+    setShowSuggestions(false);
+    loadData(activeTab, statusFilter, search);
   };
 
   const handleCreateOrUpdate = async (data: DebtLentRequest) => {
@@ -156,9 +172,7 @@ export default function DebtLentPage() {
 
   const isLentTab = activeTab === "LENT";
 
-  if (loading && records.length === 0) {
-    return <DebtLentSkeleton />;
-  }
+
 
   return (
     <div className="space-y-6 pb-28">
@@ -586,19 +600,36 @@ export default function DebtLentPage() {
         </div>
       </div>
 
-      {/* Grid of Records */}
-      {loading ? (
-        <div className="py-24 text-center text-xs text-slate-400">
-          Loading {isLentTab ? "money lent" : "debt"} records...
+      {/* Grid of Records with Smooth Apple State Transitions (Zero Layout Shift) */}
+      {initialLoading && records.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="min-h-[220px] rounded-3xl liquid-glass border border-slate-200/80 p-5 space-y-4 animate-pulse"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-28 bg-slate-200/80 rounded-md" />
+                <div className="h-5 w-16 bg-slate-200/60 rounded-full" />
+              </div>
+              <div className="h-7 w-36 bg-slate-200/80 rounded-lg" />
+              <div className="h-3 w-full bg-slate-200/60 rounded-full" />
+              <div className="pt-2 flex justify-between">
+                <div className="h-3.5 w-20 bg-slate-200/60 rounded-md" />
+                <div className="h-3.5 w-20 bg-slate-200/60 rounded-md" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : records.length === 0 ? (
         <div className="py-16 rounded-3xl liquid-glass border border-slate-200/80 flex flex-col items-center justify-center text-center space-y-3 p-6">
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center",
               isLentTab
                 ? "bg-emerald-50 border border-emerald-200 text-emerald-600"
                 : "bg-amber-50 border border-amber-200 text-amber-600"
-            }`}
+            )}
           >
             {isLentTab ? <ArrowUpRight className="w-6 h-6" /> : <ArrowDownLeft className="w-6 h-6" />}
           </div>
@@ -617,25 +648,44 @@ export default function DebtLentPage() {
               setEditingRecord(null);
               setModalOpen(true);
             }}
-            className={`mt-2 flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer ${
+            className={cn(
+              "mt-2 flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer",
               isLentTab
                 ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
                 : "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
-            }`}
+            )}
           >
             <PlusCircle className="w-4 h-4" />
             <span>{isLentTab ? "Log First Money Lent" : "Log First Debt"}</span>
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {records.map((record) => (
-            <DebtLentCard
-              key={record.id}
-              record={record}
-              onClick={() => setSelectedRecord(record)}
-            />
-          ))}
+        <div className="relative">
+          {/* Smooth non-destructive loading bar during search/filter fetch */}
+          {isFetching && (
+            <div className="absolute -top-3 left-0 right-0 h-[2.5px] bg-gradient-to-r from-emerald-400 via-indigo-500 to-amber-500 animate-pulse z-10 rounded-full" />
+          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className={cn(
+                "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 transition-opacity duration-200",
+                isFetching && "opacity-80"
+              )}
+            >
+              {records.map((record) => (
+                <DebtLentCard
+                  key={record.id}
+                  record={record}
+                  onClick={() => setSelectedRecord(record)}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
         </div>
       )}
 
