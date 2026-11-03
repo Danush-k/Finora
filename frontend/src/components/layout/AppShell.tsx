@@ -24,6 +24,15 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
       if (meta) {
         meta.setAttribute("content", isMobile ? "#230348" : "#F5F6FF");
       }
+      if (typeof document !== "undefined") {
+        if (isMobile) {
+          document.documentElement.style.backgroundColor = "#230348";
+          document.body.style.backgroundColor = "#230348";
+        } else {
+          document.documentElement.style.backgroundColor = "#F5F6FF";
+          document.body.style.backgroundColor = "#F5F6FF";
+        }
+      }
     };
     updateThemeForScreen();
     window.addEventListener("resize", updateThemeForScreen);

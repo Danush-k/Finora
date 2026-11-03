@@ -39,7 +39,7 @@
 
 /* Mobile status bar / notch canvas background tinting matching Finora deep purple (#230348) */
 @media (max-width: 767px) {
-  html {
+  html, body {
     background-color: #230348 !important;
     background: #230348 !important;
   }

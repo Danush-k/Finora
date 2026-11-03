@@ -513,8 +513,8 @@ export default function MobileDashboard({
       {/* ========================================================================= */}
       {/* 1. EXACT PURPLE HERO BANNER WITH FLOWING MULTI-LAYER CURVES & GOLDEN WAVES */}
       {/* ========================================================================= */}
-      {/* Top mobile overscroll guard: sits behind content at z-0, never covers header */}
-      <div className="fixed -top-96 left-0 right-0 h-96 bg-[#230348] z-0 pointer-events-none" />
+      {/* Top mobile overscroll & status bar backdrop: deep purple #230348 fills top bounce down to safe-area-inset-top */}
+      <div className="fixed -top-96 left-0 right-0 h-[calc(env(safe-area-inset-top)+384px)] bg-[#230348] z-0 pointer-events-none" />
 
       <div
         className="relative pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 overflow-visible bg-[#230348]"
