@@ -91,6 +91,7 @@ export default function SettingsPage() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
   const [autoSyncInterval, setAutoSyncInterval] = useState("15");
+  const [chartPalette, setChartPalette] = useState("default");
 
   // Load local preferences on client mount
   useEffect(() => {
@@ -100,6 +101,7 @@ export default function SettingsPage() {
       setDefaultTab(localStorage.getItem("finora_default_tab") || "/");
       setReducedMotion(localStorage.getItem("finora_reduced_motion") === "true");
       setCompactDensity(localStorage.getItem("finora_compact_density") === "true");
+      setChartPalette(localStorage.getItem("finora_chart_palette") || "default");
     }
   }, []);
 
@@ -110,6 +112,10 @@ export default function SettingsPage() {
     if (key === "currency") setCurrency(val);
     if (key === "date_format") setDateFormat(val);
     if (key === "default_tab") setDefaultTab(val);
+    if (key === "chart_palette") {
+      setChartPalette(val);
+      window.dispatchEvent(new CustomEvent("finora-chart-palette-changed", { detail: val }));
+    }
     toast.success("Preference Saved", `${key.replace("_", " ")} updated to ${val}`);
   };
 
@@ -422,6 +428,7 @@ export default function SettingsPage() {
         defaultTab={defaultTab}
         reducedMotion={reducedMotion}
         compactDensity={compactDensity}
+        chartPalette={chartPalette}
         onUpdatePreference={handleUpdatePreference}
         onTogglePreference={handleTogglePreference}
         onExport={handleExportData}
@@ -742,6 +749,23 @@ export default function SettingsPage() {
                           )}
                         />
                       </button>
+                    </div>
+
+                    <div className="p-4 flex items-center justify-between gap-4">
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900">Cashflow Graph Colors</h4>
+                        <p className="text-[11px] text-slate-500">
+                          Toggle between default emerald/violet or financial red/green for Inflow & Outflow
+                        </p>
+                      </div>
+                      <select
+                        value={chartPalette}
+                        onChange={(e) => handleUpdatePreference("chart_palette", e.target.value)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-purple-500 cursor-pointer"
+                      >
+                        <option value="default">Emerald & Violet (Default)</option>
+                        <option value="red-green">Red & Green (Financial)</option>
+                      </select>
                     </div>
 
                     <div className="p-4 flex items-center justify-between gap-4">

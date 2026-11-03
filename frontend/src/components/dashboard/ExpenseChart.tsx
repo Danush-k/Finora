@@ -112,6 +112,18 @@ export default function ExpenseChart({
 
   // Scale mode toggle: "balanced" (solves June 332k outlier flattening other months) vs "standard" (raw linear)
   const [scaleMode, setScaleMode] = useState<ScaleMode>("balanced");
+  const [chartPalette, setChartPalette] = useState<string>("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setChartPalette(localStorage.getItem("finora_chart_palette") || "default");
+      const handlePaletteChange = (e: any) => {
+        setChartPalette(e.detail || localStorage.getItem("finora_chart_palette") || "default");
+      };
+      window.addEventListener("finora-chart-palette-changed", handlePaletteChange);
+      return () => window.removeEventListener("finora-chart-palette-changed", handlePaletteChange);
+    }
+  }, []);
 
   // Sliding window for Monthly view
   const windowSize = 6;
@@ -649,6 +661,18 @@ export default function ExpenseChart({
                   <stop offset="0%" stopColor="#A78BFA" stopOpacity="1" />
                   <stop offset="100%" stopColor="#6C3BFF" stopOpacity="1" />
                 </linearGradient>
+
+                {/* Red/Green Alternative Palette for Outflow */}
+                <linearGradient id="finoraOutflowRedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#FB7185" stopOpacity="0.95" />
+                  <stop offset="50%" stopColor="#F43F5E" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#E11D48" stopOpacity="0.85" />
+                </linearGradient>
+
+                <linearGradient id="finoraOutflowRedActiveGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#FDA4AF" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#BE123C" stopOpacity="1" />
+                </linearGradient>
               </defs>
 
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(226, 232, 240, 0.7)" vertical={false} />
@@ -730,7 +754,14 @@ export default function ExpenseChart({
                           {/* Outflow */}
                           <div className="flex items-center justify-between gap-4 py-0.5">
                             <span className="flex items-center gap-1.5 text-slate-500 font-medium text-[11px]">
-                              <span className="w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-indigo-100 shrink-0" />
+                              <span
+                                className={cn(
+                                  "w-2 h-2 rounded-full ring-2 shrink-0",
+                                  chartPalette === "red-green"
+                                    ? "bg-rose-500 ring-rose-100"
+                                    : "bg-indigo-500 ring-indigo-100"
+                                )}
+                              />
                               Outflow:
                             </span>
                             <span className="font-extrabold text-slate-900 tabular-nums text-xs">
@@ -800,11 +831,11 @@ export default function ExpenseChart({
                 })}
               </Bar>
 
-              {/* Outflow Bar (Modern Violet-Indigo Gradient) */}
+              {/* Outflow Bar (Modern Violet-Indigo Gradient or Red-Green Palette) */}
               <Bar
                 name="Outflow"
                 dataKey="expenses"
-                fill="url(#finoraOutflowGrad)"
+                fill={chartPalette === "red-green" ? "url(#finoraOutflowRedGrad)" : "url(#finoraOutflowGrad)"}
                 radius={[6, 6, 0, 0]}
                 maxBarSize={32}
                 isAnimationActive={false}
@@ -813,12 +844,20 @@ export default function ExpenseChart({
               >
                 {activeDataset.map((entry) => {
                   const isSelected = period === "MONTHLY" && entry.key === activeMonthKey;
+                  const defaultGrad =
+                    chartPalette === "red-green" ? "url(#finoraOutflowRedGrad)" : "url(#finoraOutflowGrad)";
+                  const activeGrad =
+                    chartPalette === "red-green"
+                      ? "url(#finoraOutflowRedActiveGrad)"
+                      : "url(#finoraOutflowActiveGrad)";
+                  const strokeCol =
+                    chartPalette === "red-green" ? "#BE123C" : "#5228E0";
                   return (
                     <Cell
                       key={`exp-${entry.key}`}
-                      fill={isSelected ? "url(#finoraOutflowActiveGrad)" : "url(#finoraOutflowGrad)"}
+                      fill={isSelected ? activeGrad : defaultGrad}
                       opacity={!activeMonthKey || isSelected ? 1 : 0.38}
-                      stroke={isSelected ? "#5228E0" : "none"}
+                      stroke={isSelected ? strokeCol : "none"}
                       strokeWidth={isSelected ? 1.5 : 0}
                     />
                   );

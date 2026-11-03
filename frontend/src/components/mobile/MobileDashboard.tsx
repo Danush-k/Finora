@@ -25,6 +25,7 @@ import {
   Banknote,
   Sliders,
   HandCoins,
+  Wallet,
 } from "lucide-react";
 import {
   DashboardSummary,
@@ -43,6 +44,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/lib/toast-context";
 import MobileTransactionSheet from "./MobileTransactionSheet";
+import { categoryToSlug } from "@/lib/category-slugs";
 
 export interface MobileChartPoint {
   id: string;
@@ -189,6 +191,18 @@ export default function MobileDashboard({
   const [inspectedPoint, setInspectedPoint] = useState<MobileChartPoint | null>(null);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [chartPalette, setChartPalette] = useState<string>("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setChartPalette(localStorage.getItem("finora_chart_palette") || "default");
+      const handlePaletteChange = (e: any) => {
+        setChartPalette(e.detail || localStorage.getItem("finora_chart_palette") || "default");
+      };
+      window.addEventListener("finora-chart-palette-changed", handlePaletteChange);
+      return () => window.removeEventListener("finora-chart-palette-changed", handlePaletteChange);
+    }
+  }, []);
 
   // Sync Action from Mobile Hero
   const handleHeroSync = async () => {
@@ -495,11 +509,18 @@ export default function MobileDashboard({
   const recentTxns = summary?.recentTransactions?.slice(0, 5) || [];
 
   return (
-    <div className="md:hidden pb-32 select-none bg-[#F6F4FA] min-h-screen">
+    <div className="md:hidden pb-32 select-none bg-[#F6F4FA] min-h-screen relative">
       {/* ========================================================================= */}
       {/* 1. EXACT PURPLE HERO BANNER WITH FLOWING MULTI-LAYER CURVES & GOLDEN WAVES */}
       {/* ========================================================================= */}
-      <div className="relative pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 overflow-visible">
+      {/* Top mobile overscroll guard: eliminates any white gap near time/battery */}
+      <div className="fixed -top-96 left-0 right-0 h-96 bg-[#230348] z-0 pointer-events-none" />
+      <div className="fixed top-0 left-0 right-0 h-[env(safe-area-inset-top,0px)] bg-[#230348] z-30 pointer-events-none" />
+
+      <div className="relative pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 overflow-visible bg-[#230348]">
+        {/* Seamless upward extension matching exact deep purple (#230348) of hero banner */}
+        <div className="absolute -top-48 inset-x-0 h-48 bg-[#230348] pointer-events-none select-none" />
+
         {/* Exact Master Artwork: Flowing Curved Purple Background with Golden Illuminated Contours */}
         <div className="absolute inset-0 w-full h-[260px] pointer-events-none select-none">
           <Image
@@ -603,8 +624,20 @@ export default function MobileDashboard({
           {/* Card Top Row */}
           <div className="flex items-center justify-between text-xs mb-1">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center shrink-0">
-                <StackedCoinsIcon className="w-4 h-4 text-[#7C3AED]" />
+              <div
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                  periodMetrics.savings < 0
+                    ? "bg-[#FEECEF] text-[#E11D48] border border-rose-200/50"
+                    : "bg-[#EAF8F1] text-[#10B981] border border-emerald-200/50"
+                )}
+              >
+                <Wallet
+                  className={cn(
+                    "w-4 h-4",
+                    periodMetrics.savings < 0 ? "text-[#E11D48]" : "text-[#10B981]"
+                  )}
+                />
               </div>
               <span className="font-bold text-slate-800 text-sm">
                 {periodMetrics.heroTitle}
@@ -970,14 +1003,18 @@ export default function MobileDashboard({
                               )}
                               title={`Inflow: ${formatExactCurrency(pt.income)}`}
                             />
-                            {/* Outflow Bar (Purple) */}
+                            {/* Outflow Bar (Purple or Red according to chartPalette) */}
                             <motion.div
                               initial={{ height: 0 }}
                               animate={{ height: `${expenseH}%` }}
                               transition={{ type: "spring", stiffness: 320, damping: 26 }}
                               className={cn(
                                 "w-full max-w-[13px] rounded-t-sm transition-colors duration-300",
-                                isSelected
+                                chartPalette === "red-green"
+                                  ? isSelected
+                                    ? "bg-[#E11D48] shadow-[0_2px_8px_rgba(225,29,72,0.5)] ring-1 ring-rose-300"
+                                    : "bg-[#E11D48] group-hover:bg-[#BE123C]"
+                                  : isSelected
                                   ? "bg-[#8B5CF6] shadow-[0_2px_8px_rgba(139,92,246,0.5)] ring-1 ring-purple-300"
                                   : "bg-[#8B5CF6] group-hover:bg-[#7C3AED]"
                               )}
@@ -1010,7 +1047,12 @@ export default function MobileDashboard({
                   Inflow
                 </span>
                 <span className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]" />
+                  <span
+                    className={cn(
+                      "w-2.5 h-2.5 rounded-full",
+                      chartPalette === "red-green" ? "bg-[#E11D48]" : "bg-[#8B5CF6]"
+                    )}
+                  />
                   Outflow
                 </span>
               </div>
@@ -1094,14 +1136,20 @@ export default function MobileDashboard({
         {/* ========================================================= */}
         <div className="rounded-3xl bg-white border border-slate-100 shadow-2xs p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-purple-50 text-[#7C3AED] border border-purple-100">
+            <Link
+              href="/dashboard/expenses/categories"
+              className="flex items-center gap-2 group cursor-pointer"
+            >
+              <div className="p-1.5 rounded-lg bg-purple-50 text-[#7C3AED] border border-purple-100 group-hover:scale-105 transition-transform">
                 <PieChart className="w-3.5 h-3.5" />
               </div>
-              <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
-                Expense by Category
-              </h4>
-            </div>
+              <div className="flex items-center gap-1">
+                <h4 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-[#7C3AED] transition-colors">
+                  Expense by Category
+                </h4>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </Link>
 
             <button
               type="button"
@@ -1113,36 +1161,41 @@ export default function MobileDashboard({
             </button>
           </div>
 
-          {/* Category Rows */}
+          {/* Category Rows (Top 4 Preview with Direct Navigation to Dedicated Module) */}
           {categoryEntries.length > 0 ? (
             <div className="space-y-2">
-              {visibleCategories.map(([cat, amt]) => {
+              {categoryEntries.slice(0, 4).map(([cat, amt]) => {
                 const pct = Math.min(100, Math.round((amt / totalCatExpenses) * 100));
                 const theme = getCategoryTheme(cat);
                 const CategoryIcon = theme.icon;
 
                 return (
-                  <div key={cat} className="space-y-1 py-1">
+                  <Link
+                    key={cat}
+                    href={`/dashboard/expenses/categories/${categoryToSlug(cat)}`}
+                    className="block space-y-1 py-1 group cursor-pointer"
+                  >
                     <div className="flex justify-between items-center text-xs">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div
                           className={cn(
-                            "w-5 h-5 rounded-md flex items-center justify-center shrink-0 border border-slate-200/50",
+                            "w-5 h-5 rounded-md flex items-center justify-center shrink-0 border border-slate-200/50 group-hover:scale-105 transition-transform",
                             theme.bgLight,
                             theme.iconClass
                           )}
                         >
                           <CategoryIcon className="w-3 h-3" />
                         </div>
-                        <span className="font-bold text-slate-800 text-xs truncate">
+                        <span className="font-bold text-slate-800 text-xs truncate group-hover:text-[#7C3AED] transition-colors">
                           {cat}
                         </span>
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="text-right shrink-0 flex items-center gap-1">
                         <span className="font-bold text-slate-900 text-xs">
                           {formatExactCurrency(amt)}
                         </span>
-                        <span className="text-[10px] text-slate-400 ml-1">({pct}%)</span>
+                        <span className="text-[10px] text-slate-400">({pct}%)</span>
+                        <ChevronRight className="w-3 h-3 text-slate-300 group-hover:text-[#7C3AED] transition-colors" />
                       </div>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -1151,28 +1204,18 @@ export default function MobileDashboard({
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
 
-              {categoryEntries.length > 4 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllCategories(!showAllCategories)}
-                  className="w-full py-1.5 rounded-xl bg-slate-50 text-[11px] font-bold text-slate-600 flex items-center justify-center gap-1 cursor-pointer mt-1"
-                >
-                  <span>
-                    {showAllCategories
-                      ? "Show Less"
-                      : `+${categoryEntries.length - 4} More Categories`}
-                  </span>
-                  {showAllCategories ? (
-                    <ChevronUp className="w-3 h-3" />
-                  ) : (
-                    <ChevronDown className="w-3 h-3" />
-                  )}
-                </button>
-              )}
+              {/* Dedicated Page Navigation Button */}
+              <Link
+                href="/dashboard/expenses/categories"
+                className="w-full py-2.5 rounded-xl bg-purple-50/70 hover:bg-purple-100/70 border border-purple-100/80 text-[11px] font-bold text-[#7C3AED] flex items-center justify-center gap-1.5 transition-colors mt-2.5 active:scale-98"
+              >
+                <span>View Full Expense Analytics ({categoryEntries.length} Categories)</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           ) : (
             <p className="text-xs text-slate-400 py-3 text-center">

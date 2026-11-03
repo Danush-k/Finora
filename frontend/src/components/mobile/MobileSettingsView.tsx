@@ -55,6 +55,7 @@ interface MobileSettingsViewProps {
   defaultTab: string;
   reducedMotion: boolean;
   compactDensity: boolean;
+  chartPalette?: string;
   onUpdatePreference: (key: string, val: string) => void;
   onTogglePreference: (key: string, currentVal: boolean) => void;
   onExport: (format: "csv" | "json") => void;
@@ -96,6 +97,7 @@ export default function MobileSettingsView({
   defaultTab,
   reducedMotion,
   compactDensity,
+  chartPalette = "default",
   onUpdatePreference,
   onTogglePreference,
   onExport,
@@ -432,6 +434,22 @@ export default function MobileSettingsView({
                   )}
                 />
               </button>
+            </div>
+
+            {/* Cashflow Graph Colors Palette */}
+            <div className="px-3.5 py-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-bold text-slate-800">Graph Color Palette</p>
+                <p className="text-[11px] text-slate-400">Inflow & Outflow bar colors</p>
+              </div>
+              <select
+                value={chartPalette}
+                onChange={(e) => onUpdatePreference("chart_palette", e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                <option value="default">Emerald & Violet</option>
+                <option value="red-green">Red & Green</option>
+              </select>
             </div>
           </div>
         </div>

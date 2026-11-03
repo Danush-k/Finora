@@ -22,6 +22,7 @@
 }
 
 :root {
+  color-scheme: light !important;
   --background: #F5F6FF;
   --foreground: #0F172A;
   --surface: rgba(255, 255, 255, 0.85);
@@ -35,6 +36,10 @@
   --brand-accent: #A78BFF;
   --brand-income: #059669;
   --brand-expense: #e11d48;
+}
+
+html, body {
+  color-scheme: light !important;
 }
 
 body {

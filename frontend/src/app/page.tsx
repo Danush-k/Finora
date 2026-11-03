@@ -21,6 +21,7 @@ import {
   Sliders,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
 } from "lucide-react";
 import CsvImportModal from "@/components/transactions/CsvImportModal";
 import CategoryBudgetModal from "@/components/dashboard/CategoryBudgetModal";
@@ -37,6 +38,7 @@ import {
 } from "@/components/common/LoadingSkeletons";
 import { getCategoryTheme } from "@/lib/category-theme";
 import MobileDashboard from "@/components/mobile/MobileDashboard";
+import { categoryToSlug } from "@/lib/category-slugs";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(() => api.getCachedDashboardSummary() || null);
@@ -352,7 +354,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ========================================================= */}
-        {/* CATEGORY BREAKDOWN CARD: Standard Box with "More" Toggle  */}
+        {/* CATEGORY BREAKDOWN CARD: Direct Page Navigation to Dedicated Module */}
         {/* ========================================================= */}
         {summary ? (
           <div
@@ -361,21 +363,28 @@ export default function DashboardPage() {
           >
           <div>
             <div className="flex items-center justify-between mb-3.5">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100 shadow-2xs">
+              <Link
+                href="/dashboard/expenses/categories"
+                className="flex items-center gap-2 group cursor-pointer"
+                title="Open dedicated Expense Analytics page"
+              >
+                <div className="p-1.5 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100 shadow-2xs group-hover:scale-105 transition-transform">
                   <PieChart className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
-                    Expense by Category
-                  </h4>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-[#6C3BFF] transition-colors">
+                      Expense by Category
+                    </h4>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 group-hover:text-[#6C3BFF] transition-all" />
+                  </div>
                   {summary?.activeMonthName && (
                     <span className="text-[10px] text-[#6C3BFF] font-bold">
                       {summary.activeMonthName}
                     </span>
                   )}
                 </div>
-              </div>
+              </Link>
               <button
                 type="button"
                 onClick={() => setBudgetModalOpen(true)}
@@ -439,7 +448,7 @@ export default function DashboardPage() {
             {/* Standard Category Rows using Uniform Theme */}
             {categoryEntries.length > 0 ? (
               <div className="space-y-2.5">
-                {visibleCategories.map(([cat, amt]) => {
+                {categoryEntries.slice(0, 4).map(([cat, amt]) => {
                   const pctOfTotal = Math.min(100, Math.round((amt / totalCategoryExpenses) * 100));
                   const budget = categoryBudgets.find((b) => b.category === cat);
                   const hasLimit = !!(
@@ -457,17 +466,21 @@ export default function DashboardPage() {
                   const CategoryIcon = theme.icon;
 
                   return (
-                    <div key={cat} className="space-y-1 p-1.5 rounded-xl hover:bg-slate-50/80 transition-colors">
+                    <Link
+                      key={cat}
+                      href={`/dashboard/expenses/categories/${categoryToSlug(cat)}`}
+                      className="block space-y-1 p-1.5 rounded-xl hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                    >
                       <div className="flex justify-between items-center text-xs">
                         <div className="flex items-center gap-1.5 min-w-0">
                           {/* Uniform Category Icon */}
                           <div
-                            className={`w-5 h-5 rounded-md ${theme.bgLight} ${theme.iconClass} flex items-center justify-center shrink-0 border border-slate-200/50`}
+                            className={`w-5 h-5 rounded-md ${theme.bgLight} ${theme.iconClass} flex items-center justify-center shrink-0 border border-slate-200/50 group-hover:scale-105 transition-transform`}
                           >
                             <CategoryIcon className="w-3 h-3" />
                           </div>
 
-                          <span className="text-slate-800 font-bold tracking-tight text-xs truncate">
+                          <span className="text-slate-800 font-bold tracking-tight text-xs truncate group-hover:text-[#6C3BFF] transition-colors">
                             {cat}
                           </span>
 
@@ -486,13 +499,16 @@ export default function DashboardPage() {
                           )}
                         </div>
 
-                        <div className="text-right shrink-0">
-                          <span className="text-slate-800 font-extrabold text-xs">
-                            {formatCurrency(amt)}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-normal ml-1">
-                            ({pctOfTotal}%)
-                          </span>
+                        <div className="text-right shrink-0 flex items-center gap-1.5">
+                          <div>
+                            <span className="text-slate-800 font-extrabold text-xs">
+                              {formatCurrency(amt)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal ml-1">
+                              ({pctOfTotal}%)
+                            </span>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#6C3BFF] group-hover:translate-x-0.5 transition-all" />
                         </div>
                       </div>
 
@@ -505,29 +521,18 @@ export default function DashboardPage() {
                           }}
                         />
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
 
-                {/* More / Show Less Toggle Button (keeps box size standard) */}
-                {categoryEntries.length > 4 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllCategories(!showAllCategories)}
-                    className="w-full py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 text-[11px] font-bold text-slate-600 flex items-center justify-center gap-1 cursor-pointer transition-colors mt-2"
-                  >
-                    <span>
-                      {showAllCategories
-                        ? "Show Less"
-                        : `+${categoryEntries.length - 4} More Categories`}
-                    </span>
-                    {showAllCategories ? (
-                      <ChevronUp className="w-3 h-3" />
-                    ) : (
-                      <ChevronDown className="w-3 h-3" />
-                    )}
-                  </button>
-                )}
+                {/* Direct Page Navigation to Dedicated Module */}
+                <Link
+                  href="/dashboard/expenses/categories"
+                  className="w-full py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100/80 border border-purple-200/60 text-[11px] font-bold text-[#6C3BFF] flex items-center justify-center gap-1.5 cursor-pointer transition-all mt-2.5 shadow-2xs group"
+                >
+                  <span>Open Dedicated Expense Analytics</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
               </div>
             ) : (
               <div className="py-8 text-center text-xs text-slate-400">
