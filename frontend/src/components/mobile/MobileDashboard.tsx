@@ -497,138 +497,19 @@ export default function MobileDashboard({
   return (
     <div className="md:hidden pb-32 select-none bg-[#F6F4FA] min-h-screen">
       {/* ========================================================================= */}
-      {/* 1. PURPLE HERO BANNER WITH FLOWING MULTI-LAYER CURVES & GOLDEN BORDERS    */}
+      {/* 1. EXACT PURPLE HERO BANNER WITH FLOWING MULTI-LAYER CURVES & GOLDEN WAVES */}
       {/* ========================================================================= */}
-      <div className="relative pt-[calc(env(safe-area-inset-top)+20px)] pb-20 px-5">
-        {/* SVG Flowing Curved Background with Golden Illuminated Strokes */}
-        <div className="absolute inset-0 w-full h-[280px] pointer-events-none overflow-hidden">
-          <svg
-            viewBox="0 0 390 280"
-            fill="none"
-            preserveAspectRatio="none"
-            className="w-full h-full"
-          >
-            <defs>
-              {/* Deep Royal Purple Background Gradient */}
-              <linearGradient id="heroBgGrad" x1="0%" y1="0%" x2="25%" y2="100%">
-                <stop offset="0%" stopColor="#1E0238" />
-                <stop offset="35%" stopColor="#2C054E" />
-                <stop offset="70%" stopColor="#3A0766" />
-                <stop offset="100%" stopColor="#1F0236" />
-              </linearGradient>
-
-              {/* Layer 1: Upper Right Wave Crest Gradient */}
-              <linearGradient id="waveRightGrad" x1="20%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#36065F" />
-                <stop offset="50%" stopColor="#521191" />
-                <stop offset="100%" stopColor="#6F18B8" />
-              </linearGradient>
-
-              {/* Layer 2: Main Middle Flowing Wave Gradient */}
-              <linearGradient id="waveMidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#380862" />
-                <stop offset="40%" stopColor="#4B0D83" />
-                <stop offset="70%" stopColor="#5D12A1" />
-                <stop offset="100%" stopColor="#35065B" />
-              </linearGradient>
-
-              {/* Layer 3: Lower Wave Gradient */}
-              <linearGradient id="waveLowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#2B044E" />
-                <stop offset="100%" stopColor="#1B022F" />
-              </linearGradient>
-
-              {/* Golden Illumination Gradients */}
-              <linearGradient id="goldGradUpper" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.1" />
-                <stop offset="25%" stopColor="#FBBF24" stopOpacity="0.85" />
-                <stop offset="60%" stopColor="#FEF08A" stopOpacity="1" />
-                <stop offset="90%" stopColor="#FDE047" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.5" />
-              </linearGradient>
-
-              <linearGradient id="goldGradMain" x1="0%" y1="50%" x2="100%" y2="50%">
-                <stop offset="0%" stopColor="#EAB308" stopOpacity="0.5" />
-                <stop offset="15%" stopColor="#FDE047" stopOpacity="0.95" />
-                <stop offset="45%" stopColor="#FEF9C3" stopOpacity="1" />
-                <stop offset="75%" stopColor="#FDE047" stopOpacity="0.9" />
-                <stop offset="95%" stopColor="#EAB308" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#CA8A04" stopOpacity="0.3" />
-              </linearGradient>
-
-              {/* Golden Outer Glow Filter */}
-              <filter id="goldGlow" x="-30%" y="-100%" width="160%" height="300%">
-                <feGaussianBlur stdDeviation="1.8" result="blur1" />
-                <feGaussianBlur stdDeviation="4.5" result="blur2" />
-                <feMerge>
-                  <feMergeNode in="blur2" />
-                  <feMergeNode in="blur1" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-
-              <filter id="softAura" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="20" />
-              </filter>
-            </defs>
-
-            {/* Base Shape with Flowing Curved Bottom Edge (Transitions naturally to lavender dashboard) */}
-            <path
-              d="M 0 0 L 390 0 L 390 215 C 330 235, 265 258, 195 258 C 120 258, 55 235, 0 245 Z"
-              fill="url(#heroBgGrad)"
-            />
-
-            {/* Ambient Warm Golden & Purple Aura Flares */}
-            <circle cx="350" cy="100" r="60" fill="#FDE047" opacity="0.10" filter="url(#softAura)" />
-            <circle cx="340" cy="130" r="80" fill="#A855F7" opacity="0.28" filter="url(#softAura)" />
-            <circle cx="40" cy="150" r="70" fill="#7C3AED" opacity="0.18" filter="url(#softAura)" />
-
-            {/* Layer 1: Upper Right Wave Crest (Rises dramatically to the right edge) */}
-            <path
-              d="M 170 185 C 225 170, 285 135, 335 110 C 355 100, 375 92, 390 90 L 390 215 C 330 235, 265 258, 195 258 C 190 258, 180 257, 170 256 Z"
-              fill="url(#waveRightGrad)"
-            />
-
-            {/* Upper Wave Golden Illuminated Stroke */}
-            <path
-              d="M 170 185 C 225 170, 285 135, 335 110 C 355 100, 375 92, 390 90"
-              stroke="url(#goldGradUpper)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              filter="url(#goldGlow)"
-            />
-
-            {/* Layer 2: Main Flowing Middle Wave */}
-            <path
-              d="M 0 160 C 45 155, 95 168, 145 190 C 195 210, 245 212, 285 196 C 328 178, 368 155, 390 142 L 390 215 C 330 235, 265 258, 195 258 C 120 258, 55 235, 0 245 Z"
-              fill="url(#waveMidGrad)"
-            />
-
-            {/* Main Wave Golden Illuminated Stroke */}
-            <path
-              d="M 0 160 C 45 155, 95 168, 145 190 C 195 210, 245 212, 285 196 C 328 178, 368 155, 390 142"
-              stroke="url(#goldGradMain)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              filter="url(#goldGlow)"
-            />
-
-            {/* Layer 3: Lower Accent Wave */}
-            <path
-              d="M 0 205 C 65 210, 135 232, 205 236 C 275 240, 335 222, 390 200 L 390 215 C 330 235, 265 258, 195 258 C 120 258, 55 235, 0 245 Z"
-              fill="url(#waveLowGrad)"
-              opacity="0.9"
-            />
-
-            {/* Subtle Rim Light along lower wave */}
-            <path
-              d="M 0 205 C 65 210, 135 232, 205 236 C 275 240, 335 222, 390 200"
-              stroke="#FDE047"
-              strokeWidth="0.85"
-              strokeOpacity="0.35"
-              strokeLinecap="round"
-            />
-          </svg>
+      <div className="relative pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 overflow-visible">
+        {/* Exact Master Artwork: Flowing Curved Purple Background with Golden Illuminated Contours */}
+        <div className="absolute inset-0 w-full h-[260px] pointer-events-none select-none">
+          <Image
+            src="/images/finora-hero-curved-banner.png"
+            alt="Hero Curved Banner"
+            fill
+            priority
+            sizes="100vw"
+            className="object-fill object-top select-none pointer-events-none"
+          />
         </div>
 
         {/* TOP BRAND BAR */}
@@ -714,7 +595,7 @@ export default function MobileDashboard({
       {/* ========================================================================= */}
       {/* 2. FLOATING CONTENT BODY (OVERLAPPING THE FLOWING PURPLE HERO WAVES)       */}
       {/* ========================================================================= */}
-      <div className="px-4 -mt-12 relative z-30 space-y-3.5">
+      <div className="px-4 -mt-10 relative z-30 space-y-3.5">
         {/* ========================================================= */}
         {/* CARD 1: NET MONTHLY SAVINGS HERO CARD                     */}
         {/* ========================================================= */}
