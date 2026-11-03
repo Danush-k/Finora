@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import CsvImportModal from "@/components/transactions/CsvImportModal";
 import CategoryBudgetModal from "@/components/dashboard/CategoryBudgetModal";
+import TransactionModal from "@/components/transactions/TransactionModal";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { CategoryBudgetStatus, OverallBudgetInfo } from "@/types";
@@ -54,6 +55,7 @@ export default function DashboardPage() {
   const [loadingChart, setLoadingChart] = useState(() => !api.getCachedMonthlyChart());
   const [isFiltering, setIsFiltering] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+  const [transactionModalOpen, setTransactionModalOpen] = useState(false);
 
   // Period toggle: MONTHLY | WEEKLY | YEARLY
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("MONTHLY");
@@ -219,6 +221,7 @@ export default function DashboardPage() {
         onResetMonth={handleResetMonth}
         onOpenBudgetModal={() => setBudgetModalOpen(true)}
         onOpenCsvModal={() => setCsvModalOpen(true)}
+        onOpenTransactionModal={() => setTransactionModalOpen(true)}
         onDeleteTransaction={async (id) => {
           try {
             await api.deleteTransaction(id);
@@ -625,6 +628,21 @@ export default function DashboardPage() {
       onClose={() => setCsvModalOpen(false)}
       onSuccess={() => {
         loadData();
+      }}
+    />
+
+    {/* Add / Edit Transaction Modal */}
+    <TransactionModal
+      isOpen={transactionModalOpen}
+      onClose={() => setTransactionModalOpen(false)}
+      onSubmit={async (data) => {
+        try {
+          await api.createTransaction(data);
+          await loadData();
+        } catch (e) {
+          console.error("Failed to create transaction", e);
+          throw e;
+        }
       }}
     />
 

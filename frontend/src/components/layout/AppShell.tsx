@@ -35,10 +35,6 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Top mobile overscroll guard: prevents white background when user drags down */}
-      {pathname === "/" && (
-        <div className="fixed -top-96 left-0 right-0 h-96 bg-[#1F0238] -z-10 md:hidden pointer-events-none" />
-      )}
       <Header />
       {/* Mobile-first comfortable padding: full-bleed on mobile overview, expansive on desktop */}
       <main

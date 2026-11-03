@@ -6,7 +6,6 @@ import Image from "next/image";
 import {
   TrendingUp,
   TrendingDown,
-  Wallet,
   Receipt,
   PieChart,
   PlusCircle,
@@ -22,12 +21,10 @@ import {
   BarChart3,
   RefreshCw,
   Lock,
-  Check,
   Target,
-  Flag,
-  Coins,
   Banknote,
   Sliders,
+  HandCoins,
 } from "lucide-react";
 import {
   DashboardSummary,
@@ -74,17 +71,97 @@ interface MobileDashboardProps {
   onResetMonth: () => void;
   onOpenBudgetModal: () => void;
   onOpenCsvModal: () => void;
+  onOpenTransactionModal?: () => void;
   onEditTransaction?: (txn: Transaction) => void;
   onDeleteTransaction?: (id: string) => void;
 }
 
 // Precise currency formatting with 2 decimal places as in the reference screenshot
 const formatExactCurrency = (amt: number) => {
-  return "₹" + Math.abs(amt).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return (
+    "₹" +
+    Math.abs(amt).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
 };
+
+// Dynamic chart scale calculation: calculates nice round axis intervals from actual data
+function calculateDynamicChartScale(maxValue: number): {
+  max: number;
+  ticks: { value: number; label: string }[];
+} {
+  const safeMax = Math.max(maxValue, 100);
+
+  // Desired intervals: 6 intervals (7 ticks: niceMax down to 0)
+  const roughStep = safeMax / 6;
+  const power = Math.floor(Math.log10(roughStep));
+  const magnitude = Math.pow(10, power);
+  const fraction = roughStep / magnitude;
+
+  let niceStepFactor: number;
+  if (fraction <= 1.2) niceStepFactor = 1;
+  else if (fraction <= 2.2) niceStepFactor = 2;
+  else if (fraction <= 3.2) niceStepFactor = 2.5;
+  else if (fraction <= 6) niceStepFactor = 5;
+  else niceStepFactor = 10;
+
+  const step = niceStepFactor * magnitude;
+  const niceMax = Math.ceil(safeMax / step) * step;
+
+  const formatTick = (val: number): string => {
+    if (val === 0) return "0";
+    if (val >= 10000000) return `${+(val / 10000000).toFixed(1)}Cr`;
+    if (val >= 100000) {
+      const inLakhs = +(val / 100000).toFixed(1);
+      return `${inLakhs}L`;
+    }
+    if (val >= 1000) {
+      const inK = +(val / 1000).toFixed(1);
+      return `${inK.toString().replace(".0", "")}K`;
+    }
+    return val.toString();
+  };
+
+  const ticks: { value: number; label: string }[] = [];
+  const count = Math.max(1, Math.round(niceMax / step));
+  for (let i = count; i >= 0; i--) {
+    const val = Math.round(i * step);
+    ticks.push({
+      value: val,
+      label: formatTick(val),
+    });
+  }
+
+  return {
+    max: niceMax,
+    ticks,
+  };
+}
+
+// Exact stacked-coins cylinder icon from reference
+function StackedCoinsIcon({ className = "w-4 h-4 text-[#7C3AED]" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <ellipse cx="8" cy="7" rx="6" ry="2.2" />
+      <path d="M2 7v3.5c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V7" />
+      <path d="M2 10.5V14c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2v-3.5" />
+      <path d="M2 14v3.5c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V14" />
+      <ellipse cx="16" cy="11" rx="5" ry="2" />
+      <path d="M14 13v3c.5.8 2 1.5 4 1.5s3.5-.7 4-1.5v-3" />
+      <path d="M14 16v3c.5.8 2 1.5 4 1.5s3.5-.7 4-1.5v-3" />
+    </svg>
+  );
+}
 
 export default function MobileDashboard({
   summary,
@@ -100,6 +177,7 @@ export default function MobileDashboard({
   onResetMonth,
   onOpenBudgetModal,
   onOpenCsvModal,
+  onOpenTransactionModal,
   onEditTransaction,
   onDeleteTransaction,
 }: MobileDashboardProps) {
@@ -133,19 +211,6 @@ export default function MobileDashboard({
   useEffect(() => {
     setInspectedPoint(null);
   }, [chartPeriod]);
-
-  // Set theme-color and document background to deep purple on mobile overview
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) metaTheme.setAttribute("content", "#1F0238");
-    document.documentElement.style.backgroundColor = "#1F0238";
-    document.body.style.backgroundColor = "#1F0238";
-    return () => {
-      document.documentElement.style.backgroundColor = "";
-      document.body.style.backgroundColor = "";
-    };
-  }, []);
 
   // Determine active year and month
   const activeYear = useMemo(() => {
@@ -218,7 +283,7 @@ export default function MobileDashboard({
       }));
   }, [monthlyChart?.points]);
 
-  // 3. WEEKLY DATASET (Dynamic Fetching via Calendar API)
+  // 3. WEEKLY DATASET: Display ALL applicable weeks (W1 to W5 or W4)
   const [weeklyData, setWeeklyData] = useState<MobileChartPoint[]>([]);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
 
@@ -228,35 +293,66 @@ export default function MobileDashboard({
     let isMounted = true;
     setWeeklyLoading(true);
 
+    const totalDaysInMonth = new Date(activeYear, activeMonth, 0).getDate();
+    const monthName = selectedMonthName || summary?.activeMonthName || "November";
+    const shortMonth = monthName.slice(0, 3);
+    const numWeeks = totalDaysInMonth > 28 ? 5 : 4;
+
+    const initialWeeks: {
+      label: string;
+      subLabel: string;
+      dateRange: string;
+      key: string;
+      exp: number;
+      inc: number;
+    }[] = [];
+    for (let w = 1; w <= numWeeks; w++) {
+      const startDay = (w - 1) * 7 + 1;
+      const endDay = w === numWeeks ? totalDaysInMonth : w * 7;
+      initialWeeks.push({
+        label: `W${w}`,
+        subLabel: `Week ${w} (${shortMonth} ${startDay}–${endDay})`,
+        dateRange: `${shortMonth} ${startDay}–${endDay}`,
+        key: `W${w}`,
+        exp: 0,
+        inc: 0,
+      });
+    }
+
+    // Set skeleton/initial points immediately to prevent layout shift
+    setWeeklyData(
+      initialWeeks.map((w) => ({
+        id: `${activeYear}-${activeMonth}-${w.key}`,
+        label: w.label,
+        subLabel: w.subLabel,
+        dateRangeLabel: w.dateRange,
+        expenses: 0,
+        income: 0,
+        savings: 0,
+        year: activeYear,
+        monthNumber: activeMonth,
+      }))
+    );
+
     api
       .getMonthlyCalendar(activeYear, activeMonth)
       .then((days: CalendarDaySummary[]) => {
         if (!isMounted) return;
 
-        const monthName = selectedMonthName || summary?.activeMonthName || "Month";
-        const shortMonth = monthName.slice(0, 3);
-        const weeks = [
-          { label: "W1", subLabel: `Week 1 (${shortMonth} 1–7)`, dateRange: `${shortMonth} 1–7`, key: "W1", exp: 0, inc: 0 },
-          { label: "W2", subLabel: `Week 2 (${shortMonth} 8–14)`, dateRange: `${shortMonth} 8–14`, key: "W2", exp: 0, inc: 0 },
-          { label: "W3", subLabel: `Week 3 (${shortMonth} 15–21)`, dateRange: `${shortMonth} 15–21`, key: "W3", exp: 0, inc: 0 },
-          { label: "W4", subLabel: `Week 4 (${shortMonth} 22–28)`, dateRange: `${shortMonth} 22–28`, key: "W4", exp: 0, inc: 0 },
-          { label: "W5", subLabel: `Week 5 (${shortMonth} 29–end)`, dateRange: `${shortMonth} 29+`, key: "W5", exp: 0, inc: 0 },
-        ];
+        const weeksCopy = initialWeeks.map((w) => ({ ...w, exp: 0, inc: 0 }));
 
         for (const d of days || []) {
-          const day = d.dayOfMonth;
-          let wIdx = 0;
-          if (day <= 7) wIdx = 0;
-          else if (day <= 14) wIdx = 1;
-          else if (day <= 21) wIdx = 2;
-          else if (day <= 28) wIdx = 3;
-          else wIdx = 4;
+          const day = d.dayOfMonth || (d.date ? parseInt(d.date.split("-")[2], 10) : 0);
+          if (!day || day < 1 || day > totalDaysInMonth) continue;
 
-          weeks[wIdx].exp += d.totalExpense || 0;
-          weeks[wIdx].inc += d.totalIncome || 0;
+          let wIdx = Math.floor((day - 1) / 7);
+          if (wIdx >= numWeeks) wIdx = numWeeks - 1;
+
+          weeksCopy[wIdx].exp += d.totalExpense || 0;
+          weeksCopy[wIdx].inc += d.totalIncome || 0;
         }
 
-        const formatted: MobileChartPoint[] = weeks.map((w) => ({
+        const formatted: MobileChartPoint[] = weeksCopy.map((w) => ({
           id: `${activeYear}-${activeMonth}-${w.key}`,
           label: w.label,
           subLabel: w.subLabel,
@@ -289,7 +385,7 @@ export default function MobileDashboard({
     return monthlyPoints;
   }, [chartPeriod, weeklyData, yearlyPoints, monthlyPoints]);
 
-  // Baseline Monthly figures from summary
+  // Baseline figures from summary
   const totalExpenses = summary?.totalExpensesThisMonth || 0;
   const totalIncome = summary?.totalIncomeThisMonth || 0;
   const netSavings = summary?.netSavingsThisMonth || 0;
@@ -377,10 +473,13 @@ export default function MobileDashboard({
     }
   }, [chartPeriod, periodMetrics, onPeriodStatsChange]);
 
-  // Fixed max scale 6K matching reference screenshot or scaled dynamically
-  const chartMax = useMemo(() => {
-    const rawMax = Math.max(...activePoints.map((p) => Math.max(p.expenses, p.income, 1)), 6000);
-    return Math.max(6000, Math.ceil(rawMax / 1000) * 1000);
+  // Dynamic Chart Scale calculation: Never hardcoded to 6K!
+  const chartScale = useMemo(() => {
+    const rawMax = Math.max(
+      ...activePoints.map((p) => Math.max(p.expenses || 0, p.income || 0)),
+      0
+    );
+    return calculateDynamicChartScale(rawMax);
   }, [activePoints]);
 
   // Categories breakdown
@@ -397,43 +496,155 @@ export default function MobileDashboard({
 
   return (
     <div className="md:hidden pb-32 select-none bg-[#F6F4FA] min-h-screen">
-      {/* Full-width fixed overscroll guard for iOS bounce: preserves deep purple #1F0238 */}
-      <div className="fixed -top-96 left-0 right-0 h-96 bg-[#1F0238] -z-10 pointer-events-none" />
-
       {/* ========================================================================= */}
-      {/* 1. EXACT REFERENCE HERO SECTION: DEEP PURPLE + SHINING GOLD CURVY WAVES   */}
+      {/* 1. PURPLE HERO BANNER WITH FLOWING MULTI-LAYER CURVES & GOLDEN BORDERS    */}
       {/* ========================================================================= */}
-      <div
-        className="relative overflow-hidden text-white pt-[calc(env(safe-area-inset-top)+14px)] pb-14 px-5 shadow-[0_16px_40px_rgba(26,4,54,0.18)] bg-[#1F0238] rounded-b-[40px]"
-      >
-        {/* Ambient Top Glows */}
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-purple-500/25 blur-3xl pointer-events-none" />
-        <div className="absolute top-12 left-0 w-60 h-60 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
+      <div className="relative pt-[calc(env(safe-area-inset-top)+20px)] pb-20 px-5">
+        {/* SVG Flowing Curved Background with Golden Illuminated Strokes */}
+        <div className="absolute inset-0 w-full h-[280px] pointer-events-none overflow-hidden">
+          <svg
+            viewBox="0 0 390 280"
+            fill="none"
+            preserveAspectRatio="none"
+            className="w-full h-full"
+          >
+            <defs>
+              {/* Deep Royal Purple Background Gradient */}
+              <linearGradient id="heroBgGrad" x1="0%" y1="0%" x2="25%" y2="100%">
+                <stop offset="0%" stopColor="#1E0238" />
+                <stop offset="35%" stopColor="#2C054E" />
+                <stop offset="70%" stopColor="#3A0766" />
+                <stop offset="100%" stopColor="#1F0236" />
+              </linearGradient>
 
-        {/* Ambient Warm Golden Flare behind wave crest */}
-        <div className="absolute bottom-4 right-4 w-44 h-28 bg-gradient-to-r from-amber-400/35 via-yellow-400/25 to-transparent blur-2xl rounded-full pointer-events-none z-10" />
+              {/* Layer 1: Upper Right Wave Crest Gradient */}
+              <linearGradient id="waveRightGrad" x1="20%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#36065F" />
+                <stop offset="50%" stopColor="#521191" />
+                <stop offset="100%" stopColor="#6F18B8" />
+              </linearGradient>
+
+              {/* Layer 2: Main Middle Flowing Wave Gradient */}
+              <linearGradient id="waveMidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#380862" />
+                <stop offset="40%" stopColor="#4B0D83" />
+                <stop offset="70%" stopColor="#5D12A1" />
+                <stop offset="100%" stopColor="#35065B" />
+              </linearGradient>
+
+              {/* Layer 3: Lower Wave Gradient */}
+              <linearGradient id="waveLowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#2B044E" />
+                <stop offset="100%" stopColor="#1B022F" />
+              </linearGradient>
+
+              {/* Golden Illumination Gradients */}
+              <linearGradient id="goldGradUpper" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.1" />
+                <stop offset="25%" stopColor="#FBBF24" stopOpacity="0.85" />
+                <stop offset="60%" stopColor="#FEF08A" stopOpacity="1" />
+                <stop offset="90%" stopColor="#FDE047" stopOpacity="0.95" />
+                <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.5" />
+              </linearGradient>
+
+              <linearGradient id="goldGradMain" x1="0%" y1="50%" x2="100%" y2="50%">
+                <stop offset="0%" stopColor="#EAB308" stopOpacity="0.5" />
+                <stop offset="15%" stopColor="#FDE047" stopOpacity="0.95" />
+                <stop offset="45%" stopColor="#FEF9C3" stopOpacity="1" />
+                <stop offset="75%" stopColor="#FDE047" stopOpacity="0.9" />
+                <stop offset="95%" stopColor="#EAB308" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#CA8A04" stopOpacity="0.3" />
+              </linearGradient>
+
+              {/* Golden Outer Glow Filter */}
+              <filter id="goldGlow" x="-30%" y="-100%" width="160%" height="300%">
+                <feGaussianBlur stdDeviation="1.8" result="blur1" />
+                <feGaussianBlur stdDeviation="4.5" result="blur2" />
+                <feMerge>
+                  <feMergeNode in="blur2" />
+                  <feMergeNode in="blur1" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+
+              <filter id="softAura" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="20" />
+              </filter>
+            </defs>
+
+            {/* Base Shape with Flowing Curved Bottom Edge (Transitions naturally to lavender dashboard) */}
+            <path
+              d="M 0 0 L 390 0 L 390 215 C 330 235, 265 258, 195 258 C 120 258, 55 235, 0 245 Z"
+              fill="url(#heroBgGrad)"
+            />
+
+            {/* Ambient Warm Golden & Purple Aura Flares */}
+            <circle cx="350" cy="100" r="60" fill="#FDE047" opacity="0.10" filter="url(#softAura)" />
+            <circle cx="340" cy="130" r="80" fill="#A855F7" opacity="0.28" filter="url(#softAura)" />
+            <circle cx="40" cy="150" r="70" fill="#7C3AED" opacity="0.18" filter="url(#softAura)" />
+
+            {/* Layer 1: Upper Right Wave Crest (Rises dramatically to the right edge) */}
+            <path
+              d="M 170 185 C 225 170, 285 135, 335 110 C 355 100, 375 92, 390 90 L 390 215 C 330 235, 265 258, 195 258 C 190 258, 180 257, 170 256 Z"
+              fill="url(#waveRightGrad)"
+            />
+
+            {/* Upper Wave Golden Illuminated Stroke */}
+            <path
+              d="M 170 185 C 225 170, 285 135, 335 110 C 355 100, 375 92, 390 90"
+              stroke="url(#goldGradUpper)"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              filter="url(#goldGlow)"
+            />
+
+            {/* Layer 2: Main Flowing Middle Wave */}
+            <path
+              d="M 0 160 C 45 155, 95 168, 145 190 C 195 210, 245 212, 285 196 C 328 178, 368 155, 390 142 L 390 215 C 330 235, 265 258, 195 258 C 120 258, 55 235, 0 245 Z"
+              fill="url(#waveMidGrad)"
+            />
+
+            {/* Main Wave Golden Illuminated Stroke */}
+            <path
+              d="M 0 160 C 45 155, 95 168, 145 190 C 195 210, 245 212, 285 196 C 328 178, 368 155, 390 142"
+              stroke="url(#goldGradMain)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              filter="url(#goldGlow)"
+            />
+
+            {/* Layer 3: Lower Accent Wave */}
+            <path
+              d="M 0 205 C 65 210, 135 232, 205 236 C 275 240, 335 222, 390 200 L 390 215 C 330 235, 265 258, 195 258 C 120 258, 55 235, 0 245 Z"
+              fill="url(#waveLowGrad)"
+              opacity="0.9"
+            />
+
+            {/* Subtle Rim Light along lower wave */}
+            <path
+              d="M 0 205 C 65 210, 135 232, 205 236 C 275 240, 335 222, 390 200"
+              stroke="#FDE047"
+              strokeWidth="0.85"
+              strokeOpacity="0.35"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
 
         {/* TOP BRAND BAR */}
         <div className="flex items-center justify-between gap-3 relative z-20">
-          {/* Logo: Original Finora Logo Asset (Purple ribbon F + Finora wordmark + BY PAYTRACE) */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-            <div className="relative w-8 h-8 shrink-0">
+          {/* Exact Original Finora Logo Asset (F Ribbon + Finora + BY PAYTRACE) */}
+          <Link href="/" className="flex items-center shrink-0 group">
+            <div className="relative flex items-center" style={{ width: "126px", height: "32px" }}>
               <Image
-                src="/finora-icon-transparent.png"
-                alt="Finora"
-                width={32}
+                src="/images/finora-logo-white.png"
+                alt="Finora BY PAYTRACE"
+                width={126}
                 height={32}
                 priority
-                className="w-8 h-8 object-contain select-none transition-transform duration-200 group-hover:scale-105"
+                style={{ width: "126px", height: "32px", objectFit: "contain" }}
+                className="select-none transition-transform duration-200 group-hover:scale-[1.02]"
               />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[20px] font-black text-white tracking-tight leading-none">
-                Finora
-              </span>
-              <span className="text-[8px] font-bold text-purple-200/90 tracking-[0.24em] uppercase leading-none mt-1">
-                BY PAYTRACE
-              </span>
             </div>
           </Link>
 
@@ -465,7 +676,7 @@ export default function MobileDashboard({
               type="button"
               onClick={logout}
               title={`${user?.name || "Danush"} - Click to logout`}
-              className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#8E44EC] via-[#A855F7] to-[#D946EF] border border-white/30 flex items-center justify-center text-white font-black text-xs shadow-md cursor-pointer active:scale-95 transition-transform"
+              className="w-9 h-9 rounded-full bg-[#8E44EC] border border-white/30 flex items-center justify-center text-white font-extrabold text-xs shadow-md cursor-pointer active:scale-95 transition-transform"
             >
               {user?.name ? user.name.slice(0, 2).toUpperCase() : "DA"}
             </button>
@@ -498,70 +709,12 @@ export default function MobileDashboard({
             <span>Grow</span>
           </p>
         </div>
-
-        {/* ========================================================================= */}
-        {/* MANDATORY SHINING GOLD CONTOUR LINES ON CURVED ORGANIC PURPLE HERO BASE    */}
-        {/* ========================================================================= */}
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none w-full overflow-hidden leading-none z-10">
-          <svg
-            viewBox="0 0 400 135"
-            fill="none"
-            preserveAspectRatio="none"
-            className="w-full h-32 -mb-0.5"
-          >
-            <defs>
-              <linearGradient id="finoraGoldCurveGradRef" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#FFF2B8" />
-                <stop offset="20%" stopColor="#FFD700" />
-                <stop offset="50%" stopColor="#FFA000" />
-                <stop offset="80%" stopColor="#FFD700" />
-                <stop offset="100%" stopColor="#FFF7D6" />
-              </linearGradient>
-              <filter id="finoraGoldCurveGlowRef" x="-20%" y="-40%" width="140%" height="180%">
-                <feDropShadow dx="0" dy="0" stdDeviation="3.2" floodColor="#FFB300" floodOpacity="0.95" />
-                <feDropShadow dx="0" dy="0" stdDeviation="6.5" floodColor="#FF8F00" floodOpacity="0.65" />
-              </filter>
-              <linearGradient id="purpleWaveLayer1Ref" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#4A0E7E" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#250346" stopOpacity="0.98" />
-              </linearGradient>
-              <linearGradient id="purpleWaveLayer2Ref" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#6D1E9E" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#2F0555" stopOpacity="1.0" />
-              </linearGradient>
-            </defs>
-            {/* Back Wave */}
-            <path
-              d="M-10,50 C110,88 230,12 410,48 L410,135 L-10,135 Z"
-              fill="url(#purpleWaveLayer1Ref)"
-            />
-            <path
-              d="M-10,50 C110,88 230,12 410,48"
-              stroke="url(#finoraGoldCurveGradRef)"
-              strokeWidth="2.8"
-              fill="none"
-              filter="url(#finoraGoldCurveGlowRef)"
-            />
-            {/* Front Wave */}
-            <path
-              d="M-10,88 C120,50 255,108 410,64 L410,135 L-10,135 Z"
-              fill="url(#purpleWaveLayer2Ref)"
-            />
-            <path
-              d="M-10,88 C120,50 255,108 410,64"
-              stroke="url(#finoraGoldCurveGradRef)"
-              strokeWidth="2.4"
-              fill="none"
-              filter="url(#finoraGoldCurveGlowRef)"
-            />
-          </svg>
-        </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. FLOATING CONTENT BODY (OVERLAPPING HERO WAVES)                          */}
+      {/* 2. FLOATING CONTENT BODY (OVERLAPPING THE FLOWING PURPLE HERO WAVES)       */}
       {/* ========================================================================= */}
-      <div className="px-4 -mt-10 relative z-20 space-y-3.5">
+      <div className="px-4 -mt-12 relative z-30 space-y-3.5">
         {/* ========================================================= */}
         {/* CARD 1: NET MONTHLY SAVINGS HERO CARD                     */}
         {/* ========================================================= */}
@@ -570,7 +723,7 @@ export default function MobileDashboard({
           <div className="flex items-center justify-between text-xs mb-1">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center shrink-0">
-                <Coins className="w-4 h-4 text-[#7C3AED]" />
+                <StackedCoinsIcon className="w-4 h-4 text-[#7C3AED]" />
               </div>
               <span className="font-bold text-slate-800 text-sm">
                 {periodMetrics.heroTitle}
@@ -617,7 +770,7 @@ export default function MobileDashboard({
           <div className="flex items-center gap-3 mt-3">
             <div className="flex-1 h-2 bg-[#EBE7F5] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-[#6C3BFF] transition-all duration-500"
+                className="h-full rounded-full bg-[#7C3AED] transition-all duration-500"
                 style={{ width: `${Math.max(5, Math.min(100, periodMetrics.savingsRate))}%` }}
               />
             </div>
@@ -632,7 +785,7 @@ export default function MobileDashboard({
             className="flex items-center justify-between pt-3.5 mt-3 border-t border-slate-100 text-slate-600 hover:text-slate-900 transition-colors group cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#6C3BFF] group-hover:scale-105 transition-transform" />
+              <Layers className="w-4 h-4 text-[#7C3AED] group-hover:scale-105 transition-transform" />
               <span className="text-xs font-semibold text-slate-600">
                 {totalRecords.toLocaleString()} transactions recorded
               </span>
@@ -646,24 +799,23 @@ export default function MobileDashboard({
         {/* ========================================================= */}
         <div className="grid grid-cols-2 gap-3.5">
           {/* Expenses Card */}
-          <div className="rounded-[26px] bg-[#FFF9FA] border border-rose-100/80 p-4 shadow-[0_8px_24px_rgba(225,29,72,0.05)] relative overflow-hidden flex flex-col justify-between min-h-[122px]">
-            {/* Ambient soft wave in corner */}
+          <div className="rounded-[24px] bg-[#FFF8F9] border border-rose-100/80 p-4 shadow-[0_8px_24px_rgba(225,29,72,0.04)] relative overflow-hidden flex flex-col justify-between min-h-[124px]">
+            {/* Ambient soft wave along bottom right */}
             <svg
               viewBox="0 0 100 60"
               fill="none"
-              className="absolute bottom-0 right-0 w-28 h-18 pointer-events-none opacity-95"
+              className="absolute bottom-0 right-0 w-28 h-16 pointer-events-none opacity-90"
             >
-              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#FED7DD" />
-              <path d="M20,60 C50,45 80,56 100,32 L100,60 Z" fill="#FBC3CB" opacity="0.6" />
+              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#FEECEF" />
             </svg>
 
             {/* Header */}
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-1.5">
-                <div className="w-9 h-9 rounded-full bg-[#FCE8EB] text-[#E0001B] border border-rose-200/50 flex items-center justify-center shrink-0">
-                  <Wallet className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center text-[#E11D48] shrink-0">
+                  <Receipt className="w-4 h-4" />
                 </div>
-                <span className="text-[13px] font-bold text-slate-800">
+                <span className="text-xs font-bold text-slate-800">
                   {chartPeriod === "WEEKLY"
                     ? "Weekly Exp."
                     : chartPeriod === "YEARLY"
@@ -671,41 +823,40 @@ export default function MobileDashboard({
                     : "Expenses"}
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-full bg-[#FCE8EB] border border-rose-200/60 flex items-center justify-center text-[#E0001B]">
-                <ArrowDownRight className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full bg-[#FEECEF] flex items-center justify-center text-[#E11D48]">
+                <ArrowDownRight className="w-3.5 h-3.5" />
               </div>
             </div>
 
             {/* Figures */}
             <div className="relative z-10 mt-2">
-              <div className="text-[22px] font-black text-[#DF0015] tracking-tight tabular-nums">
+              <div className="text-[22px] font-black text-[#E11D48] tracking-tight tabular-nums">
                 {formatExactCurrency(periodMetrics.expenses)}
               </div>
-              <span className="text-xs text-slate-400 font-medium block mt-0.5">
+              <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
                 {periodMetrics.expensesLabel}
               </span>
             </div>
           </div>
 
           {/* Income Card */}
-          <div className="rounded-[26px] bg-[#F8FDF9] border border-emerald-100/80 p-4 shadow-[0_8px_24px_rgba(16,185,129,0.05)] relative overflow-hidden flex flex-col justify-between min-h-[122px]">
-            {/* Ambient soft wave in corner */}
+          <div className="rounded-[24px] bg-[#F7FCF9] border border-emerald-100/80 p-4 shadow-[0_8px_24px_rgba(16,185,129,0.04)] relative overflow-hidden flex flex-col justify-between min-h-[124px]">
+            {/* Ambient soft wave along bottom right */}
             <svg
               viewBox="0 0 100 60"
               fill="none"
-              className="absolute bottom-0 right-0 w-28 h-18 pointer-events-none opacity-95"
+              className="absolute bottom-0 right-0 w-28 h-16 pointer-events-none opacity-90"
             >
-              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#D8F3E5" />
-              <path d="M20,60 C50,45 80,56 100,32 L100,60 Z" fill="#BAEAD0" opacity="0.6" />
+              <path d="M0,60 C35,35 65,52 100,18 L100,60 Z" fill="#EAF8F1" />
             </svg>
 
             {/* Header */}
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-1.5">
-                <div className="w-9 h-9 rounded-full bg-[#E3F7EA] text-[#009643] border border-emerald-200/50 flex items-center justify-center shrink-0">
-                  <Coins className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-[#059669] shrink-0">
+                  <Banknote className="w-4 h-4" />
                 </div>
-                <span className="text-[13px] font-bold text-slate-800">
+                <span className="text-xs font-bold text-slate-800">
                   {chartPeriod === "WEEKLY"
                     ? "Weekly Inc."
                     : chartPeriod === "YEARLY"
@@ -713,17 +864,17 @@ export default function MobileDashboard({
                     : "Income"}
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-full bg-[#E3F7EA] border border-emerald-200/60 flex items-center justify-center text-[#009643]">
-                <ArrowUpRight className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full bg-[#EAF8F1] flex items-center justify-center text-[#059669]">
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
             </div>
 
             {/* Figures */}
             <div className="relative z-10 mt-2">
-              <div className="text-[22px] font-black text-[#009744] tracking-tight tabular-nums">
+              <div className="text-[22px] font-black text-[#059669] tracking-tight tabular-nums">
                 {formatExactCurrency(periodMetrics.income)}
               </div>
-              <span className="text-xs text-slate-400 font-medium block mt-0.5">
+              <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
                 {periodMetrics.incomeLabel}
               </span>
             </div>
@@ -731,12 +882,12 @@ export default function MobileDashboard({
         </div>
 
         {/* ========================================================= */}
-        {/* CARD 3: CASHFLOW FLOW (BAR CHART WITH DOTTED GRIDLINES)   */}
+        {/* CARD 3: CASHFLOW FLOW (DYNAMIC Y-AXIS & ALL WEEKS)        */}
         {/* ========================================================= */}
         <div className="rounded-3xl bg-white border border-slate-100 shadow-xs p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center">
+              <div className="w-7 h-7 rounded-xl bg-[#F0EDF7] text-[#7C3AED] flex items-center justify-center">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div>
@@ -771,7 +922,7 @@ export default function MobileDashboard({
                     {isActive && (
                       <motion.div
                         layoutId="activeChartPeriodPill"
-                        className="absolute inset-0 rounded-lg bg-[#6C3BFF] shadow-2xs"
+                        className="absolute inset-0 rounded-lg bg-[#7C3AED] shadow-2xs"
                         transition={{ type: "spring", stiffness: 450, damping: 32 }}
                       />
                     )}
@@ -796,7 +947,7 @@ export default function MobileDashboard({
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#6C3BFF] shrink-0" />
+                    <Sparkles className="w-3.5 h-3.5 text-[#7C3AED] shrink-0" />
                     <span className="text-xs font-black text-slate-900 truncate">
                       {inspectedPoint.subLabel || inspectedPoint.label}
                     </span>
@@ -839,8 +990,8 @@ export default function MobileDashboard({
             )}
           </AnimatePresence>
 
-          {/* DOTTED GRIDLINE BAR CHART */}
-          {weeklyLoading && chartPeriod === "WEEKLY" ? (
+          {/* DOTTED GRIDLINE BAR CHART WITH DYNAMIC Y-AXIS */}
+          {weeklyLoading && chartPeriod === "WEEKLY" && weeklyData.length === 0 ? (
             <div className="h-44 flex items-end justify-between gap-2 pt-4 px-1">
               {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1.5 animate-pulse">
@@ -855,34 +1006,37 @@ export default function MobileDashboard({
           ) : activePoints.length > 0 ? (
             <div className="relative pt-2">
               <div className="relative h-44 w-full flex">
-                {/* Y-Axis Labels: 6K, 5K, 4K, 3K, 2K, 1K, 0 */}
-                <div className="flex flex-col justify-between text-[10px] text-slate-400 font-semibold pr-2 pb-5 h-36 shrink-0 text-right w-6">
-                  <span>6K</span>
-                  <span>5K</span>
-                  <span>4K</span>
-                  <span>3K</span>
-                  <span>2K</span>
-                  <span>1K</span>
-                  <span>0</span>
+                {/* Dynamically Generated Y-Axis Labels matching ticks */}
+                <div className="flex flex-col justify-between text-[10px] text-slate-400 font-semibold pr-2 pb-5 h-36 shrink-0 text-right w-7">
+                  {chartScale.ticks.map((tick) => (
+                    <span key={tick.value}>{tick.label}</span>
+                  ))}
                 </div>
 
-                {/* Chart Canvas with Horizontal Dotted Gridlines */}
+                {/* Chart Canvas with Dynamic Horizontal Dotted Gridlines */}
                 <div className="relative flex-1 h-36 flex items-end">
-                  {/* 7 Horizontal Dotted Lines */}
-                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                    {[6, 5, 4, 3, 2, 1, 0].map((val) => (
+                  {/* Horizontal Dotted Lines matching dynamic ticks */}
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-5">
+                    {chartScale.ticks.map((tick) => (
                       <div
-                        key={val}
+                        key={tick.value}
                         className="w-full border-b border-dashed border-slate-200/90"
                       />
                     ))}
                   </div>
 
-                  {/* Dual Bars for each month */}
+                  {/* Grouped Inflow (Green) & Outflow (Purple) Bars */}
                   <div className="relative z-10 w-full h-full flex items-end justify-between px-1">
                     {activePoints.map((pt, idx) => {
-                      const expenseH = Math.max(6, Math.min(100, Math.round((pt.expenses / chartMax) * 100)));
-                      const incomeH = Math.max(6, Math.min(100, Math.round((pt.income / chartMax) * 100)));
+                      const expenseH =
+                        pt.expenses > 0
+                          ? Math.max(4, Math.min(100, Math.round((pt.expenses / chartScale.max) * 100)))
+                          : 0;
+                      const incomeH =
+                        pt.income > 0
+                          ? Math.max(4, Math.min(100, Math.round((pt.income / chartScale.max) * 100)))
+                          : 0;
+
                       const isSelected =
                         inspectedPoint?.id === pt.id ||
                         (!inspectedPoint &&
@@ -931,7 +1085,7 @@ export default function MobileDashboard({
                                 "w-full max-w-[13px] rounded-t-sm transition-colors duration-300",
                                 isSelected
                                   ? "bg-[#10B981] shadow-[0_2px_8px_rgba(16,185,129,0.5)] ring-1 ring-emerald-300"
-                                  : "bg-[#34D399] group-hover:bg-[#10B981]"
+                                  : "bg-[#10B981] group-hover:bg-[#059669]"
                               )}
                               title={`Inflow: ${formatExactCurrency(pt.income)}`}
                             />
@@ -944,18 +1098,18 @@ export default function MobileDashboard({
                                 "w-full max-w-[13px] rounded-t-sm transition-colors duration-300",
                                 isSelected
                                   ? "bg-[#8B5CF6] shadow-[0_2px_8px_rgba(139,92,246,0.5)] ring-1 ring-purple-300"
-                                  : "bg-[#A855F7] group-hover:bg-[#8B5CF6]"
+                                  : "bg-[#8B5CF6] group-hover:bg-[#7C3AED]"
                               )}
                               title={`Outflow: ${formatExactCurrency(pt.expenses)}`}
                             />
                           </div>
 
-                          {/* Month Label */}
+                          {/* Month / Week Label */}
                           <span
                             className={cn(
                               "text-[11px] font-semibold block truncate transition-colors",
                               isSelected
-                                ? "text-[#6C3BFF] font-black underline underline-offset-2"
+                                ? "text-[#7C3AED] font-black underline underline-offset-2"
                                 : "text-slate-500 group-hover:text-slate-800"
                             )}
                           >
@@ -988,60 +1142,68 @@ export default function MobileDashboard({
         </div>
 
         {/* ========================================================= */}
-        {/* ROW 4: THE 4 QUICK ACTION BUTTONS (EXACT REFERENCE STYLE) */}
+        {/* ROW 4: THE EXACT 4 QUICK ACTION BUTTONS                   */}
+        {/* 1. Add Transaction | 2. Set Budget | 3. Upload CSV | 4. Debt & Lent */}
         {/* ========================================================= */}
         <div className="grid grid-cols-4 gap-2.5">
           {/* 1. Add Transaction */}
-          <Link
-            href="/transactions?action=new"
-            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
+          <button
+            type="button"
+            onClick={() => {
+              if (onOpenTransactionModal) {
+                onOpenTransactionModal();
+              } else if (typeof window !== "undefined") {
+                window.location.href = "/transactions?action=new";
+              }
+            }}
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-2.5 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
-              <PlusCircle className="w-5 h-5 text-[#6C3BFF]" />
+            <div className="w-10 h-10 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <PlusCircle className="w-5 h-5 text-[#7C3AED]" />
             </div>
             <span className="text-[11px] font-bold text-slate-800 leading-tight">
               Add<br />Transaction
             </span>
-          </Link>
+          </button>
 
           {/* 2. Set Budget */}
           <button
             type="button"
             onClick={onOpenBudgetModal}
-            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-2.5 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Target className="w-5 h-5 text-[#6C3BFF]" />
+            <div className="w-10 h-10 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Target className="w-5 h-5 text-[#7C3AED]" />
             </div>
             <span className="text-[11px] font-bold text-slate-800 leading-tight">
               Set<br />Budget
             </span>
           </button>
 
-          {/* 3. Goals */}
+          {/* 3. Upload CSV */}
           <button
             type="button"
             onClick={onOpenCsvModal}
-            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-2.5 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Flag className="w-5 h-5 text-[#6C3BFF]" />
+            <div className="w-10 h-10 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <UploadCloud className="w-5 h-5 text-[#7C3AED]" />
             </div>
-            <span className="text-[11px] font-bold text-slate-800 leading-tight mt-1">
-              Goals
+            <span className="text-[11px] font-bold text-slate-800 leading-tight">
+              Upload<br />CSV
             </span>
           </button>
 
-          {/* 4. Reports */}
+          {/* 4. Debt & Lent */}
           <Link
             href="/debt-lent"
-            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-3 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
+            className="rounded-2xl bg-white border border-slate-100/90 shadow-2xs p-2.5 flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-all cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-[#F0EDF7] text-[#6C3BFF] flex items-center justify-center group-hover:scale-105 transition-transform">
-              <BarChart3 className="w-5 h-5 text-[#6C3BFF]" />
+            <div className="w-10 h-10 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <HandCoins className="w-5 h-5 text-[#7C3AED]" />
             </div>
-            <span className="text-[11px] font-bold text-slate-800 leading-tight mt-1">
-              Reports
+            <span className="text-[11px] font-bold text-slate-800 leading-tight">
+              Debt &amp;<br />Lent
             </span>
           </Link>
         </div>
@@ -1052,7 +1214,7 @@ export default function MobileDashboard({
         <div className="rounded-3xl bg-white border border-slate-100 shadow-2xs p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-purple-50 text-[#6C3BFF] border border-purple-100">
+              <div className="p-1.5 rounded-lg bg-purple-50 text-[#7C3AED] border border-purple-100">
                 <PieChart className="w-3.5 h-3.5" />
               </div>
               <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
@@ -1063,7 +1225,7 @@ export default function MobileDashboard({
             <button
               type="button"
               onClick={onOpenBudgetModal}
-              className="text-[11px] font-bold text-[#6C3BFF] flex items-center gap-1 cursor-pointer hover:underline"
+              className="text-[11px] font-bold text-[#7C3AED] flex items-center gap-1 cursor-pointer hover:underline"
             >
               <Sliders className="w-3 h-3" />
               <span>Limits</span>
@@ -1154,7 +1316,7 @@ export default function MobileDashboard({
 
             <Link
               href="/transactions"
-              className="text-[11px] font-bold text-[#6C3BFF] hover:underline"
+              className="text-[11px] font-bold text-[#7C3AED] hover:underline"
             >
               See all →
             </Link>
@@ -1236,37 +1398,32 @@ export default function MobileDashboard({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMonthPicker(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50"
+              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 cursor-pointer"
             />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] p-5 pb-9 shadow-2xl max-h-[75vh] flex flex-col"
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-[32px] p-5 pb-8 z-50 shadow-2xl border-t border-slate-100"
             >
-              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 shrink-0" />
-
-              <div className="flex items-center justify-between mb-3 shrink-0">
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900">Select Month</h3>
-                  <p className="text-xs text-slate-500">Filter entire overview by financial period</p>
-                </div>
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4" />
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Select Billing Cycle
+                </h3>
                 <button
                   type="button"
                   onClick={() => setShowMonthPicker(false)}
-                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 cursor-pointer"
+                  className="p-1 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="overflow-y-auto space-y-1.5 flex-1 pr-1">
+              <div className="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
                 {monthlyChart?.points?.map((pt) => {
-                  const isCurrentSelected =
-                    (selectedMonthKey && selectedMonthKey === pt.fullMonth) ||
-                    (!selectedMonthKey && summary?.activeMonthKey === pt.fullMonth);
-
+                  const isSelected = selectedMonthKey === pt.fullMonth;
                   return (
                     <button
                       key={pt.fullMonth}
@@ -1276,23 +1433,16 @@ export default function MobileDashboard({
                         setShowMonthPicker(false);
                       }}
                       className={cn(
-                        "w-full p-3 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer",
-                        isCurrentSelected
-                          ? "bg-purple-50 border border-purple-200 text-[#6C3BFF] font-black"
-                          : "bg-slate-50/70 hover:bg-slate-100 border border-slate-100 text-slate-700 font-bold"
+                        "py-3 px-2 rounded-2xl text-center border transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-purple-50/90 border-[#7C3AED] text-[#7C3AED] font-extrabold shadow-xs ring-1 ring-[#7C3AED]"
+                          : "border-slate-100 bg-slate-50/50 text-slate-700 hover:bg-slate-100 font-semibold"
                       )}
                     >
-                      <div>
-                        <span className="text-sm block">{pt.month} {pt.year || ""}</span>
-                        <span className="text-[10px] text-slate-400 font-normal">
-                          Expenses: {formatExactCurrency(pt.expenses)} · Inflow: {formatExactCurrency(pt.income)}
-                        </span>
-                      </div>
-                      {isCurrentSelected && (
-                        <div className="w-6 h-6 rounded-full bg-[#6C3BFF] text-white flex items-center justify-center">
-                          <Check className="w-3.5 h-3.5" />
-                        </div>
-                      )}
+                      <span className="block text-sm">{pt.month}</span>
+                      <span className="block text-[10px] text-slate-400 font-medium">
+                        {pt.year || 2026}
+                      </span>
                     </button>
                   );
                 })}
@@ -1305,7 +1455,7 @@ export default function MobileDashboard({
                     onResetMonth();
                     setShowMonthPicker(false);
                   }}
-                  className="w-full mt-3 py-2.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-600 text-center cursor-pointer hover:bg-slate-200 transition-colors shrink-0"
+                  className="w-full mt-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Reset to Current Month
                 </button>
@@ -1315,18 +1465,24 @@ export default function MobileDashboard({
         )}
       </AnimatePresence>
 
-      {/* Mobile Transaction Bottom Sheet */}
-      <MobileTransactionSheet
-        transaction={selectedTxn}
-        isOpen={!!selectedTxn}
-        onClose={() => setSelectedTxn(null)}
-        onEdit={(txn) => {
-          onEditTransaction?.(txn);
-        }}
-        onDelete={(id) => {
-          onDeleteTransaction?.(id);
-        }}
-      />
+      {/* ========================================================= */}
+      {/* 4. TRANSACTION DETAILS BOTTOM SHEET                       */}
+      {/* ========================================================= */}
+      {selectedTxn && (
+        <MobileTransactionSheet
+          transaction={selectedTxn}
+          isOpen={!!selectedTxn}
+          onClose={() => setSelectedTxn(null)}
+          onEdit={() => {
+            if (onEditTransaction) onEditTransaction(selectedTxn);
+            setSelectedTxn(null);
+          }}
+          onDelete={() => {
+            if (onDeleteTransaction) onDeleteTransaction(selectedTxn.id);
+            setSelectedTxn(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -71,34 +71,24 @@ export default function MobileBottomNav() {
               className="flex flex-col items-center justify-center relative transition-colors cursor-pointer group outline-none py-0.5"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              <div
+              <motion.div
+                whileTap={{ scale: 0.92 }}
+                transition={{ duration: 0.12 }}
                 className={cn(
-                  "relative flex flex-col items-center justify-center px-2 py-1 rounded-2xl transition-colors duration-200 w-full",
-                  isActive ? "text-[#6C3BFF]" : "text-[#4A1D75]/75 hover:text-[#2E0249]"
+                  "flex flex-col items-center justify-center px-2 py-1 rounded-2xl transition-all w-full",
+                  isActive ? "bg-[#EDE7FD] text-[#6C3BFF]" : "text-[#4A1D75]/75 hover:text-[#2E0249]"
                 )}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="mobileNavActivePill"
-                    className="absolute inset-0 bg-[#EDE7FD] rounded-2xl"
-                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                  />
-                )}
-                <Icon
-                  className={cn(
-                    "w-5 h-5 relative z-10 transition-transform active:scale-90",
-                    isActive ? "stroke-[2.5px] text-[#6C3BFF]" : "text-[#4A1D75]/75"
-                  )}
-                />
+                <Icon className={cn("w-5 h-5", isActive ? "stroke-[2.5px] text-[#6C3BFF]" : "text-[#4A1D75]/75")} />
                 <span
                   className={cn(
-                    "text-[10px] mt-0.5 tracking-tight relative z-10",
+                    "text-[10px] mt-0.5 tracking-tight",
                     isActive ? "font-black text-[#6C3BFF]" : "font-semibold text-[#4A1D75]/75"
                   )}
                 >
                   {item.name}
                 </span>
-              </div>
+              </motion.div>
             </Link>
           );
         })}
