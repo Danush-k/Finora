@@ -515,9 +515,15 @@ export default function MobileDashboard({
       {/* ========================================================================= */}
       {/* Top mobile overscroll guard: eliminates any white gap near time/battery */}
       <div className="fixed -top-96 left-0 right-0 h-96 bg-[#230348] z-0 pointer-events-none" />
-      <div className="fixed top-0 left-0 right-0 h-[env(safe-area-inset-top,0px)] bg-[#230348] z-30 pointer-events-none" />
+      <div
+        className="fixed top-0 left-0 right-0 z-30 pointer-events-none"
+        style={{ height: "max(env(safe-area-inset-top, 0px), 48px)", backgroundColor: "#230348" }}
+      />
 
-      <div className="relative pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 overflow-visible bg-[#230348]">
+      <div
+        className="relative pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 overflow-visible bg-[#230348]"
+        style={{ backgroundColor: "#230348" }}
+      >
         {/* Seamless upward extension matching exact deep purple (#230348) of hero banner */}
         <div className="absolute -top-48 inset-x-0 h-48 bg-[#230348] pointer-events-none select-none" />
 

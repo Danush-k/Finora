@@ -22,7 +22,6 @@
 }
 
 :root {
-  color-scheme: light !important;
   --background: #F5F6FF;
   --foreground: #0F172A;
   --surface: rgba(255, 255, 255, 0.85);
@@ -38,8 +37,18 @@
   --brand-expense: #e11d48;
 }
 
-html, body {
-  color-scheme: light !important;
+/* Mobile status bar / notch canvas background tinting matching Finora deep purple (#230348) */
+@media (max-width: 767px) {
+  html {
+    background-color: #230348 !important;
+    background: #230348 !important;
+  }
+}
+
+@media (min-width: 768px) {
+  html, body {
+    background-color: #F5F6FF !important;
+  }
 }
 
 body {

@@ -16,6 +16,20 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isAuthenticated, isLocked, isLoading } = useAuth();
 
+  // Dynamically ensure theme-color matches viewport (Purple #230348 on mobile, Light #F5F6FF on desktop)
+  React.useEffect(() => {
+    const updateThemeForScreen = () => {
+      const isMobile = window.innerWidth < 768;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute("content", isMobile ? "#230348" : "#F5F6FF");
+      }
+    };
+    updateThemeForScreen();
+    window.addEventListener("resize", updateThemeForScreen);
+    return () => window.removeEventListener("resize", updateThemeForScreen);
+  }, []);
+
   const isAuthRoute = pathname === "/login" || pathname === "/register";
 
   // During initial session check: Apple-inspired elegant loader with F logo glow
