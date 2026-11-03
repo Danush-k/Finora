@@ -16,28 +16,29 @@ function AuthenticatedApp({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isAuthenticated, isLocked, isLoading } = useAuth();
 
-  // Dynamically ensure theme-color matches viewport (Purple #230348 on mobile, Light #F5F6FF on desktop)
+  // Dynamically ensure theme-color matches:
+  // - Mobile Overview page ('/'): Purple #230348 (status bar matching hero banner)
+  // - Desktop view (all pages): Light #F5F6FF
+  // - Other mobile pages (/transactions, /calendar, /debt-lent, etc.): Old light theme #F5F6FF
   React.useEffect(() => {
     const updateThemeForScreen = () => {
       const isMobile = window.innerWidth < 768;
+      const isOverview = pathname === "/" || pathname === "";
+      const shouldBePurple = isMobile && isOverview;
+
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) {
-        meta.setAttribute("content", isMobile ? "#230348" : "#F5F6FF");
+        meta.setAttribute("content", shouldBePurple ? "#230348" : "#F5F6FF");
       }
       if (typeof document !== "undefined") {
-        if (isMobile) {
-          document.documentElement.style.backgroundColor = "#230348";
-          document.body.style.backgroundColor = "#230348";
-        } else {
-          document.documentElement.style.backgroundColor = "#F5F6FF";
-          document.body.style.backgroundColor = "#F5F6FF";
-        }
+        document.documentElement.style.backgroundColor = shouldBePurple ? "#230348" : "#F5F6FF";
+        document.body.style.backgroundColor = shouldBePurple ? "#230348" : "#F5F6FF";
       }
     };
     updateThemeForScreen();
     window.addEventListener("resize", updateThemeForScreen);
     return () => window.removeEventListener("resize", updateThemeForScreen);
-  }, []);
+  }, [pathname]);
 
   const isAuthRoute = pathname === "/login" || pathname === "/register";
 

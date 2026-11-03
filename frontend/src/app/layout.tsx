@@ -3,7 +3,10 @@ import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 
 export const viewport: Viewport = {
-  themeColor: "#230348",
+  themeColor: [
+    { media: "(min-width: 768px)", color: "#F5F6FF" },
+    { media: "(max-width: 767px)", color: "#230348" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -15,11 +18,11 @@ export const metadata: Metadata = {
     "Minimal automated expense tracker extracting HDFC bank transactions from Gmail with smart categorization, Apple liquid glass light design, and monthly calendar view.",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Finora",
   },
   other: {
-    "msapplication-navbutton-color": "#230348",
+    "msapplication-navbutton-color": "#F5F6FF",
   },
   icons: {
     icon: [
@@ -40,10 +43,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <head>
-        {/* Unconditional deep purple theme-color for iOS & mobile browsers */}
-        <meta name="theme-color" content="#230348" />
-      </head>
       <body
         className="min-h-full flex flex-col bg-[#F5F6FF] text-[#0F172A] font-sans selection:bg-[#8F6BFF]/25 selection:text-[#5228E0]"
       >
