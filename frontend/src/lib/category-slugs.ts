@@ -34,3 +34,60 @@ export function slugToCategory(slug: string): string {
     .join(" ");
 }
 
+// Robust category matching across aliases, slugs, and case differences
+export function matchesCategory(
+  txnCategory: string | undefined | null,
+  targetCategory: string | undefined | null
+): boolean {
+  if (!txnCategory || !targetCategory) return false;
+  if (targetCategory === "ALL" || targetCategory === "all") return true;
+
+  const tNorm = txnCategory.toLowerCase().trim();
+  const targetNorm = targetCategory.toLowerCase().trim();
+  if (tNorm === targetNorm) return true;
+  if (categoryToSlug(tNorm) === categoryToSlug(targetNorm)) return true;
+
+  const tCanon = slugToCategory(categoryToSlug(tNorm)).toLowerCase();
+  const targetCanon = slugToCategory(categoryToSlug(targetNorm)).toLowerCase();
+  if (tCanon === targetCanon) return true;
+
+  // Keyword-level alias fallback for database resilience
+  if (
+    targetCanon.includes("food") &&
+    (tNorm.includes("food") || tNorm.includes("dining") || tNorm.includes("restaurant") || tNorm.includes("cafe"))
+  )
+    return true;
+  if (
+    targetCanon.includes("travel") &&
+    (tNorm.includes("travel") || tNorm.includes("fuel") || tNorm.includes("petrol") || tNorm.includes("uber") || tNorm.includes("ola"))
+  )
+    return true;
+  if (
+    targetCanon.includes("util") &&
+    (tNorm.includes("util") || tNorm.includes("bill") || tNorm.includes("electric") || tNorm.includes("water") || tNorm.includes("recharge"))
+  )
+    return true;
+  if (
+    targetCanon.includes("health") &&
+    (tNorm.includes("health") || tNorm.includes("medical") || tNorm.includes("pharma") || tNorm.includes("doctor"))
+  )
+    return true;
+  if (
+    targetCanon.includes("shop") &&
+    (tNorm.includes("shop") || tNorm.includes("store") || tNorm.includes("amazon") || tNorm.includes("flipkart"))
+  )
+    return true;
+  if (
+    targetCanon.includes("transfer") &&
+    (tNorm.includes("transfer") || tNorm.includes("sent") || tNorm.includes("upi transfer"))
+  )
+    return true;
+  if (
+    targetCanon.includes("invest") &&
+    (tNorm.includes("invest") || tNorm.includes("groww") || tNorm.includes("zerodha") || tNorm.includes("mutual"))
+  )
+    return true;
+
+  return false;
+}
+

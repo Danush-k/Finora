@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { DashboardSummary, MonthlyChartData, MonthlyChartPoint } from "@/types";
+import { DashboardSummary, MonthlyChartData, MonthlyChartPoint, Transaction } from "@/types";
 import MetricCard from "@/components/dashboard/MetricCard";
 import HorizontalMetricsBar from "@/components/dashboard/HorizontalMetricsBar";
 import ExpenseChart, { ChartPeriod, ChartPeriodStats } from "@/components/dashboard/ExpenseChart";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import DesktopExpenseByCategory from "@/components/dashboard/DesktopExpenseByCategory";
 import {
   TrendingDown,
   TrendingUp,
@@ -68,6 +69,12 @@ export default function DashboardPage() {
   // Live stats computed based on the active toggle (Monthly, Weekly, Yearly)
   const [activeToggleStats, setActiveToggleStats] = useState<ChartPeriodStats | null>(null);
 
+  // Category selection for desktop interactive filtering
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [monthTransactions, setMonthTransactions] = useState<Transaction[]>([]);
+  const [activeYear, setActiveYear] = useState<number>(2026);
+  const [activeMonth, setActiveMonth] = useState<number>(11);
+
   // Category Expand state: keep standard 4 items, allow expanding if more
   const [showAllCategories, setShowAllCategories] = useState(false);
 
@@ -78,6 +85,31 @@ export default function DashboardPage() {
       if (!summary) setLoadingSummary(true);
       if (!monthlyChart) setLoadingChart(true);
     }
+
+    const targetYear = year || (selectedMonthKey ? parseInt(selectedMonthKey.split("-")[0], 10) : 2026);
+    const targetMonth = month || (selectedMonthKey ? parseInt(selectedMonthKey.split("-")[1], 10) : 11);
+    setActiveYear(targetYear);
+    setActiveMonth(targetMonth);
+
+    // Fetch month transactions for interactive category filtering & table
+    const startStr = `${targetYear}-${String(targetMonth).padStart(2, "0")}-01`;
+    const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+    const endStr = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+    const txPromise = api
+      .getTransactions({
+        startDate: startStr,
+        endDate: endStr,
+        size: 500,
+      })
+      .then((res) => {
+        if (res && res.content) {
+          setMonthTransactions(res.content);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load month transactions", err);
+      });
 
     // 1. Progressive fetch: Dashboard Summary (metrics, category breakdown, recent activity)
     const summaryPromise = api
@@ -130,7 +162,7 @@ export default function DashboardPage() {
       });
 
     try {
-      await Promise.allSettled([summaryPromise, chartPromise, budgetPromise]);
+      await Promise.allSettled([summaryPromise, chartPromise, budgetPromise, txPromise]);
     } finally {
       setIsFiltering(false);
     }
@@ -354,214 +386,32 @@ export default function DashboardPage() {
         </div>
 
         {/* ========================================================= */}
-        {/* CATEGORY BREAKDOWN CARD: Direct Page Navigation to Dedicated Module */}
+        {/* CATEGORY BREAKDOWN CARD: Interactive Donut + Category Analytics */}
         {/* ========================================================= */}
         {summary ? (
-          <div
-            id="expense-by-category"
-            className="rounded-3xl liquid-glass p-5 sm:p-6 border border-slate-200/80 flex flex-col justify-between shadow-xs select-none"
-          >
-          <div>
-            <div className="flex items-center justify-between mb-3.5">
-              <Link
-                href="/dashboard/expenses/categories"
-                className="flex items-center gap-2 group cursor-pointer"
-                title="Open dedicated Expense Analytics page"
-              >
-                <div className="p-1.5 rounded-xl bg-purple-50 text-[#6C3BFF] border border-purple-100 shadow-2xs group-hover:scale-105 transition-transform">
-                  <PieChart className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-[#6C3BFF] transition-colors">
-                      Expense by Category
-                    </h4>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 group-hover:text-[#6C3BFF] transition-all" />
-                  </div>
-                  {summary?.activeMonthName && (
-                    <span className="text-[10px] text-[#6C3BFF] font-bold">
-                      {summary.activeMonthName}
-                    </span>
-                  )}
-                </div>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setBudgetModalOpen(true)}
-                className="btn-secondary h-7 px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer shadow-2xs hover:border-[#6C3BFF]/30 flex items-center gap-1"
-                title="Configure monthly budget limits"
-              >
-                <Sliders className="w-3 h-3 text-[#5228E0]" />
-                <span>Limits</span>
-              </button>
-            </div>
-
-
-            {/* Overall Monthly Budget Indicator */}
-            {overallBudget && overallBudget.hasLimit && overallBudget.limitValue > 0 && (
-              <div className="mb-3.5 p-3 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 border border-indigo-100/80 shadow-2xs">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-bold text-slate-800 flex items-center gap-1.5 text-[11px]">
-                    <Wallet className="w-3 h-3 text-indigo-600" />
-                    <span>Monthly Budget</span>
-                  </span>
-                  <span className="font-extrabold text-slate-900 text-xs">
-                    {formatCurrency(overallBudget.totalExpenses || summary?.totalExpensesThisMonth || 0)}{" "}
-                    <span className="text-slate-400 font-normal text-[10px]">
-                      / {formatCurrency(overallBudget.limitValue)}
-                    </span>
-                  </span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      overallBudget.status === "EXCEEDED"
-                        ? "bg-rose-500"
-                        : overallBudget.status === "WARNING"
-                        ? "bg-amber-500"
-                        : "bg-[#6C3BFF]"
-                    }`}
-                    style={{
-                      width: `${Math.min(100, Math.round(overallBudget.percentageUsed || 0))}%`,
-                    }}
-                  />
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-slate-500">
-                  <span>
-                    Allocated: <strong className="text-slate-700">{formatCurrency(overallBudget.totalAllocated)}</strong>
-                  </span>
-                  <span
-                    className={
-                      overallBudget.remainingBuffer < 0
-                        ? "text-rose-600 font-bold"
-                        : "text-emerald-700 font-semibold"
-                    }
-                  >
-                    {overallBudget.remainingBuffer < 0
-                      ? `Over by ${formatCurrency(Math.abs(overallBudget.remainingBuffer))}`
-                      : `Buffer: ${formatCurrency(overallBudget.remainingBuffer)}`}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Standard Category Rows using Uniform Theme */}
-            {categoryEntries.length > 0 ? (
-              <div className="space-y-2.5">
-                {categoryEntries.slice(0, 4).map(([cat, amt]) => {
-                  const pctOfTotal = Math.min(100, Math.round((amt / totalCategoryExpenses) * 100));
-                  const budget = categoryBudgets.find((b) => b.category === cat);
-                  const hasLimit = !!(
-                    budget &&
-                    budget.hasLimit &&
-                    budget.computedLimitAmount &&
-                    budget.computedLimitAmount > 0
-                  );
-                  const computedLimit = budget?.computedLimitAmount || 0;
-                  const pctOfLimit = hasLimit ? Math.round((amt / computedLimit) * 100) : 0;
-                  const isOver = hasLimit && amt > computedLimit;
-                  const isWarning = hasLimit && !isOver && pctOfLimit >= 80;
-
-                  const theme = getCategoryTheme(cat);
-                  const CategoryIcon = theme.icon;
-
-                  return (
-                    <Link
-                      key={cat}
-                      href={`/dashboard/expenses/categories/${categoryToSlug(cat)}`}
-                      className="block space-y-1 p-1.5 rounded-xl hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                    >
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {/* Uniform Category Icon */}
-                          <div
-                            className={`w-5 h-5 rounded-md ${theme.bgLight} ${theme.iconClass} flex items-center justify-center shrink-0 border border-slate-200/50 group-hover:scale-105 transition-transform`}
-                          >
-                            <CategoryIcon className="w-3 h-3" />
-                          </div>
-
-                          <span className="text-slate-800 font-bold tracking-tight text-xs truncate group-hover:text-[#6C3BFF] transition-colors">
-                            {cat}
-                          </span>
-
-                          {hasLimit && (
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md shrink-0 ${
-                                isOver
-                                  ? "bg-rose-50 text-rose-600 border border-rose-200"
-                                  : isWarning
-                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              }`}
-                            >
-                              {isOver ? `+${formatCurrency(amt - computedLimit)}` : `${pctOfLimit}%`}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="text-right shrink-0 flex items-center gap-1.5">
-                          <div>
-                            <span className="text-slate-800 font-extrabold text-xs">
-                              {formatCurrency(amt)}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-normal ml-1">
-                              ({pctOfTotal}%)
-                            </span>
-                          </div>
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#6C3BFF] group-hover:translate-x-0.5 transition-all" />
-                        </div>
-                      </div>
-
-                      {/* Tailored Category Gradient Progress Bar */}
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${theme.gradient}`}
-                          style={{
-                            width: `${hasLimit ? Math.min(100, pctOfLimit) : pctOfTotal}%`,
-                          }}
-                        />
-                      </div>
-                    </Link>
-                  );
-                })}
-
-                {/* Direct Page Navigation to Dedicated Module */}
-                <Link
-                  href="/dashboard/expenses/categories"
-                  className="w-full py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100/80 border border-purple-200/60 text-[11px] font-bold text-[#6C3BFF] flex items-center justify-center gap-1.5 cursor-pointer transition-all mt-2.5 shadow-2xs group"
-                >
-                  <span>Open Dedicated Expense Analytics</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
-              </div>
-            ) : (
-              <div className="py-8 text-center text-xs text-slate-400">
-                No expense categories recorded for this period.
-              </div>
-            )}
-          </div>
-
-          {/* Footer Card */}
-          <div className="pt-3 mt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-              {categoryBudgets.filter((b) => b.hasLimit).length > 0
-                ? `${categoryBudgets.filter((b) => b.hasLimit).length} budget limits active`
-                : "Automated classification active"}
-            </span>
-            <button
-              type="button"
-              onClick={() => setBudgetModalOpen(true)}
-              className="text-[#6C3BFF] font-bold hover:underline cursor-pointer text-[10px] sm:text-[11px]"
-            >
-              Configure Limits →
-            </button>
-          </div>
-        </div>
-      ) : (
-        <CategoryBreakdownSkeleton />
-      )}
-    </div>
+          <DesktopExpenseByCategory
+            categoryBreakdown={summary.categoryBreakdown}
+            totalExpenses={summary.totalExpensesThisMonth || 0}
+            activeMonthName={selectedMonthName || summary.activeMonthName}
+            activeYear={activeYear}
+            activeMonth={activeMonth}
+            categoryBudgets={categoryBudgets}
+            overallBudget={overallBudget}
+            selectedCategory={selectedCategory}
+            onSelectCategory={(cat) => {
+              setSelectedCategory((prev) => (prev === cat ? null : cat));
+              if (cat) {
+                const el = document.getElementById("recent-transactions-section");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            onOpenBudgetModal={() => setBudgetModalOpen(true)}
+            transactions={monthTransactions}
+          />
+        ) : (
+          <CategoryBreakdownSkeleton />
+        )}
+      </div>
 
       {/* Quick Access Feature Cards (Calendar & Debt/Lent) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -614,12 +464,16 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Activity List with Section Anchor */}
+      {/* Recent Activity List with Section Anchor & Category Filtering */}
       <div id="recent-transactions-section">
         {summary ? (
           <RecentTransactions
-            transactions={summary.recentTransactions || []}
-            monthName={summary.activeMonthName}
+            transactions={monthTransactions.length > 0 ? monthTransactions : (summary.recentTransactions || [])}
+            monthName={selectedMonthName || summary.activeMonthName}
+            selectedCategory={selectedCategory}
+            onClearCategory={() => setSelectedCategory(null)}
+            activeYear={activeYear}
+            activeMonth={activeMonth}
           />
         ) : (
           <RecentTransactionsSkeleton />

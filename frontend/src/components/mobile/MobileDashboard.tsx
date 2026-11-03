@@ -513,12 +513,8 @@ export default function MobileDashboard({
       {/* ========================================================================= */}
       {/* 1. EXACT PURPLE HERO BANNER WITH FLOWING MULTI-LAYER CURVES & GOLDEN WAVES */}
       {/* ========================================================================= */}
-      {/* Top mobile overscroll guard: eliminates any white gap near time/battery */}
+      {/* Top mobile overscroll guard: sits behind content at z-0, never covers header */}
       <div className="fixed -top-96 left-0 right-0 h-96 bg-[#230348] z-0 pointer-events-none" />
-      <div
-        className="fixed top-0 left-0 right-0 z-30 pointer-events-none"
-        style={{ height: "max(env(safe-area-inset-top, 0px), 48px)", backgroundColor: "#230348" }}
-      />
 
       <div
         className="relative pt-[calc(env(safe-area-inset-top)+14px)] pb-16 px-5 overflow-visible bg-[#230348]"
@@ -1143,7 +1139,7 @@ export default function MobileDashboard({
         <div className="rounded-3xl bg-white border border-slate-100 shadow-2xs p-4">
           <div className="flex items-center justify-between mb-3">
             <Link
-              href="/dashboard/expenses/categories"
+              href={`/dashboard/expenses/categories?year=${activeYear}&month=${activeMonth}`}
               className="flex items-center gap-2 group cursor-pointer"
             >
               <div className="p-1.5 rounded-lg bg-purple-50 text-[#7C3AED] border border-purple-100 group-hover:scale-105 transition-transform">
@@ -1178,7 +1174,7 @@ export default function MobileDashboard({
                 return (
                   <Link
                     key={cat}
-                    href={`/dashboard/expenses/categories/${categoryToSlug(cat)}`}
+                    href={`/dashboard/expenses/categories/${categoryToSlug(cat)}?year=${activeYear}&month=${activeMonth}`}
                     className="block space-y-1 py-1 group cursor-pointer"
                   >
                     <div className="flex justify-between items-center text-xs">
@@ -1216,7 +1212,7 @@ export default function MobileDashboard({
 
               {/* Dedicated Page Navigation Button */}
               <Link
-                href="/dashboard/expenses/categories"
+                href={`/dashboard/expenses/categories?year=${activeYear}&month=${activeMonth}`}
                 className="w-full py-2.5 rounded-xl bg-purple-50/70 hover:bg-purple-100/70 border border-purple-100/80 text-[11px] font-bold text-[#7C3AED] flex items-center justify-center gap-1.5 transition-colors mt-2.5 active:scale-98"
               >
                 <span>View Full Expense Analytics ({categoryEntries.length} Categories)</span>

@@ -145,8 +145,16 @@ export const api = {
     if (params?.type && params.type !== "ALL") q.append("type", params.type);
     if (params?.category && params.category !== "ALL") q.append("category", params.category);
     if (params?.search) q.append("search", params.search);
-    if (params?.startDate) q.append("startDate", params.startDate);
-    if (params?.endDate) q.append("endDate", params.endDate);
+    if (params?.startDate) {
+      // Spring Boot @DateTimeFormat(iso = DATE_TIME) requires ISO Instant (e.g. 2026-11-01T00:00:00Z)
+      const s = params.startDate.includes("T") ? params.startDate : `${params.startDate}T00:00:00Z`;
+      q.append("startDate", s);
+    }
+    if (params?.endDate) {
+      // Spring Boot @DateTimeFormat(iso = DATE_TIME) requires ISO Instant (e.g. 2026-11-30T23:59:59Z)
+      const e = params.endDate.includes("T") ? params.endDate : `${params.endDate}T23:59:59Z`;
+      q.append("endDate", e);
+    }
     if (params?.page !== undefined) q.append("page", params.page.toString());
     if (params?.size !== undefined) q.append("size", params.size.toString());
     return request<PageResponse<Transaction>>(`/transactions?${q.toString()}`);

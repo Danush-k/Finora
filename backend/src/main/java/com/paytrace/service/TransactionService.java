@@ -73,7 +73,20 @@ public class TransactionService {
         }
 
         if (category != null && !category.trim().isEmpty() && !category.equalsIgnoreCase("ALL")) {
-            criteriaList.add(Criteria.where("category").is(category.trim()));
+            String cat = category.trim();
+            Pattern catPattern = Pattern.compile("^" + Pattern.quote(cat) + "$", Pattern.CASE_INSENSITIVE);
+            if (cat.equalsIgnoreCase("Food & Dining") || cat.equalsIgnoreCase("Food") || cat.equalsIgnoreCase("food-dining")) {
+                catPattern = Pattern.compile("^(Food & Dining|Food|Food and Dining)$", Pattern.CASE_INSENSITIVE);
+            } else if (cat.equalsIgnoreCase("Travel & Fuel") || cat.equalsIgnoreCase("Travel") || cat.equalsIgnoreCase("travel-fuel")) {
+                catPattern = Pattern.compile("^(Travel & Fuel|Travel|Fuel)$", Pattern.CASE_INSENSITIVE);
+            } else if (cat.equalsIgnoreCase("Utilities & Bills") || cat.equalsIgnoreCase("Bills") || cat.equalsIgnoreCase("utilities-bills")) {
+                catPattern = Pattern.compile("^(Utilities & Bills|Bills & Utilities|Bills|Utilities)$", Pattern.CASE_INSENSITIVE);
+            } else if (cat.equalsIgnoreCase("Health & Medical") || cat.equalsIgnoreCase("Health") || cat.equalsIgnoreCase("health-medical")) {
+                catPattern = Pattern.compile("^(Health & Medical|Health|Medical)$", Pattern.CASE_INSENSITIVE);
+            } else if (cat.equalsIgnoreCase("Education & Fees") || cat.equalsIgnoreCase("Education") || cat.equalsIgnoreCase("education-fees")) {
+                catPattern = Pattern.compile("^(Education & Fees|Education)$", Pattern.CASE_INSENSITIVE);
+            }
+            criteriaList.add(Criteria.where("category").regex(catPattern));
         }
 
         if (startDate != null && endDate != null) {

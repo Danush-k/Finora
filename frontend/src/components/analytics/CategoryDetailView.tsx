@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Calendar,
@@ -22,6 +22,7 @@ import {
   AlertCircle,
   ExternalLink,
   ChevronDown,
+  X,
 } from "lucide-react";
 import {
   BarChart,
@@ -36,8 +37,9 @@ import {
 import { api } from "@/lib/api";
 import { Transaction, DashboardSummary } from "@/types";
 import { getCategoryTheme } from "@/lib/category-theme";
-import { slugToCategory, categoryToSlug } from "@/lib/category-slugs";
-import { formatCurrency, cn } from "@/lib/utils";
+import { slugToCategory, categoryToSlug, matchesCategory } from "@/lib/category-slugs";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { CATEGORIES } from "@/lib/constants";
 import TransactionModal from "@/components/transactions/TransactionModal";
 
 interface CategoryDetailViewProps {
@@ -46,11 +48,28 @@ interface CategoryDetailViewProps {
 
 export default function CategoryDetailView({ categorySlug }: CategoryDetailViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read URL search params if provided, else fallback to cached summary (Nov 2026)
+  const qYear = searchParams.get("year");
+  const qMonth = searchParams.get("month");
 
   // Selected date range state
-  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth() + 1);
-  const [selectedMonthName, setSelectedMonthName] = useState<string>("Current Month");
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    if (qYear) return parseInt(qYear, 10);
+    const cached = api.getCachedDashboardSummary();
+    if (cached?.activeMonthKey) return parseInt(cached.activeMonthKey.split("-")[0], 10);
+    return 2026;
+  });
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => {
+    if (qMonth) return parseInt(qMonth, 10);
+    const cached = api.getCachedDashboardSummary();
+    if (cached?.activeMonthKey) return parseInt(cached.activeMonthKey.split("-")[1], 10);
+    return 11;
+  });
+
+  const [selectedMonthName, setSelectedMonthName] = useState<string>("November");
 
   // Category name from slug
   const categoryName = useMemo(() => {
@@ -83,27 +102,60 @@ export default function CategoryDetailView({ categorySlug }: CategoryDetailViewP
       setLoading(true);
       setError(null);
 
-      const startStr = `${yr}-${String(mo).padStart(2, "0")}-01`;
+      // Format ISO DATE_TIME Instant parameters (e.g. 2026-11-01T00:00:00Z)
+      const startStr = `${yr}-${String(mo).padStart(2, "0")}-01T00:00:00Z`;
       const daysInMonth = new Date(yr, mo, 0).getDate();
-      const endStr = `${yr}-${String(mo).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+      const endStr = `${yr}-${String(mo).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}T23:59:59Z`;
 
       // Set month name
       const dateObj = new Date(yr, mo - 1, 1);
       setSelectedMonthName(dateObj.toLocaleString("en-US", { month: "long" }));
 
+      // 1. Fetch filtered transactions directly from backend
       const res = await api.getTransactions({
         type: "EXPENSE",
-        category: cat,
+        category: cat === "ALL" ? undefined : cat,
         startDate: startStr,
         endDate: endStr,
         page: 0,
         size: 500,
       });
 
-      setTransactions(res.content || []);
+      let items = res?.content || [];
+
+      // 2. Resilient fallback matching across aliases and case differences
+      if (items.length === 0 && cat !== "ALL") {
+        const allRes = await api.getTransactions({
+          type: "EXPENSE",
+          startDate: startStr,
+          endDate: endStr,
+          page: 0,
+          size: 500,
+        });
+        items = (allRes?.content || []).filter((t) => matchesCategory(t.category, cat));
+      }
+
+      setTransactions(items);
     } catch (err: any) {
       console.error("Failed to load category transactions:", err);
-      setError(err?.message || "Failed to load transactions.");
+      // Fallback query without category filter then match client-side
+      try {
+        const startStr = `${yr}-${String(mo).padStart(2, "0")}-01T00:00:00Z`;
+        const daysInMonth = new Date(yr, mo, 0).getDate();
+        const endStr = `${yr}-${String(mo).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}T23:59:59Z`;
+        const allRes = await api.getTransactions({
+          type: "EXPENSE",
+          startDate: startStr,
+          endDate: endStr,
+          page: 0,
+          size: 500,
+        });
+        const items = (allRes?.content || []).filter((t) => matchesCategory(t.category, cat));
+        setTransactions(items);
+        setError(null);
+      } catch (fallbackErr: any) {
+        setError(err?.message || "Failed to load transactions.");
+      }
     } finally {
       setLoading(false);
     }
@@ -240,7 +292,7 @@ export default function CategoryDetailView({ categorySlug }: CategoryDetailViewP
         <div>
           {/* Back to Analytics Button */}
           <Link
-            href="/dashboard/expenses/categories"
+            href={`/dashboard/expenses/categories?year=${selectedYear}&month=${selectedMonth}`}
             className="inline-flex items-center gap-2 text-xs font-bold text-[#6C3BFF] hover:text-[#5228E0] hover:underline mb-2 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -305,6 +357,34 @@ export default function CategoryDetailView({ categorySlug }: CategoryDetailViewP
             <span>Export CSV</span>
           </button>
         </div>
+      </div>
+
+      {/* Category Quick Navigation Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-[11px] font-bold text-slate-400 shrink-0">Switch Category:</span>
+        {CATEGORIES.slice(0, 9).map((cat) => {
+          const slug = categoryToSlug(cat);
+          const isCurrent = slug === categorySlug;
+          const catTheme = getCategoryTheme(cat);
+          return (
+            <Link
+              key={cat}
+              href={`/dashboard/expenses/categories/${slug}?year=${selectedYear}&month=${selectedMonth}`}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs border",
+                isCurrent
+                  ? "bg-[#6C3BFF] text-white border-[#5228E0] shadow-xs"
+                  : "bg-white text-slate-700 hover:bg-purple-50 hover:text-[#6C3BFF] border-slate-200/80"
+              )}
+            >
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: isCurrent ? "#ffffff" : catTheme.hexColor }}
+              />
+              <span>{cat}</span>
+            </Link>
+          );
+        })}
       </div>
 
       {/* ========================================================================= */}
@@ -546,7 +626,7 @@ export default function CategoryDetailView({ categorySlug }: CategoryDetailViewP
                       className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                     >
                       <td className="py-3 px-3 text-slate-500 font-semibold whitespace-nowrap">
-                        {t.transactionDate}
+                        {formatDate(t.transactionDate)}
                       </td>
                       <td className="py-3 px-3">
                         <p className="font-bold text-slate-900 group-hover:text-[#6C3BFF] transition-colors truncate max-w-xs">
@@ -586,7 +666,7 @@ export default function CategoryDetailView({ categorySlug }: CategoryDetailViewP
                       {t.merchant || t.description || "Expense Transaction"}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      {t.transactionDate} • {t.paymentMethod || "UPI"}
+                      {formatDate(t.transactionDate)} • {t.paymentMethod || "UPI"}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
