@@ -1,5 +1,6 @@
 package com.paytrace.service;
 
+import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -97,9 +98,21 @@ public class GmailApiService {
                 .setApprovalPrompt("force")
                 .build();
 
-            GoogleTokenResponse tokenResponse = flow.newTokenRequest(authCode)
-                .setRedirectUri(getEffectiveRedirectUri())
-                .execute();
+            String primaryUri = getEffectiveRedirectUri();
+            GoogleTokenResponse tokenResponse;
+            try {
+                tokenResponse = flow.newTokenRequest(authCode)
+                    .setRedirectUri(primaryUri)
+                    .execute();
+            } catch (TokenResponseException tre) {
+                log.warn("Token exchange failed with {}: {}. Retrying with alternate redirect URI...", primaryUri, tre.getMessage());
+                String fallbackUri = primaryUri.contains("finora-11dp")
+                    ? "https://finora-backend.onrender.com/api/gmail/callback"
+                    : "https://finora-11dp.onrender.com/api/gmail/callback";
+                tokenResponse = flow.newTokenRequest(authCode)
+                    .setRedirectUri(fallbackUri)
+                    .execute();
+            }
 
             GoogleCredential credential = new GoogleCredential.Builder()
                 .setTransport(httpTransport)

@@ -15,6 +15,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,7 +49,7 @@ public class GmailSyncController {
 
     private String getEffectiveFrontendRedirect() {
         if (frontendRedirect != null && !frontendRedirect.isBlank() && !frontendRedirect.contains("localhost:3000")) {
-            return frontendRedirect;
+            return frontendRedirect.replaceAll("[\\r\\n]", "").trim();
         }
         return "https://finora-app-13673.web.app/settings";
     }
@@ -93,8 +94,10 @@ public class GmailSyncController {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("authorizationUrl", authUrl)));
     }
 
-    @GetMapping("/callback")
-    public void callback(@RequestParam("code") String code, HttpServletResponse response) throws IOException {
+    @GetMapping(value = "/callback", produces = MediaType.TEXT_HTML_VALUE)
+    @ResponseBody
+    public String callback(@RequestParam("code") String code) {
+        String targetUrl = getEffectiveFrontendRedirect();
         try {
             gmailApiService.handleCallback(code);
             CompletableFuture.runAsync(() -> {
@@ -105,10 +108,59 @@ public class GmailSyncController {
                     log.error("Initial background sync error: ", ex);
                 }
             });
-            response.sendRedirect(getEffectiveFrontendRedirect() + "?oauth=success");
+            return String.format("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="UTF-8">
+                  <meta http-equiv="refresh" content="1;url=%s?oauth=success">
+                  <title>Finora - Gmail Connected</title>
+                  <style>
+                    body { margin:0; background:#0B071E; color:white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; text-align:center; }
+                    .card { background:rgba(255,255,255,0.06); padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.12); max-width:400px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+                    h2 { color:#4ADE80; margin-bottom:10px; font-size:22px; }
+                    p { color:#94A3B8; font-size:14px; line-height:1.5; }
+                  </style>
+                </head>
+                <body>
+                  <div class="card">
+                    <h2>✓ Gmail Connected!</h2>
+                    <p>Synchronizing your transactions... Redirecting you back to Finora.</p>
+                  </div>
+                  <script>
+                    setTimeout(function() {
+                      window.location.href = "%s?oauth=success";
+                    }, 1000);
+                  </script>
+                </body>
+                </html>
+                """, targetUrl, targetUrl);
         } catch (Exception e) {
             log.error("OAuth callback error: ", e);
-            response.sendRedirect(getEffectiveFrontendRedirect() + "?oauth=error&message=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
+            String safeMsg = e.getMessage() != null ? e.getMessage().replaceAll("[\\r\\n]", " ") : "Unknown error";
+            return String.format("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="UTF-8">
+                  <title>Finora - Connection Error</title>
+                  <style>
+                    body { margin:0; background:#0B071E; color:white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; text-align:center; }
+                    .card { background:rgba(255,255,255,0.06); padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.12); max-width:440px; }
+                    h2 { color:#F87171; margin-bottom:10px; font-size:22px; }
+                    p { color:#94A3B8; font-size:13px; line-height:1.5; word-break:break-word; }
+                    a { display:inline-block; margin-top:16px; padding:10px 20px; background:#6366F1; color:white; text-decoration:none; border-radius:12px; font-weight:bold; font-size:13px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="card">
+                    <h2>Connection Failed</h2>
+                    <p>%s</p>
+                    <a href="%s">Return to Settings</a>
+                  </div>
+                </body>
+                </html>
+                """, safeMsg, targetUrl);
         }
     }
 
