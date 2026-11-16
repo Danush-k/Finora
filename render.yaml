@@ -2,8 +2,8 @@ services:
   - type: web
     name: finora-backend
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
     region: singapore
     healthCheckPath: /api/health
@@ -15,9 +15,9 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
-        sync: false
+        value: "https://finora-11dp.onrender.com/api/gmail/callback"
       - key: FRONTEND_REDIRECT_URL
-        sync: false
+        value: "https://finora-app-13673.web.app/settings"
       - key: GMAIL_SYNC_ENABLED
         value: "true"
       - key: GMAIL_SYNC_DELAY_MS
