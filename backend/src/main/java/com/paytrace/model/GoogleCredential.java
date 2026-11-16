@@ -36,4 +36,6 @@ public class GoogleCredential {
     private Instant connectedAt;
 
     private boolean connected;
+
+    private String errorMessage;
 }

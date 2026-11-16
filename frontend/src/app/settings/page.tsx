@@ -18,6 +18,7 @@ import {
   Search,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   RefreshCw,
   Copy,
   Check,
@@ -866,6 +867,22 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Metadata stats */}
+                    {status?.errorMessage && (
+                      <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>{status.errorMessage}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleConnectGmail}
+                          className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 cursor-pointer shadow-xs transition-colors"
+                        >
+                          Reconnect Now
+                        </button>
+                      </div>
+                    )}
+
                     {status?.connected && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1 text-xs">
                         <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">

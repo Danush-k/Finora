@@ -19,8 +19,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RestController
@@ -43,10 +46,18 @@ public class GmailSyncController {
     @Value("${paytrace.gmail.sync.hdfc-senders:alerts@hdfcbank.net,instaalerts@hdfcbank.net}")
     private String hdfcSenders;
 
+    private String getEffectiveFrontendRedirect() {
+        if (frontendRedirect != null && !frontendRedirect.isBlank() && !frontendRedirect.contains("localhost:3000")) {
+            return frontendRedirect;
+        }
+        return "https://finora-app-13673.web.app/settings";
+    }
+
     @GetMapping("/status")
     public ResponseEntity<ApiResponse<GmailStatusDto>> getStatus() {
         Optional<GoogleCredential> credOpt = credentialRepository.findById("primary_account");
         boolean connected = credOpt.isPresent() && credOpt.get().isConnected();
+        String errorMsg = credOpt.map(GoogleCredential::getErrorMessage).orElse(null);
 
         long processed = credOpt.map(GoogleCredential::getTotalEmailsProcessed).orElse(0L);
         long transactionsExtracted = transactionRepository.count();
@@ -64,6 +75,7 @@ public class GmailSyncController {
             .senderFilter(hdfcSenders)
             .syncIntervalSeconds(syncDelayMs / 1000)
             .isSyncing(emailSyncScheduler.isCurrentlySyncing())
+            .errorMessage(errorMsg)
             .build();
 
         return ResponseEntity.ok(ApiResponse.ok(status));
@@ -85,17 +97,50 @@ public class GmailSyncController {
     public void callback(@RequestParam("code") String code, HttpServletResponse response) throws IOException {
         try {
             gmailApiService.handleCallback(code);
-            response.sendRedirect(frontendRedirect + "?oauth=success");
+            CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("Starting initial sync following successful Gmail OAuth...");
+                    emailSyncScheduler.syncNow();
+                } catch (Exception ex) {
+                    log.error("Initial background sync error: ", ex);
+                }
+            });
+            response.sendRedirect(getEffectiveFrontendRedirect() + "?oauth=success");
         } catch (Exception e) {
             log.error("OAuth callback error: ", e);
-            response.sendRedirect(frontendRedirect + "?oauth=error&message=" + e.getMessage());
+            response.sendRedirect(getEffectiveFrontendRedirect() + "?oauth=error&message=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
         }
     }
 
     @PostMapping("/sync")
     public ResponseEntity<ApiResponse<EmailSyncScheduler.SyncResult>> triggerSync() {
-        EmailSyncScheduler.SyncResult result = emailSyncScheduler.syncNow();
-        return ResponseEntity.ok(ApiResponse.ok(result, result.message()));
+        Optional<GoogleCredential> credOpt = credentialRepository.findById("primary_account");
+        if (credOpt.isEmpty() || !credOpt.get().isConnected() || credOpt.get().getRefreshToken() == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                "Gmail authorization expired or account disconnected. Please click 'Reconnect Gmail' to re-authorize."
+            ));
+        }
+
+        if (emailSyncScheduler.isCurrentlySyncing()) {
+            return ResponseEntity.ok(ApiResponse.ok(
+                new EmailSyncScheduler.SyncResult(0, 0, 0, 0, "Sync already in progress"),
+                "A synchronization is already actively in progress."
+            ));
+        }
+
+        // Run sync asynchronously to prevent HTTP gateway timeouts & connection resets
+        CompletableFuture.runAsync(() -> {
+            try {
+                emailSyncScheduler.syncNow();
+            } catch (Exception e) {
+                log.error("Background sync error: ", e);
+            }
+        });
+
+        return ResponseEntity.ok(ApiResponse.ok(
+            new EmailSyncScheduler.SyncResult(0, 0, 0, 0, "Sync started in background"),
+            "Sync started in background. New transactions will appear automatically."
+        ));
     }
 
     @PostMapping("/disconnect")

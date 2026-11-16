@@ -37,17 +37,33 @@ export default function Header() {
   const handleQuickSync = async () => {
     try {
       setSyncing(true);
-      await api.triggerSync();
+      const res = await api.triggerSync();
       await fetchStatus();
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("finora-sync-completed"));
       }
-      success("Transactions Synchronized", "HDFC bank alerts parsed and up to date.");
-    } catch (e) {
+      success("Sync Started", res?.message || "HDFC bank alerts are syncing in the background.");
+    } catch (e: any) {
       console.error(e);
-      toastError("Sync Failed", "Could not synchronize with Gmail. Please check your connection.");
+      const msg = e?.message || "Could not synchronize with Gmail.";
+      if (msg.includes("expired") || msg.includes("reconnect") || msg.includes("connected")) {
+        toastError("Gmail Reconnect Required", "Google authorization has expired. Please click 'Reconnect Gmail' to re-authorize.");
+      } else {
+        toastError("Sync Failed", msg);
+      }
     } finally {
       setTimeout(() => setSyncing(false), 800);
+    }
+  };
+
+  const handleConnectGmail = async () => {
+    try {
+      const { authorizationUrl } = await api.getGmailConnectUrl();
+      if (authorizationUrl) {
+        window.location.href = authorizationUrl;
+      }
+    } catch (err: any) {
+      toastError("OAuth Setup", err?.message || "Could not generate authorization URL.");
     }
   };
 
@@ -91,14 +107,16 @@ export default function Header() {
               <span className="text-slate-500 font-normal text-[11px]">({status.email})</span>
             </div>
           ) : (
-            <Link
-              href="/settings"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50/90 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100/70 transition-colors shadow-2xs"
+            <button
+              type="button"
+              onClick={handleConnectGmail}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-700 text-xs font-bold hover:bg-amber-500/20 transition-all shadow-2xs animate-pulse cursor-pointer"
+              title="Click to reconnect your Gmail account"
             >
               <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-              <span>Connect Gmail</span>
+              <span>Reconnect Gmail</span>
               <ArrowUpRight className="w-3 h-3 opacity-70" />
-            </Link>
+            </button>
           )}
 
           {/* Quick Sync Button */}

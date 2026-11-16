@@ -208,14 +208,19 @@ export default function MobileDashboard({
   const handleHeroSync = async () => {
     try {
       setSyncing(true);
-      await api.triggerSync();
+      const res = await api.triggerSync();
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("finora-sync-completed"));
       }
-      success("Transactions Synchronized", "HDFC bank alerts parsed and up to date.");
-    } catch (e) {
+      success("Sync Started", res?.message || "HDFC bank alerts are syncing in the background.");
+    } catch (e: any) {
       console.error(e);
-      toastError("Sync Failed", "Could not synchronize with Gmail.");
+      const msg = e?.message || "Could not synchronize with Gmail.";
+      if (msg.includes("expired") || msg.includes("reconnect") || msg.includes("connected")) {
+        toastError("Gmail Reconnect Required", "Google authorization has expired. Please go to Settings to reconnect your Gmail.");
+      } else {
+        toastError("Sync Failed", msg);
+      }
     } finally {
       setTimeout(() => setSyncing(false), 800);
     }

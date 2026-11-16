@@ -85,6 +85,7 @@ export interface GmailStatus {
   senderFilter: string;
   syncIntervalSeconds: number;
   isSyncing: boolean;
+  errorMessage?: string;
 }
 
 export interface ApiResponse<T> {

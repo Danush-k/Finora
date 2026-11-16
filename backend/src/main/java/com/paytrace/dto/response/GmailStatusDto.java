@@ -23,4 +23,5 @@ public class GmailStatusDto {
     private String senderFilter;
     private int syncIntervalSeconds;
     private boolean isSyncing;
+    private String errorMessage;
 }

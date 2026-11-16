@@ -52,6 +52,13 @@ public class GmailApiService {
                clientSecret != null && !clientSecret.trim().isEmpty();
     }
 
+    public String getEffectiveRedirectUri() {
+        if (redirectUri != null && !redirectUri.isBlank() && !redirectUri.contains("finora-backend.onrender.com") && !redirectUri.contains("localhost:8080")) {
+            return redirectUri;
+        }
+        return "https://finora-11dp.onrender.com/api/gmail/callback";
+    }
+
     public String buildAuthorizationUrl() {
         if (!isConfigured()) {
             throw new IllegalStateException("Google OAuth Client ID and Secret are not configured in environment variables.");
@@ -70,7 +77,7 @@ public class GmailApiService {
                 .setApprovalPrompt("force")
                 .build();
 
-            return flow.newAuthorizationUrl().setRedirectUri(redirectUri).build();
+            return flow.newAuthorizationUrl().setRedirectUri(getEffectiveRedirectUri()).build();
         } catch (GeneralSecurityException | IOException e) {
             throw new RuntimeException("Failed to construct Google OAuth authorization URL", e);
         }
@@ -91,7 +98,7 @@ public class GmailApiService {
                 .build();
 
             GoogleTokenResponse tokenResponse = flow.newTokenRequest(authCode)
-                .setRedirectUri(redirectUri)
+                .setRedirectUri(getEffectiveRedirectUri())
                 .execute();
 
             GoogleCredential credential = new GoogleCredential.Builder()
@@ -122,6 +129,7 @@ public class GmailApiService {
             entity.setTokenExpiry(expiry);
             entity.setConnected(true);
             entity.setConnectedAt(Instant.now());
+            entity.setErrorMessage(null);
 
             return credentialRepository.save(entity);
         } catch (Exception e) {
@@ -149,9 +157,21 @@ public class GmailApiService {
                 .build()
                 .setRefreshToken(cred.getRefreshToken());
 
-            // Refresh token if needed
-            credential.refreshToken();
-            cred.setAccessToken(credential.getAccessToken());
+            // Refresh token if needed with graceful invalid_grant handling
+            try {
+                credential.refreshToken();
+                cred.setAccessToken(credential.getAccessToken());
+                cred.setErrorMessage(null);
+                credentialRepository.save(cred);
+            } catch (com.google.api.client.auth.oauth2.TokenResponseException e) {
+                log.error("Google OAuth token expired or revoked (invalid_grant): {}", e.getMessage());
+                cred.setConnected(false);
+                cred.setAccessToken(null);
+                cred.setRefreshToken(null);
+                cred.setErrorMessage("Google authorization expired or revoked. Please reconnect your Gmail account.");
+                credentialRepository.save(cred);
+                throw new RuntimeException("Gmail authorization expired. Please reconnect your account in Settings.", e);
+            }
 
             Gmail gmail = new Gmail.Builder(httpTransport, JSON_FACTORY, credential)
                 .setApplicationName("Finora by PayTrace")
