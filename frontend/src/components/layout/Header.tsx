@@ -46,7 +46,7 @@ export default function Header() {
     } catch (e: any) {
       console.error(e);
       const msg = e?.message || "Could not synchronize with Gmail.";
-      if (msg.includes("expired") || msg.includes("reconnect") || msg.includes("connected")) {
+      if (msg.includes("expired") || msg.includes("reconnect") || msg.includes("connected") || msg.includes("invalid_grant") || msg.includes("revoked")) {
         toastError("Gmail Reconnect Required", "Google authorization has expired. Please click 'Reconnect Gmail' to re-authorize.");
       } else {
         toastError("Sync Failed", msg);
@@ -60,7 +60,11 @@ export default function Header() {
     try {
       const { authorizationUrl } = await api.getGmailConnectUrl();
       if (authorizationUrl) {
-        window.location.href = authorizationUrl;
+        const effectiveUrl = authorizationUrl.replace(
+          "finora-backend.onrender.com",
+          "finora-11dp.onrender.com"
+        );
+        window.location.href = effectiveUrl;
       }
     } catch (err: any) {
       toastError("OAuth Setup", err?.message || "Could not generate authorization URL.");

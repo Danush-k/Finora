@@ -216,7 +216,7 @@ export default function MobileDashboard({
     } catch (e: any) {
       console.error(e);
       const msg = e?.message || "Could not synchronize with Gmail.";
-      if (msg.includes("expired") || msg.includes("reconnect") || msg.includes("connected")) {
+      if (msg.includes("expired") || msg.includes("reconnect") || msg.includes("connected") || msg.includes("invalid_grant") || msg.includes("revoked")) {
         toastError("Gmail Reconnect Required", "Google authorization has expired. Please go to Settings to reconnect your Gmail.");
       } else {
         toastError("Sync Failed", msg);

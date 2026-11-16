@@ -221,7 +221,11 @@ export default function SettingsPage() {
     try {
       const { authorizationUrl } = await api.getGmailConnectUrl();
       if (authorizationUrl) {
-        window.location.href = authorizationUrl;
+        const effectiveUrl = authorizationUrl.replace(
+          "finora-backend.onrender.com",
+          "finora-11dp.onrender.com"
+        );
+        window.location.href = effectiveUrl;
       }
     } catch (err: any) {
       toast.error(
@@ -236,9 +240,9 @@ export default function SettingsPage() {
       setSyncing(true);
       setSyncFeedback(null);
       const result = await api.triggerSync();
-      const syncMsg = `Sync completed: ${result.processed} new transactions extracted, ${result.duplicates} duplicates skipped.`;
+      const syncMsg = `Sync started: ${result.message || "Parsing transactions in background."}`;
       setSyncFeedback(syncMsg);
-      toast.success("Gmail Sync Completed", syncMsg);
+      toast.success("Gmail Sync Started", syncMsg);
       await fetchStatus();
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("finora-sync-completed"));
@@ -246,7 +250,11 @@ export default function SettingsPage() {
     } catch (err: any) {
       const errMsg = err.message || "Failed to trigger sync";
       setSyncFeedback(errMsg);
-      toast.error("Sync Failed", errMsg);
+      if (errMsg.includes("invalid_grant") || errMsg.includes("expired") || errMsg.includes("revoked")) {
+        toast.error("Google Authorization Expired", "Google session has expired. Click 'Connect Gmail' below to refresh and load transactions.");
+      } else {
+        toast.error("Sync Failed", errMsg);
+      }
     } finally {
       setSyncing(false);
     }
@@ -844,6 +852,14 @@ export default function SettingsPage() {
                             >
                               <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
                               <span>{syncing ? "Syncing..." : "Sync Now"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleConnectGmail}
+                              className="px-3 py-1.5 rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 text-xs font-semibold cursor-pointer"
+                              title="Refresh OAuth authorization with Google"
+                            >
+                              Reconnect
                             </button>
                             <button
                               type="button"
